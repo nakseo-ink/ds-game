@@ -1,32 +1,45 @@
-# 포인터 과외 (가제) — 자료구조 게임 v0.4
+# 컴퓨터를 모르는 백수, 부잣집 과외교사가 되다 — 자료구조 편
 
-과외 서사 기반 인터랙티브 자료구조 튜토리얼. 완성학습(mastery) 루프 + 생성형 문항 + 오개념 태그 로깅.
-설계 문서: `D:\ds-game\40-엔진\스펙-v1-상호작용.md` · 시나리오: `30-콘텐츠\챕터01-수직시나리오.md`
+과외 서사 기반 인터랙티브 자료구조 학습 게임 (v0.5).
+컴퓨터를 모르는 백수가 부잣집 과외교사로 취직해, 학생 도윤이를 가르치기 위해 스스로 자료구조를 공부한다 — 플레이어의 공부가 곧 게임이다.
+
+- **완성학습(mastery)**: 유닛마다 힌트 없이 연속 3회 정답까지 반복. 문항은 생성기가 무한 변형.
+- **대화형 자습**: 책 발췌와 주인공 독백이 한 호흡씩 진행. "이건 아니?" 자문 분기로 모르는 선수지식은 기초로 내려갔다 복귀.
+- **주간 루프**: 월(자습) → 수(과외 문답) → 목·금(자습) → 토(보충/A+ 트랙) → 월(쪽지시험) → 과외비 정산(점수 비례).
+- **보상**: 과외비로 상점에서 쇼핑(장바구니·가방). A+ 트랙 성공 시 보너스.
+- **이어하기**: 씬 단위 자동 저장, 진도 코드로 다른 컴퓨터 이어가기.
+- **학습 로그**: 오답 오개념 태그·소요시간·힌트·자문 분기 응답 기록 (익명 토큰).
 
 ## 실행
 
+- 웹: GitHub Pages 주소로 접속 (설정: `docs/GitHubPages-배포가이드.md`)
 - 로컬: `index.html` 더블클릭 (빌드·서버 불필요)
-- 배포: `docs/GitHubPages-배포가이드.md`
-- 로그 수집: `docs/Supabase-설정가이드.md` → `js/config.js`에 키 입력
+- 로그 수집 서버 연결: `docs/Supabase-설정가이드.md` → `js/config.js`에 키 입력 (미설정 시 로컬 큐만)
 
-## 구조 (엔진 고정 + 챕터 = 데이터)
+## 구조 — 엔진 고정 + 챕터 = 데이터
 
 ```
 index.html            셸 (HUD + 스크립트 로드)
 css/style.css         스타일
 js/util.js            공용 유틸
 js/config.js          ★ 배포 설정 (Supabase 키) — 유일하게 수정하는 파일
-js/logger.js          로그 큐 + Supabase 배치 전송 (미설정 시 로컬만)
-js/generators.js      생성기 G1(주소) G2(트레이스) G3(padd) G4(transpose) + A+ 심화
-js/engine.js          씬 러너 + 위젯 5종 (W1 메모리띠 · W2 단계실행 · W3 링크조작 · W4 문답 · W5 HUD)
-data/ch01.data.js     챕터 1 콘텐츠 (대사·공부 단계·힌트·과외 문답·저작 문항·산식)
+js/logger.js          로그 큐 + Supabase 배치 전송
+js/avatars.js         캐릭터 SVG (도윤·나·윤 여사, 표정 7종)
+js/generators.js      생성기 G1(주소) G2(트레이스 3종) G3(padd) G4(triple 표현) + A+ 심화
+js/engine.js          씬 러너 + 위젯 (메모리띠·단계실행·링크조작·문답·HUD) + 상점·저장
+data/ch01.data.js     챕터 1 "배열과 구조" (대사·자습 비트·문답·문항·산식)
+data/shop.data.js     상점 아이템 (SVG 일러스트 포함)
 ```
 
-챕터 추가 = `data/chXX.data.js` 작성 (JSON 형식의 JS 파일 — file:// 로컬 실행 호환을 위해 .js 사용).
+챕터 추가 = `data/chXX.data.js` 작성 (file:// 호환을 위해 JSON 대신 .js).
 학기 중 기능 프리즈: `js/`는 수정 금지, `data/`만 추가.
 
-## 로그 이벤트 (스펙 6절)
+## 로그 이벤트
 
-`chapter_start · study_step · item_shown(생성 파라미터 포함) · answer(mc 오개념 태그·소요시간·힌트 여부) · hint_open · mastery_reached · link_check · tutoring_start/answer/result · aplus_choice/result · quiz_score`
+`chapter_start · study_step · gate(선수지식 자문) · item_shown(생성 파라미터) · answer(오개념 태그·소요시간·힌트) · hint_open · mastery_reached · link_check · tutoring_* · aplus_* · quiz_score · purchase · resume`
 
 학생 식별은 기기별 익명 토큰. 수업 초 데이터 수집 고지 필요.
+
+---
+
+동서대학교 자료구조 수업 교육용 프로젝트.
