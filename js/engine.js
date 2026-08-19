@@ -133,7 +133,7 @@ function sceneStudy(unitKey, onDone){
       if((b.who||"me")==="book") box.appendChild(el('<div class="bookpanel fade">'+b.say+'</div>'));
       else box.appendChild(el('<div class="dlg fade"><div class="portrait">'+AV("me"+(b.mood?"-"+b.mood:""))+'</div><div class="bubble"><div class="who">나</div>'+b.say+'</div></div>'));
     }
-    if(b.code){ const cb=el('<div class="codebox fade"></div>'); b.code.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":String(ln).replace(/</g,"&lt;"))+'</div>'))); box.appendChild(cb); }
+    if(b.code){ const cb=el('<div class="codebox fade"></div>'); b.code.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>'))); box.appendChild(cb); }
     if(b.strip) box.appendChild(memoryStrip(b.strip));
     if(b.sparse){ const w=el('<div class="fade" style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;"></div>');
       w.appendChild(sparseGrid(b.sparse.n,b.sparse.elems,null));
@@ -289,7 +289,7 @@ function runTrace(tr,si){
   const st=tr.steps[si];
   const card=el('<div class="card fade">'+streakBar(streakB,tr.label+" · 단계 "+(si+1)+"/"+tr.steps.length)+'</div>');
   const cb=el('<div class="codebox"></div>');
-  tr.lines.forEach((ln,li)=>cb.appendChild(el('<div class="codeline'+(li===st.line?" hi":"")+'">'+(ln===""?" ":ln.replace(/</g,"&lt;"))+'</div>')));
+  tr.lines.forEach((ln,li)=>cb.appendChild(el('<div class="codeline'+(li===st.line?" hi":"")+'">'+(ln===""?" ":hlC(ln))+'</div>')));
   card.appendChild(cb);
   const memArea=el('<div></div>'); card.appendChild(memArea);
   function renderState(strip,vars){
@@ -448,6 +448,7 @@ function sceneLinkPuzzle(){
     };
     card.appendChild(wrap); card.appendChild(check); card.appendChild(warn);
     stage.appendChild(card);
+    paintCode(card);
 }
 function sceneTrialC(){
   saveCP("trialC");

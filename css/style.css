@@ -110,3 +110,10 @@
 .invchip{display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--accent2); border-radius:14px; padding:3px 12px 3px 6px; font-size:13px;}
 .invchip svg{width:26px; height:26px;}
 .invchip .cnt{color:var(--accent2); font-size:12px;}
+
+/* C 구문 강조 */
+.c-com{color:#8a9a6b; font-style:italic;}
+.c-str{color:#e8c96a;}
+.c-num{color:#9cc4d8;}
+.c-typ{color:#7ec8a9;}
+.c-kw{color:#c9a3d6;}

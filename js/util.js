@@ -11,3 +11,22 @@ function fmtTerm(c,e){
   if(e===0) return String(c);
   return cs+"x"+(e>1?"<sup>"+e+"</sup>":"");
 }
+
+/* C 구문 강조 — 외부 의존성 없음 (file:// 로컬에서도 동작) */
+function hlC(src){
+  const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const re=/(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b0x[0-9A-Fa-f]+\b|\b\d+(?:\.\d+)?\b)|(\b(?:void|int|char|float|double|long|short|unsigned|signed)\b)|(\b(?:if|else|for|while|do|switch|case|break|continue|return|typedef|struct|union|enum|sizeof|const|static)\b|\bNULL\b|#\w+)/g;
+  let out="", last=0, m;
+  while((m=re.exec(src))){
+    out+=esc(src.slice(last,m.index));
+    const t=esc(m[0]);
+    if(m[1]) out+='<span class="c-com">'+t+"</span>";
+    else if(m[2]) out+='<span class="c-str">'+t+"</span>";
+    else if(m[3]) out+='<span class="c-num">'+t+"</span>";
+    else if(m[4]) out+='<span class="c-typ">'+t+"</span>";
+    else out+='<span class="c-kw">'+t+"</span>";
+    last=m.index+m[0].length;
+  }
+  return out+esc(src.slice(last));
+}
+function paintCode(root){ root.querySelectorAll(".codeline").forEach(e=>{ e.innerHTML=hlC(e.textContent)||" "; }); }
