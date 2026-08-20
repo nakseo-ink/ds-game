@@ -8,7 +8,8 @@ function AV(key){
   const CHAR={
     doyun:{hair:"#23272e", shirt:"#5aa98c", faceRy:9.6, faceCy:30},
     me:{hair:"#7a5c40", shirt:"#828a99", faceRy:10.2, faceCy:29.4},
-    madam:{hair:"#3a3340", shirt:"#a07ba8", faceRy:9.8, faceCy:30}
+    madam:{hair:"#3a3340", shirt:"#a07ba8", faceRy:9.8, faceCy:30},
+    elder:{hair:"#cfc9bd", shirt:"#7d7463", faceRy:9.8, faceCy:30}
   }[who];
   if(!CHAR) return key; // 폴백: 이모지 등 그대로
   let s='<svg viewBox="0 0 64 64" width="46" height="46" aria-hidden="true">';
@@ -17,13 +18,16 @@ function AV(key){
   if(who==="me") s+='<path d="M26 46 L32 54 L38 46 Z" fill="#6d7480"/>'; // 후줄근한 티 목선
   if(who==="doyun") s+='<path d="M22 47 q10 7 20 0 l0 5 q-10 6 -20 0 Z" fill="#4b8f76"/>'; // 후드 라인
   if(who==="madam") s+='<circle cx="32" cy="49" r="1.6" fill="#e8d9a0"/><circle cx="27" cy="48" r="1.3" fill="#e8d9a0"/><circle cx="37" cy="48" r="1.3" fill="#e8d9a0"/>'; // 목걸이
+  if(who==="elder") s+='<rect x="20" y="50" width="24" height="3" rx="1.5" fill="#5c544a"/>'; // 앞치마 끈
   // 머리(헬멧) + 얼굴
   s+='<circle cx="32" cy="26" r="13.5" fill="'+CHAR.hair+'"/>';
+  if(who==="elder") s+='<ellipse cx="32" cy="18" rx="9" ry="6" fill="'+SKIN+'"/>'; // 벗어진 정수리
   if(who==="madam") s+='<circle cx="32" cy="11" r="5" fill="'+CHAR.hair+'"/>'; // 올림머리
   if(who==="me") s+='<path d="M20 17 l3 -5 2 5 M28 14 l2.5 -5 2.5 5 M37 15 l3 -5 2 5" stroke="'+CHAR.hair+'" stroke-width="3" fill="none" stroke-linecap="round"/>'; // 부스스
   s+='<ellipse cx="32" cy="'+CHAR.faceCy+'" rx="10.6" ry="'+CHAR.faceRy+'" fill="'+SKIN+'"/>';
   if(who==="madam") s+='<circle cx="21.5" cy="32" r="1.5" fill="#e8c96a"/>'; // 귀걸이
   if(who==="me") s+='<circle cx="28" cy="37.5" r=".7" fill="#b08c60"/><circle cx="32" cy="38.6" r=".7" fill="#b08c60"/><circle cx="36" cy="37.5" r=".7" fill="#b08c60"/>'; // 수염 자국
+  if(who==="elder") s+='<path d="M25 36 q7 8 14 0 l0 4 q-7 7 -14 0 Z" fill="#e8e3da"/><path d="M22 24 l6 0 M36 24 l6 0" stroke="#e8e3da" stroke-width="2.2" stroke-linecap="round"/>'; // 흰 수염·눈썹
   // 표정
   const L=27.4, R=36.6, EY=29, MY=35;
   const star=(cx,cy)=>'<path d="M'+cx+' '+(cy-2.6)+' L'+(cx+0.8)+' '+(cy-0.8)+' L'+(cx+2.6)+' '+cy+' L'+(cx+0.8)+' '+(cy+0.8)+' L'+cx+' '+(cy+2.6)+' L'+(cx-0.8)+' '+(cy+0.8)+' L'+(cx-2.6)+' '+cy+' L'+(cx-0.8)+' '+(cy-0.8)+' Z" fill="#e8b13f"/>';

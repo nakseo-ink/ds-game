@@ -12,7 +12,8 @@ const Log = (function(){
     localStorage.setItem(TOKKEY, student);
   }
   function log(event, payload){
-    logs.push({ts:Date.now(), student, chapter:"ch01", event, ...payload});
+    const ch = (typeof CURCH!=="undefined") ? CURCH : "ch01"; /* 엔진이 정의하는 현재 챕터 */
+    logs.push({ts:Date.now(), student, chapter:ch, event, ...payload});
     localStorage.setItem(KEY, JSON.stringify(logs));
     const cnt=document.getElementById("logcount"); if(cnt) cnt.textContent=logs.length;
   }

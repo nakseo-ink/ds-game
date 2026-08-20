@@ -147,3 +147,164 @@ function genAP(idx){
       {text:"0x⁵ 이 attach된다",correct:false,mc:"zero-sum",fb:"계수 0인 항은 '없는 항'이다. if(coefficient)가 막는다."},
       {text:"오류가 발생한다",correct:false,mc:"zero-sum",fb:"오류가 아니라 정상적인 소거다. 3x²-3x²처럼."}])};
 }
+
+/* ============ G5. Big-O 입문 (챕터 0 · 유닛 D) — 6유형 생성 ============
+   출처 기준: OpenDSA AnalIntro/AnalAsymptotic/AnalCases (재서술).
+   표기 문항의 정답은 "가장 간단한 관례 형태" — 상수·저차항을 벗긴 등급. */
+function genG5(){
+  const qtype=pick(["expr","code","race","order","double","cases"]);
+  const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  /* --- 1) 식 → 표기 --- */
+  if(qtype==="expr"){
+    const a=R(2,9), b=R(2,9), c=R(2,9);
+    const v=pick(["quad","lin","nlogn"]);
+    if(v==="quad") return {qtype, params:{v,a,b,c}, id:"G5-expr",
+      stem:'어떤 알고리즘이 하는 일을 전부 세어 보니 <span class="mono">'+a+'n² + '+b+'n + '+c+'</span>번이었다. Big-O 이름표로 가장 알맞은 것은?', mono:true,
+      okfb:'n이 커지면 '+a+'n²이 승부를 결정한다 — 상수 계수와 낮은 차수 항은 벗겨 쓴다.',
+      choices:shuffle([
+        {text:"O(n²)",correct:true},
+        {text:"O("+a+"n²)",correct:false,mc:"keep-constant",fb:"표기 관례 — 상수 계수는 벗겨 쓴다."},
+        {text:"O(n² + n)",correct:false,mc:"keep-lower-term",fb:"가장 빨리 자라는 항만 남긴다. 나머지는 n이 커질수록 의미를 잃는다."},
+        {text:"O(n)",correct:false,mc:"wrong-degree",fb:"각 항 중 무엇이 가장 빨리 자라는지를 보라."}])};
+    if(v==="lin") return {qtype, params:{v,a,b}, id:"G5-expr",
+      stem:'어떤 알고리즘이 하는 일을 전부 세어 보니 <span class="mono">'+a+'n + '+b+'</span>번이었다. Big-O 이름표로 가장 알맞은 것은?', mono:true,
+      okfb:'상수 계수와 상수항을 벗기면 남는 것은 n — 선형 등급이다.',
+      choices:shuffle([
+        {text:"O(n)",correct:true},
+        {text:"O("+a+"n)",correct:false,mc:"keep-constant",fb:"표기 관례 — 상수 계수는 벗겨 쓴다."},
+        {text:"O(1)",correct:false,mc:"wrong-degree",fb:"n이 커지면 시간도 커진다 — 상수 시간이 아니다."},
+        {text:"O(n²)",correct:false,mc:"over-degree",fb:"n²으로 자라는 항이 있는지 보라."}])};
+    return {qtype, params:{v,a,b}, id:"G5-expr",
+      stem:'어떤 알고리즘이 하는 일을 전부 세어 보니 <span class="mono">'+a+'n log n + '+b+'n</span>번이었다. Big-O 이름표로 가장 알맞은 것은?', mono:true,
+      okfb:'n log n이 n보다 빨리 자란다 — 가장 빠른 항만 남기고 상수를 벗긴다.',
+      choices:shuffle([
+        {text:"O(n log n)",correct:true},
+        {text:"O(n)",correct:false,mc:"keep-lower-term",fb:"두 항 중 무엇이 더 빨리 자라는지 비교하라 — log n은 계속 커지는 인자다."},
+        {text:"O("+a+"n log n)",correct:false,mc:"keep-constant",fb:"표기 관례 — 상수 계수는 벗겨 쓴다."},
+        {text:"O(n²)",correct:false,mc:"over-degree",fb:"n·n과 n·log n은 다르다 — log n은 n보다 훨씬 느리게 자란다."}])};
+  }
+  /* --- 2) 코드 → 표기 --- */
+  if(qtype==="code"){
+    const k=pick(["const","single","nested","seq","half","innerC"]);
+    const mk=(code,correct,wrongs,ok)=>({qtype,params:{k},id:"G5-code",
+      stem:'다음 코드의 Big-O 표기로 가장 알맞은 것은?', mono:true, code, okfb:ok,
+      choices:shuffle([{text:correct,correct:true}].concat(wrongs))});
+    if(k==="const") return mk(
+      ["x = a[0];","y = a[n-1];","sum = x + y;"],"O(1)",
+      [{text:"O(n)",correct:false,mc:"stmt-count",fb:"n에 따라 늘어나는 반복이 있는가? 문장 수가 아니라 '자라는가'를 본다."},
+       {text:"O(log n)",correct:false,mc:"grade-confusion",fb:"n이 커져도 실행되는 문장 수는 그대로다."},
+       {text:"O(n²)",correct:false,mc:"grade-confusion",fb:"반복문이 없다."}],
+      "n이 아무리 커져도 세 문장뿐 — 크기와 무관한 상수 시간이다.");
+    if(k==="single") return mk(
+      ["for (i = 0; i < n; i++)","    sum += a[i];"],"O(n)",
+      [{text:"O(1)",correct:false,mc:"grade-confusion",fb:"루프가 n번 돈다 — n이 커지면 시간도 따라 커진다."},
+       {text:"O(n²)",correct:false,mc:"over-degree",fb:"루프가 겹쳐 있는가, 한 겹인가."},
+       {text:"O(log n)",correct:false,mc:"log-confusion",fb:"i는 1씩 자란다 — 건너뛰며 좁히는 루프가 아니다."}],
+      "n번 도는 한 겹 루프 — n에 비례하는 선형 등급이다.");
+    if(k==="nested") return mk(
+      ["for (i = 0; i < n; i++)","    for (j = 0; j < n; j++)","        cnt++;"],"O(n²)",
+      [{text:"O(n)",correct:false,mc:"nest-ignored",fb:"바깥이 한 바퀴 돌 때마다 안쪽이 통째로 n번 돈다."},
+       {text:"O(2n)",correct:false,mc:"seq-vs-nest",fb:"연달아 도는 게 아니라 '겹쳐서' 돈다 — 합이 아니라 곱이다."},
+       {text:"O(log n)",correct:false,mc:"log-confusion",fb:"건너뛰며 좁히는 루프가 아니다."}],
+      "겹친 루프는 곱한다 — n × n = n² 등급.");
+    if(k==="seq") return mk(
+      ["for (i = 0; i < n; i++) sum += a[i];","for (j = 0; j < n; j++) cnt += b[j];"],"O(n)",
+      [{text:"O(n²)",correct:false,mc:"seq-as-mult",fb:"루프가 '겹쳐' 있는가, '연달아' 있는가 — 연달아면 합이고, 합은 큰 쪽 등급만 남는다."},
+       {text:"O(2n)",correct:false,mc:"keep-constant",fb:"표기 관례 — 상수 계수는 벗겨 쓴다."},
+       {text:"O(1)",correct:false,mc:"grade-confusion",fb:"n이 커지면 두 루프 모두 길어진다."}],
+      "n + n = 2n — 상수를 벗기면 선형 등급이다. 연달아 도는 루프는 합, 겹친 루프가 곱이다.");
+    if(k==="half") return mk(
+      ["for (i = 1; i < n; i = i * 2)","    cnt++;"],"O(log n)",
+      [{text:"O(n)",correct:false,mc:"loop-as-linear",fb:"i가 1, 2, 4, 8…로 두 배씩 뛴다 — 몇 번 만에 n에 닿는지를 세어 보라."},
+       {text:"O(n²)",correct:false,mc:"over-degree",fb:"한 겹 루프이고, 게다가 건너뛰며 자란다."},
+       {text:"O(1)",correct:false,mc:"grade-confusion",fb:"n이 커지면 도는 횟수도 (천천히) 늘어난다."}],
+      "1→2→4→…→n, 두 배씩 — 약 log₂n번 돈다. 이진 탐색과 같은 로그 등급.");
+    return mk(
+      ["for (i = 0; i < n; i++)","    for (j = 0; j < 5; j++)","        cnt++;"],"O(n)",
+      [{text:"O(n²)",correct:false,mc:"nest-always-square",fb:"안쪽 루프는 n과 무관하게 5번 — 상수다. 곱해도 5n."},
+       {text:"O(5n)",correct:false,mc:"keep-constant",fb:"표기 관례 — 상수 계수는 벗겨 쓴다."},
+       {text:"O(log n)",correct:false,mc:"log-confusion",fb:"건너뛰며 좁히는 루프가 아니다."}],
+      "안쪽은 항상 5번(상수) — 5n에서 상수를 벗기면 선형 등급이다. 겹쳤다고 무조건 제곱이 아니다.");
+  }
+  /* --- 3) 성장 비교 (결국 어느 쪽이 빠른가) --- */
+  if(qtype==="race"){
+    const v=pick(["n-n2","nlogn-n2","logn-n"]);
+    const a=pick([50,100,200,500]);
+    let fA,fB,cross;
+    if(v==="n-n2"){ fA=a+"n"; fB="n²"; cross="n이 "+a+"을 넘는 순간부터"; }
+    else if(v==="nlogn-n2"){ fA=a+"n log n"; fB="n²"; cross="n이 충분히 커지면"; }
+    else { fA=a+" log n"; fB="n"; cross="n이 충분히 커지면"; }
+    const flip=Math.random()<0.5; /* A/B 자리 셔플 */
+    const nm1=flip?"B":"A", nm2=flip?"A":"B";
+    return {qtype, params:{v,a,flip}, id:"G5-race",
+      stem:'알고리즘 '+nm1+'은(는) <span class="mono">'+fA+'</span>번, 알고리즘 '+nm2+'은(는) <span class="mono">'+fB+'</span>번의 일을 한다. n이 계속 커지면?', mono:true,
+      okfb:'성장률 등급이 낮은 쪽이 결국 이긴다 — '+cross+' 격차는 계속 벌어진다. 상수 계수는 승부를 못 뒤집는다.',
+      choices:shuffle([
+        {text:nm1+"이(가) 결국 더 빨라지고, 격차는 계속 벌어진다",correct:true},
+        {text:nm2+"이(가) 결국 더 빨라진다",correct:false,mc:"coef-first",fb:"계수가 커 보여도, 등급이 다르면 n이 커질수록 등급이 이긴다."},
+        {text:"계속 엎치락뒤치락한다",correct:false,mc:"growth-misread",fb:"성장률이 다른 두 곡선은 어느 지점 이후로는 다시 만나지 않는다."},
+        {text:"n과 무관하게 항상 같다",correct:false,mc:"growth-misread",fb:"둘 다 n의 함수다 — n이 커지면 달라진다."}])};
+  }
+  /* --- 4) 성장률 등급 고르기 --- */
+  if(qtype==="order"){
+    const LADDER=[["1",0],["log n",1],["n",2],["n log n",3],["n²",4],["2ⁿ",5]];
+    const four=shuffle(LADDER.slice()).slice(0,4);
+    const slow=Math.random()<0.5;
+    const target=four.reduce((x,y)=> slow ? (x[1]<y[1]?x:y) : (x[1]>y[1]?x:y));
+    return {qtype, params:{four:four.map(f=>f[0]), slow}, id:"G5-order",
+      stem:'다음 중 n이 커질 때 <b>가장 '+(slow?"느리게":"빨리")+' 자라는</b> 것은?',
+      okfb:'계급표 순서 — 1 < log n < n < n log n < n² < 2ⁿ.',
+      choices:shuffle(four.map(f=>f[0]===target[0]
+        ?{text:f[0],correct:true}
+        :{text:f[0],correct:false,mc:"ladder-confusion",fb:"계급표를 다시 그려 보라 — 로그는 매우 느리게, 지수는 무섭게 자란다."}))};
+  }
+  /* --- 5) 두 배 문제 --- */
+  if(qtype==="double"){
+    const g=pick([
+      {o:"O(n)", ans:"약 두 배가 된다", why:"2n — 비례해서 늘어난다."},
+      {o:"O(n²)", ans:"약 네 배가 된다", why:"(2n)² = 4n² — 제곱은 두 배가 아니라 네 배."},
+      {o:"O(log n)", ans:"한 단계 늘어날 뿐, 거의 그대로다", why:"log(2n) = log n + 1 — 딱 한 번 더."},
+      {o:"O(1)", ans:"변하지 않는다", why:"애초에 n과 무관한 시간이다."}]);
+    const all=["약 두 배가 된다","약 네 배가 된다","한 단계 늘어날 뿐, 거의 그대로다","변하지 않는다"];
+    return {qtype, params:{o:g.o}, id:"G5-double",
+      stem:'어떤 알고리즘이 <span class="mono">'+g.o+'</span> 등급이다. 입력 크기가 <b>두 배</b>가 되면 실행 시간은 대략 어떻게 되는가?', mono:true,
+      okfb:g.why,
+      choices:shuffle(all.map(t=>t===g.ans
+        ?{text:t,correct:true}
+        :{text:t,correct:false,mc:"double-sense",fb:"등급의 식에 2n을 직접 넣어 보라."}))};
+  }
+  /* --- 6) 최선·최악·평균 --- */
+  const n=pick([100,500,1000,2000]);
+  const sub=pick(["worst","best","avg","policy"]);
+  if(sub==="policy"){
+    const scene=pick([
+      {txt:"항공 관제 소프트웨어처럼, 어떤 입력이 와도 응답 시간이 <b>보장</b>되어야 하는 시스템", ans:"최악의 경우", why:"최악을 알면 '적어도 이만큼은 된다'는 보장이 생긴다."},
+      {txt:"입력의 분포를 잘 알고 있고, 같은 알고리즘을 다양한 입력에 수없이 반복 실행하는 상황", ans:"평균적인 경우", why:"분포를 알 때는 평균이 실제 체감 비용을 가장 잘 말해 준다."}]);
+    return {qtype, params:{sub, ans:scene.ans}, id:"G5-cases",
+      stem:scene.txt+' — 어느 경우를 기준으로 분석하는 것이 적절한가?',
+      okfb:scene.why,
+      choices:shuffle([
+        {text:scene.ans,correct:true},
+        {text:scene.ans==="최악의 경우"?"평균적인 경우":"최악의 경우",correct:false,
+         mc:scene.ans==="최악의 경우"?"need-guarantee":"dist-known",
+         fb:scene.ans==="최악의 경우"?"평균은 입력의 분포를 알아야 의미가 있고, '보장'은 주지 못한다.":"보장이 필요한 상황이 아니라면, 알고 있는 분포를 활용하는 편이 실제에 가깝다."},
+        {text:"최선의 경우",correct:false,mc:"best-not-representative",fb:"최선은 운이 좋은 하나의 경우일 뿐 — 대표성이 없어 거의 쓰지 않는다."},
+        {text:"어느 것이든 결과가 같다",correct:false,mc:"cases-same",fb:"같은 알고리즘도 입력에 따라 비용이 다르다 — 그래서 세 경우를 구분한다."}])};
+  }
+  const logn=Math.round(Math.log2(n));
+  const half="약 "+Math.round(n/2).toLocaleString()+"번";
+  const CH6={
+    worst:{q:'<b>최악의 경우</b> 비교 횟수는?', ans:n.toLocaleString()+"번", why:"찾는 값이 마지막 칸에 있거나 — 아예 없을 때. 끝까지 다 본다."},
+    best:{q:'<b>최선의 경우</b> 비교 횟수는?', ans:"1번", why:"찾는 값이 첫 칸에 있을 때 — 단 한 번의 비교로 끝난다."},
+    avg:{q:'찾는 값이 배열 안에 <b>있고</b>, 모든 위치가 같은 확률이라고 하자. <b>평균</b> 비교 횟수는?', ans:half, why:"평균은 대략 절반을 본다 — 단, '값이 있고 위치가 균등하다'는 가정이 있어야 성립한다."}};
+  const c=CH6[sub];
+  const opts=[{text:"1번"},{text:half},{text:n.toLocaleString()+"번"},{text:"약 "+logn+"번"}];
+  return {qtype, params:{sub,n}, id:"G5-cases",
+    stem:'정렬되지 않은 '+n.toLocaleString()+'칸 배열에서 순차 탐색으로 값을 찾는다. '+c.q,
+    okfb:c.why,
+    choices:shuffle(opts.map(o=>o.text===c.ans
+      ?{text:o.text,correct:true}
+      :{text:o.text,correct:false,
+        mc:o.text==="약 "+logn+"번"?"binary-confusion":"case-confusion",
+        fb:o.text==="약 "+logn+"번"?"그 숫자는 '정렬된' 배열에서 절반씩 버릴 때 얘기다 — 지금은 정렬돼 있지 않다.":"최선·평균·최악 중 지금 묻는 경우가 무엇인지 다시 보라."}))};
+}

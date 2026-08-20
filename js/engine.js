@@ -2,7 +2,15 @@
 /* 엔진 — 씬 러너 + 위젯 5종 (W1 메모리 띠, W2 단계 실행, W3 링크 조작, W4 문답, W5 HUD)
    챕터 데이터(CH01)와 생성기(generators.js)만 바꾸면 콘텐츠가 바뀐다. */
 
-const CH = CH01; // 현재 챕터 (추후 챕터 선택 로직으로 확장)
+let CH = CH01, CURCH = "ch01"; // 현재 챕터 — setChapter로 전환 (ch00 오리엔테이션 ↔ ch01)
+function setChapter(c){
+  CH = c; CURCH = c.meta.id;
+  const gl=$("#hud-grade-label"), gv=$("#hud-grade");
+  if(gl&&gv){
+    if(CURCH==="ch00"){ gl.textContent="상태"; if(gv.textContent==="—") gv.textContent="백수"; }
+    else { gl.textContent="도윤 성적"; if(gv.textContent==="백수"||gv.textContent==="채용 ✓") gv.textContent="—"; }
+  }
+}
 const stage = document.getElementById("stage");
 
 /* ============ 상태 (W5) + 지갑(영속) ============ */
@@ -12,16 +20,17 @@ function saveWallet(){ wallet.balance=S.balance; localStorage.setItem(WALLETKEY,
 const S = { balance:wallet.balance||0, tutorFirstTry:0, tutorPassed:false, aplusAccepted:false, aplusSuccess:false };
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
+const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1주차로 */
 let saveData=JSON.parse(localStorage.getItem(SAVEKEY)||"null");
 function saveCP(cp){
-  saveData={v:1, cp,
+  saveData={v:1, cp, ch:CURCH,
     S:{tutorFirstTry:S.tutorFirstTry, tutorPassed:S.tutorPassed, aplusAccepted:S.aplusAccepted, aplusSuccess:S.aplusSuccess},
-    streaks:{A:streakA,B:streakB,C:streakC,D:streakD,E:streakE}, tracesB, runsD, ts:Date.now()};
+    streaks:{A:streakA,B:streakB,C:streakC,D:streakD,E:streakE,G5:streak0}, tracesB, runsD, ts:Date.now()};
   localStorage.setItem(SAVEKEY,JSON.stringify(saveData));
 }
 function clearSave(){ saveData=null; localStorage.removeItem(SAVEKEY); }
 function exportCode(){
-  const p={v:1, save:saveData, wallet:{balance:S.balance, inventory:wallet.inventory}};
+  const p={v:1, save:saveData, wallet:{balance:S.balance, inventory:wallet.inventory}, c0done:localStorage.getItem(CH0DONEKEY)==="1"};
   return btoa(unescape(encodeURIComponent(JSON.stringify(p))));
 }
 function importCode(str){
@@ -30,10 +39,14 @@ function importCode(str){
     if(p.v!==1) return false;
     if(p.wallet){ wallet.inventory=p.wallet.inventory||[]; S.balance=p.wallet.balance||0; saveWallet(); }
     if(p.save && p.save.cp) localStorage.setItem(SAVEKEY,JSON.stringify(p.save)); else localStorage.removeItem(SAVEKEY);
+    if(p.c0done) localStorage.setItem(CH0DONEKEY,"1");
     return true;
   }catch(e){ return false; }
 }
-function setHUD(day,unit){ if(day)$("#hud-day").textContent=day; if(unit)$("#hud-unit").textContent=unit; }
+function setHUD(day,unit){
+  if(day){ const wk=(CH.meta.weekLabel!==undefined)?CH.meta.weekLabel:(CH.meta.week+"주차"); $("#hud-day").textContent=wk+" · "+day; }
+  if(unit)$("#hud-unit").textContent=unit;
+}
 function streakBar(n,extra){return '<div class="streak">숙달까지 — 힌트 없이 연속 정답'+
   '<span class="dot '+(n>0?"on":"")+'"></span><span class="dot '+(n>1?"on":"")+'"></span><span class="dot '+(n>2?"on":"")+'"></span>'+
   '<span style="margin-left:auto;">'+(extra||"")+'</span></div>';}
@@ -84,7 +97,11 @@ function renderMCQ(container,item,opts){
         fb.appendChild(el('<div class="feedback ok fade">✅ '+(c.fb||item.okfb||"정답.")+(hintUsed?"<br>📖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
       }else{
         b.classList.add("wrong");
-        fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+c.fb+'</div>'));
+        if(!opts.fbPrefix && BookFab.note(c.fb)){ /* 책이 오답을 짚어준다 — 하단 책이 자동으로 펼쳐짐 */
+          fb.appendChild(el('<div class="feedback fade">📖 …낡은 책이 스르륵 펼쳐진다. <span style="color:var(--ink-dim);font-size:12.5px;">(화면 왼쪽 아래)</span></div>'));
+        }else{
+          fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+c.fb+'</div>'));
+        }
       }
       opts.onDone(c.correct,hintUsed,fb);
     };
@@ -92,18 +109,75 @@ function renderMCQ(container,item,opts){
   });
   container.appendChild(ch); container.appendChild(fb);
 }
-function attachBook(card,hints,unit,isAnswered){
-  let hintUsed=false, lv=0;
-  const book=el('<div id="book"><button class="btn ghost">📖 낡은 책 펼치기 <span class="tag">무패널티 · 연속 기록만 제외</span></button><div></div></div>');
-  const btn=book.querySelector("button"), body=book.children[1];
+/* ============ 낡은 책 — 하단 고정 아이콘 (구매 후 상시, 새 메모 = ❗ 뱃지) ============ */
+const BookFab=(function(){
+  let hints=null, unit="", lv=0, used=false, answeredFn=null, mode="hidden";
+  let memoText=null, memoRead=false; /* 자습 중 나타나는 이동훈의 여백 메모 */
+  const openedUnits=new Set(); /* 유닛별 첫 ❗ 안내는 1회만 */
+  const btn=el('<button id="bookfab" title="낡은 책 — 이동훈의 여백 메모">📖<span class="bang">!</span></button>');
+  const panel=el('<div id="bookfabpanel"></div>');
+  document.body.appendChild(btn); document.body.appendChild(panel);
+  const bang=btn.querySelector(".bang");
+  function refresh(){
+    btn.style.display = mode==="hidden" ? "none" : "flex";
+    bang.style.display = ((mode==="hints" && lv===0 && !openedUnits.has(unit)) || (mode==="memo" && !memoRead)) ? "flex" : "none";
+    if(mode==="hidden") panel.style.display="none";
+  }
+  function render(){
+    panel.innerHTML="";
+    const box=el('<div class="card fade" style="margin:0;"></div>');
+    if(mode==="memo"&&memoText){
+      if(!memoRead){ memoRead=true; log("memo_open",{unit}); }
+      box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">📖 이동훈의 여백 메모</div>'));
+      box.appendChild(el('<div class="bookpanel" style="margin:0;">'+memoText+'</div>'));
+    }else if(mode!=="hints"||!hints){
+      box.appendChild(el('<div class="bookpanel" style="margin:0;">…여백을 넘겨 봐도, 지금 도움될 메모는 없다.<br><span style="color:var(--ink-dim);font-size:12.5px;">메모는 문제를 만났을 때 빛난다 — 새 메모가 생기면 <b style="color:var(--accent);">!</b> 로 알려준다.</span></div>'));
+    }else{
+      for(let i=0;i<lv;i++) box.appendChild(el('<div class="bookpanel" style="'+(i?'margin-top:8px;':'margin:0;')+'">'+hints[i]+'</div>'));
+      const done=answeredFn&&answeredFn();
+      if(lv===0&&!done) box.appendChild(el('<div style="font-size:13px;color:var(--ink-dim);">이동훈 선배의 여백 메모가 보인다. <span class="tag">무패널티 · 연속 기록만 제외</span></div>'));
+      if(!done&&lv<hints.length){
+        const more=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost">📖 여백을 '+(lv?"더 ":"")+'뒤져본다 ('+lv+'/'+hints.length+')</button></div>');
+        more.querySelector("button").onclick=()=>{ used=true; openedUnits.add(unit); log("hint_open",{unit, level:lv+1}); lv++; render(); refresh(); };
+        box.appendChild(more);
+      }else if(done){
+        box.appendChild(el('<div style="margin-top:8px;font-size:12.5px;color:var(--ink-dim);">이미 답한 문제 — 새 문제에서 다시 보자.</div>'));
+      }
+    }
+    const close=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost" style="padding:5px 14px;font-size:12.5px;">덮기 ✕</button></div>');
+    close.querySelector("button").onclick=()=>{ panel.style.display="none"; };
+    box.appendChild(close);
+    panel.appendChild(box);
+  }
   btn.onclick=()=>{
-    if(isAnswered&&isAnswered()) return;
-    if(lv<hints.length){ hintUsed=true; log("hint_open",{unit, level:lv+1});
-      body.appendChild(el('<div class="bookpanel fade">'+hints[lv]+'</div>')); lv++;
-      if(lv===hints.length) btn.disabled=true; }
+    if(panel.style.display==="block"){ panel.style.display="none"; return; }
+    render(); panel.style.display="block"; refresh();
   };
-  card.appendChild(book);
-  return ()=>hintUsed;
+  function note(t){ /* 오답 순간, 책이 스스로 펼쳐져 한마디 — 모드는 건드리지 않는 일회성 표시 */
+    if(mode==="hidden") return false;
+    panel.innerHTML="";
+    const box=el('<div class="card fade" style="margin:0;"></div>');
+    box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">📖 이동훈의 여백 메모 — 틀린 자리에 이렇게 적혀 있다</div>'));
+    box.appendChild(el('<div class="bookpanel" style="margin:0;">'+t+'</div>'));
+    const close=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost" style="padding:5px 14px;font-size:12.5px;">덮기 ✕</button></div>');
+    close.querySelector("button").onclick=()=>{ panel.style.display="none"; };
+    box.appendChild(close);
+    panel.appendChild(box);
+    panel.style.display="block";
+    return true;
+  }
+  return {
+    note,
+    hints:(h,u,fn)=>{ hints=h; unit=u; answeredFn=fn; lv=0; used=false; mode="hints"; panel.style.display="none"; refresh(); },
+    memo:(t,u)=>{ memoText=t; unit=u||unit; memoRead=false; mode="memo"; panel.style.display="none"; refresh(); },
+    info:()=>{ hints=null; mode="info"; panel.style.display="none"; refresh(); },
+    hide:()=>{ mode="hidden"; refresh(); },
+    used:()=>used
+  };
+})();
+function attachBook(card,hints,unit,isAnswered){
+  BookFab.hints(hints,unit,isAnswered); /* 문제 화면 — 하단 책 아이콘에 새 메모 장착 (첫 문제엔 ❗) */
+  return ()=>BookFab.used();
 }
 function nextBtnRow(label,fn){
   const n=el('<div style="margin-top:14px;text-align:right;"><button class="btn">'+label+'</button></div>');
@@ -116,6 +190,7 @@ function sceneStudy(unitKey, onDone){
   saveCP("study-"+unitKey);
   const U=CH.study[unitKey];
   setHUD(U.day,U.label);
+  BookFab.info();
   log("study_step",{unit:unitKey, step:"start"});
   stage.innerHTML="";
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📖 자습 — '+U.title+'</div><div></div></div>');
@@ -155,6 +230,12 @@ function sceneStudy(unitKey, onDone){
       g.appendChild(yes); g.appendChild(no); box.appendChild(g); scrollBottom();
       return;
     }
+    if(b.memo){
+      box.appendChild(el('<div class="caption fade" style="min-height:auto;">📖 …책 여백에 낡은 손글씨가 보인다. <b style="color:var(--accent);">화면 왼쪽 아래의 책</b>을 펼쳐 보자.</div>'));
+      BookFab.memo(b.memo, unitKey);
+      contBtn("계속 ▼", next, true);
+      return;
+    }
     if(b.check){
       const wrap=el('<div class="fade" style="margin-top:8px;"></div>');
       wrap.appendChild(el('<div style="font-size:12.5px;color:var(--accent);margin:6px 0;">✏️ 확인 — 맞혀야 넘어간다</div>'));
@@ -192,7 +273,7 @@ function sceneTrialA(){
   }});
 }
 function sceneBigO(){
-  saveCP("bigO");
+  saveCP("bigO"); BookFab.hide();
   stage.innerHTML="";
   const card=el('<div class="card fade">'+
     '<div style="font-size:13px;color:var(--ink-dim);">📖 책의 여백에 이런 메모가 있다</div>'+
@@ -329,7 +410,7 @@ function runTrace(tr,si){
   } else showCapAndNext();
 }
 function sceneClearB(){
-  saveCP("clearB");
+  saveCP("clearB"); BookFab.hide();
   stage.innerHTML="";
   const card=el('<div class="card fade">'+
     '<div class="bookpanel" style="font-size:15px;">"세 실험의 결론 — C의 함수 호출은 언제나 <b>값의 복사</b>다. 값을 주면 복사본만 바뀌고, 주소를 주면 원본을 고칠 수 있다.<br>그리고 배열은 — <b>이름 자체가 주소라서, &를 쓰지 않아도 주소가 전달된다.</b> 겉모습에 속지 마라."</div>'+
@@ -348,7 +429,7 @@ function sceneTutoring(round){
   log("tutoring_start",{round});
   askQ(0);
   function askQ(qi){
-    stage.innerHTML="";
+    stage.innerHTML=""; BookFab.hide();
     const q=CH.tutorQs[qi];
     const shuffled=shuffle(q.choices.map(c=>({...c})));
     const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🏠 도윤의 방 — '+(round===1?"과외":"보충")+' '+(qi+1)+'/'+CH.tutorQs.length+(q.boss?' <span class="tag" style="color:var(--accent);border-color:var(--accent);">보스 질문</span>':'')+'</div></div>');
@@ -388,7 +469,7 @@ function sceneTutoring(round){
   }
 }
 function sceneTutorResult(passed,count){
-  saveCP("study-C");
+  saveCP("study-C"); BookFab.hide();
   $("#hud-grade").textContent=passed?"상승 중":"불안";
   stage.innerHTML="";
   const msg=passed
@@ -404,7 +485,7 @@ function sceneTutorResult(passed,count){
 let streakC=0, poolC=[], attemptsC=0;
 function sceneLinkPuzzle(){
   saveCP("linkPuzzle");
-  setHUD("목요일","유닛 C"); log("study_step",{unit:"C",step:"link-puzzle"});
+  setHUD("목요일","유닛 C"); BookFab.info(); log("study_step",{unit:"C",step:"link-puzzle"});
   stage.innerHTML="";
     const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📖 자체참조 구조 (self-referential) <span class="tag">조작 미션</span></div>'+
       '<div class="codebox"><div class="codeline">typedef struct list {</div><div class="codeline">  char data;</div><div class="codeline">  struct list *link;  /* 자기 타입을 가리키는 포인터 */</div><div class="codeline">} list;</div></div>'+
@@ -555,7 +636,7 @@ function sceneTrialE(){
 /* ============ 상점 (보상 소비처) — 지갑·가방은 localStorage 영속, 추후 서버 저장으로 승격 ============ */
 function sceneShop(backTo, cart){
   cart = cart || [];
-  setHUD(null,"상점");
+  setHUD(null,"상점"); BookFab.hide();
   stage.innerHTML="";
   const cartTotal = cart.reduce((s,id)=>s+SHOP.items.find(x=>x.id===id).price, 0);
   const remain = S.balance - cartTotal;
@@ -632,6 +713,7 @@ function sceneShop(backTo, cart){
 }
 /* ============ 막간 (하루를 맺는 장면) ============ */
 function sceneInterlude(unitKey,next,label){
+  BookFab.hide();
   saveCP({C:"study-D",D:"study-E",E:"saturday"}[unitKey]||"saturday");
   stage.innerHTML="";
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🌙 자습 끝 — 오늘의 마무리</div></div>');
@@ -653,7 +735,7 @@ function sceneSaturday(){
   } else sceneAplusOffer();
 }
 function sceneAplusOffer(){
-  saveCP("saturday");
+  saveCP("saturday"); BookFab.hide();
   setHUD("토요일","A+ 트랙?");
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
@@ -665,6 +747,7 @@ function sceneAplusOffer(){
   $("#aplus").onclick=()=>{ S.aplusAccepted=true; log("aplus_choice",{accepted:true}); sceneAplusTrial(0,0); };
 }
 function sceneAplusTrial(idx,correctCnt){
+  BookFab.hide();
   setHUD("토요일","A+ 심화 "+(idx+1)+"/3");
   const item=genAP(idx);
   log("item_shown",{unit:"aplus",itemId:item.id});
@@ -691,7 +774,7 @@ function sceneAplusTrial(idx,correctCnt){
 
 /* ================================================================ 일요일 ================ */
 function sceneSundayIntro(){
-  saveCP("sunday");
+  saveCP("sunday"); BookFab.hide();
   setHUD("다음 주 월요일","쪽지시험");
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade" style="text-align:center; padding:40px;">'+
@@ -702,6 +785,7 @@ function sceneSundayIntro(){
   $("#result").onclick=sceneSettlement;
 }
 function sceneSettlement(){
+  BookFab.hide();
   const unitScore=5*CH.exam.unitPts;
   const tutorScore=S.tutorFirstTry*CH.exam.tutorPts;
   const score=unitScore+tutorScore;
@@ -732,9 +816,166 @@ function sceneSettlement(){
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
   $("#dump").onclick=()=>{const d=$("#dumpbox"); d.style.display="block"; d.textContent=JSON.stringify(Log.all().slice(-50),null,1);};
   const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(sceneSettlement);
-  $("#again").onclick=()=>{ clearSave(); streakA=streakB=streakC=streakD=streakE=0; attemptsA=attemptsC=attemptsE=0; tracesB=runsD=0; poolC=[];
+  $("#again").onclick=()=>{ clearSave(); streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
     S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; sceneTitle(); };
 }
+
+/* ================================================================ 챕터 0 — 오리엔테이션 ================ */
+let streak0=0, attempts0=0;
+
+/* 프롤로그용 대화 재생기 — {who,face,text,pay?} 순차 진행 */
+function c0Dlg(seq,opts){
+  if(opts.cp) saveCP(opts.cp);
+  let idx=0;
+  stage.innerHTML="";
+  const card=el('<div class="card fade">'+(opts.header?'<div style="font-size:13px;color:var(--ink-dim);">'+opts.header+'</div>':'')+'<div></div></div>');
+  const box=card.children[opts.header?1:0];
+  stage.appendChild(card);
+  function show(){
+    const d=seq[idx];
+    box.appendChild(el('<div class="dlg fade" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
+    if(d.pay){
+      S.balance+=d.pay; saveWallet(); $("#hud-money").textContent=money(S.balance);
+      if(d.pay<0) BookFab.info(); /* 낡은 책 구매 — 이 순간부터 하단 책 아이콘 등장 */
+      box.appendChild(el('<div class="caption fade" style="min-height:auto;">'+(d.pay>0?'💰 +':'💸 −')+money(Math.abs(d.pay))+' → 잔고 <b>'+money(S.balance)+'</b></div>'));
+    }
+    const last=idx===seq.length-1;
+    const btn=el('<div style="margin-top:10px;text-align:right;"><button class="btn'+(last?'':' ghost')+'" style="padding:7px 18px;">'+(last?opts.last:"계속 ▼")+'</button></div>');
+    btn.querySelector("button").onclick=()=>{ btn.remove(); if(last) opts.next(); else { idx++; show(); } };
+    box.appendChild(btn);
+    window.scrollTo({top:document.body.scrollHeight, behavior:"smooth"});
+  }
+  show();
+}
+function c0Start(){
+  setChapter(CH00); BookFab.hide();
+  if(S.balance===0 && wallet.inventory.length===0){ S.balance=3240; saveWallet(); } /* 서사 시작 잔고 (신규 플레이어만) */
+  $("#hud-money").textContent=money(S.balance); $("#hud-grade").textContent="백수";
+  setHUD("첫째 날","프롤로그");
+  log("chapter_start",{});
+  c0Dlg(CH00.prologue.s1,{cp:"intro", header:"🌅 프롤로그 — 어느 고시원의 아침 <span class='tag'>▼ 버튼으로 이야기를 진행</span>", last:"편의점으로 ▶",
+    next:()=>c0Dlg(CH00.prologue.s2,{header:"📌 편의점 게시판", last:"전화를 건다 ☎ ▶", next:c0Interview})});
+}
+function c0Interview(){
+  setHUD("며칠 뒤","면접"); BookFab.hide();
+  c0Dlg(CH00.prologue.interviewPre,{cp:"interview", header:"🏛 저택 응접실 — 면접", last:"…뭐라고 답하지", next:()=>{
+    stage.innerHTML="";
+    const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🏛 저택 응접실 — 면접</div>'+
+      '<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV("me-awkward")+'</div><div class="bubble"><div class="who">나 (속마음)</div><span class="inner">사실대로? 아니면…? — 입은 이미 열리고 있다.</span></div></div>'+
+      '<div id="c0ch" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;margin-top:14px;"></div></div>');
+    stage.appendChild(card);
+    CH00.prologue.interviewChoices.forEach((c,i)=>{
+      const b=el('<button class="btn'+(i?' ghost':'')+'">'+c.label+'</button>');
+      b.onclick=()=>{ log("c0_choice",{scene:"interview",pick:i});
+        c0Dlg([c.line].concat(CH00.prologue.interviewPost),{header:"🏛 저택 응접실 — 면접", last:"책을 구하러 — 보수동 ▶", next:c0Bookshop}); };
+      $("#c0ch").appendChild(b);
+    });
+  }});
+}
+function c0Bookshop(){
+  setHUD("다음 날","보수동");
+  c0Dlg(CH00.prologue.bookshop,{cp:"bookshop", header:"📚 보수동 책방골목", last:"벼락치기 시작 ▶", next:c0StudyA});
+}
+function c0StudyA(){ sceneStudy("A",c0StudyB); }
+function c0StudyB(){ sceneStudy("B",c0StudyC); }
+function c0StudyC(){ sceneStudy("C",c0StudyD); }
+function c0StudyD(){ sceneStudy("D",c0TrialG5); }
+function c0TrialG5(){
+  saveCP("trialG5");
+  setHUD("벼락치기 마지막 밤","Big-O 시련");
+  const item=genG5(); attempts0++;
+  log("item_shown",{unit:"G5",gen:"G5",qtype:item.qtype,params:item.params,attempt:attempts0});
+  stage.innerHTML="";
+  const card=el('<div class="card fade">'+streakBar(streak0,"Big-O · 문제 #"+attempts0)+'</div>');
+  if(item.code){ const cb=el('<div class="codebox"></div>'); item.code.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>'))); card.appendChild(cb); }
+  let answered=false;
+  const qbox=el('<div style="margin-top:12px;"></div>'); card.appendChild(qbox); stage.appendChild(card);
+  const getHint=attachBook(card,CH.hints.D,"G5",()=>answered);
+  renderMCQ(qbox,item,{unit:"G5",hintUsed:getHint,onDone:(correct,hintUsed,fb)=>{
+    answered=true;
+    if(correct){ if(!hintUsed) streak0++; } else streak0=0;
+    if(streak0>=3){ log("mastery_reached",{unit:"G5",attempts:attempts0});
+      fb.appendChild(nextBtnRow("숙달 — 일주일 뒤, 시범수업 ▶",c0LessonIntro)); }
+    else fb.appendChild(nextBtnRow("다음 문제 ▶",c0TrialG5));
+  }});
+}
+function c0LessonIntro(){
+  saveCP("lesson"); BookFab.hide();
+  setHUD("일주일 뒤","시범수업");
+  stage.innerHTML="";
+  stage.appendChild(el('<div class="card fade">'+
+    '<div style="font-size:13px;color:var(--ink-dim);">📖 책의 여백, 마지막 메모</div>'+
+    '<div class="bookpanel" style="margin-top:12px;font-size:15px;">"이 자(尺) 하나로 앞으로 배울 모든 구조를 잰다. 배열의 접근은 왜 O(1)인가, 탐색은 왜 O(n)인가 — 전부 이 표기로 돌아온다. — 이동훈"</div>'+
+    '<div class="dlg" style="margin-top:20px;"><div class="portrait">'+AV("me-proud")+'</div><div class="bubble"><div class="who">나</div><span class="inner">일주일이 지났다. 들키면 끝이다. 하지만 이번엔… 진짜로 배워왔다.</span></div></div>'+
+    '<div style="margin-top:16px;text-align:right;"><button class="btn" id="go">저택으로 ▶</button></div></div>'));
+  $("#go").onclick=()=>c0Lesson(0,null);
+}
+function c0Lesson(qi,st){
+  st=st||{first:[],boss:false}; BookFab.hide();
+  stage.innerHTML="";
+  const q=CH00.lessonQs[qi];
+  const who=q.boss?"윤 여사":"도윤", face=q.boss?"madam":"doyun";
+  const shuffled=shuffle(q.choices.map(c=>({...c})));
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🏛 시범수업 — 질문 '+(qi+1)+'/'+CH00.lessonQs.length+(q.boss?' <span class="tag" style="color:var(--accent);border-color:var(--accent);">어른의 질문</span>':'')+' <span class="tag">채용 기준: 도윤 질문 첫 시도 2/3 + 어른의 질문 첫 시도 정답</span></div></div>');
+  card.appendChild(el('<div class="dlg"><div class="portrait">'+AV(face)+'</div><div class="bubble"><div class="who">'+who+'</div>'+q.ask+'</div></div>'));
+  const body=el('<div style="margin-top:16px;"></div>'); card.appendChild(body); stage.appendChild(card);
+  let tries=0; render();
+  function render(){
+    body.innerHTML="";
+    renderMCQ(body,{id:q.id, stem:tries===0?"뭐라고 답할까?":"다시 답해 보자.", choices:shuffled},
+      {unit:"lesson", fbPrefix:'<b>'+who+'</b> — ', hintUsed:()=>false, onDone:(correct,_,fb)=>{
+        tries++;
+        if(correct){
+          if(tries===1){ if(q.boss) st.boss=true; else st.first.push(q.id); }
+          log("lesson_answer",{q:q.id, firstTry:tries===1, tries});
+          fb.querySelector(".feedback").innerHTML='<b>'+who+'</b> — '+q.choices.find(c=>c.correct).fb;
+          fb.appendChild(nextBtnRow(qi<CH00.lessonQs.length-1?"다음 질문 ▶":"결과 ▶",()=> qi<CH00.lessonQs.length-1?c0Lesson(qi+1,st):c0LessonResult(st)));
+        }else{
+          const n=el('<div style="margin-top:14px;text-align:right;"><button class="btn ghost">다시 답하기 ↺</button></div>');
+          n.querySelector("button").onclick=render; fb.appendChild(n);
+        }
+      }});
+  }
+}
+function c0LessonResult(st){
+  const passed=st.first.length>=2&&st.boss;
+  log("lesson_result",{firstTryCount:st.first.length, bossFirstTry:st.boss, passed});
+  if(passed){ $("#hud-grade").textContent="채용 ✓"; c0Contract(); return; }
+  stage.innerHTML="";
+  stage.appendChild(el('<div class="card fade">'+
+    '<div class="dlg"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…아직 설명이 무르네요. 첫 시도 정답 '+st.first.length+'/3'+(st.boss?"":" · 어른의 질문 ✗")+' — <b>일주일 더 준비해서 다시 오시죠.</b></div></div>'+
+    '<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV("doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>(작게) 쌤, 아깝다… 책 다시 보고 오세요. 저 이 쌤이랑 하고 싶단 말이에요.</div></div>'+
+    '<div style="margin-top:16px;text-align:right;"><button class="btn ghost" id="restudy">책 다시 훑기 ◀</button> <button class="btn" id="retry">다시 도전 ▶</button></div></div>'));
+  $("#retry").onclick=()=>c0Lesson(0,null);
+  $("#restudy").onclick=c0StudyA;
+}
+function c0Contract(){
+  setHUD("합격","계약"); BookFab.hide();
+  c0Dlg(CH00.contract,{cp:"contract", header:"📜 과외 계약서 — 조항을 확인하자", last:"🛒 편의점 들르기 ▶", next:()=>sceneShop(c0Epilogue)});
+}
+function c0Epilogue(){
+  setHUD("며칠 뒤","에필로그"); BookFab.hide();
+  c0Dlg(CH00.epilogue,{cp:"epilogue", header:"🌙 에필로그", last:"오리엔테이션 클리어 — 1주차 시작 ▶", next:c0Finish});
+}
+function c0Finish(){
+  localStorage.setItem(CH0DONEKEY,"1");
+  log("chapter_clear",{});
+  Log.flush();
+  setChapter(CH01);
+  setHUD("월요일","유닛 A");
+  log("chapter_start",{});
+  sceneIntro();
+}
+const CPMAP0={
+  "intro":()=>c0Start(), "interview":()=>c0Interview(), "bookshop":()=>c0Bookshop(),
+  "study-A":()=>c0StudyA(), "study-B":()=>c0StudyB(), "study-C":()=>c0StudyC(), "study-D":()=>c0StudyD(),
+  "trialG5":()=>c0TrialG5(), "lesson":()=>c0LessonIntro(), "contract":()=>c0Contract(), "epilogue":()=>c0Epilogue()
+};
+const CPLABEL0={
+  "intro":"0장 · 프롤로그", "interview":"0장 · 면접", "bookshop":"0장 · 보수동 책방골목",
+  "study-A":"0장 · 유닛 A 왜 배우나", "study-B":"0장 · 유닛 B 알고리즘의 뜻", "study-C":"0장 · 유닛 C 전체 지도", "study-D":"0장 · 유닛 D Big-O",
+  "trialG5":"0장 · Big-O 시련", "lesson":"0장 · 시범수업", "contract":"0장 · 계약", "epilogue":"0장 · 에필로그"
+};
 
 /* ================================================================ 타이틀·인트로 ================ */
 const CPMAP={
@@ -756,31 +997,46 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-function cpLabel(cp){ return CPLABEL[cp]||"이어서 하기"; }
+function cpLabel(sv){ return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기"; }
 function resumeFrom(sv){
   const s=sv.S||{};
   S.tutorFirstTry=s.tutorFirstTry||0; S.tutorPassed=!!s.tutorPassed; S.aplusAccepted=!!s.aplusAccepted; S.aplusSuccess=!!s.aplusSuccess;
   const st=sv.streaks||{};
-  streakA=st.A||0; streakB=st.B||0; streakC=st.C||0; streakD=st.D||0; streakE=st.E||0;
+  streakA=st.A||0; streakB=st.B||0; streakC=st.C||0; streakD=st.D||0; streakE=st.E||0; streak0=st.G5||0;
   tracesB=sv.tracesB||0; runsD=sv.runsD||0;
-  (CPMAP[sv.cp]||sceneTitle)();
+  if(sv.ch==="ch00"){ setChapter(CH00); (CPMAP0[sv.cp]||sceneTitle)(); }
+  else { setChapter(CH01); (CPMAP[sv.cp]||sceneTitle)(); }
 }
 function sceneTitle(){
+  setChapter(CH01); /* 타이틀 기본 컨텍스트 — 이어하기 시 resumeFrom이 재설정 */
+  BookFab.hide();
   setHUD("월요일","유닛 A"); $("#hud-grade").textContent="—"; $("#hud-money").textContent=money(S.balance);
   const sv=saveData;
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade" style="text-align:center; padding:48px 22px;">'+
     '<h1 style="margin:14px 0 10px; font-size:24px; line-height:1.45;">컴퓨터를 모르는 백수,<br>부잣집 과외교사가 되다</h1>'+
     '<p style="color:var(--accent); letter-spacing:4px; margin-bottom:30px; font-size:15px;">- 자료구조 편 -</p>'+
-    (sv? '<button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv.cp)+'</button>'+
-         '<div style="margin-top:10px;"><button class="btn ghost" id="start">처음부터 시작</button></div>'
-       : '<button class="btn" id="start">'+CH.meta.week+'주차 시작 — '+CH.meta.title+'</button>')+
+    (sv? '<button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv)+'</button>' : '')+
+    '<div style="margin:'+(sv?'20px':'0')+' 0 8px; font-size:12px; color:var(--ink-dim); letter-spacing:3px;">— 챕터 선택 —</div>'+
+    '<div id="chlist" style="display:flex; flex-direction:column; gap:9px; align-items:center;"></div>'+
     (S.balance>0||wallet.inventory.length?'<div style="margin-top:14px;"><button class="btn ghost" id="shop0">🛒 상점 · 가방</button></div>':"")+
     '<div style="margin-top:22px;"><button class="btn ghost" id="codebtn" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">📋 진도 코드 — 다른 컴퓨터로 이어가기</button> '+
     '<button class="btn ghost" id="reset0" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">🗑 기록 초기화</button></div>'+
     '<div id="codebox2" style="text-align:left;"></div><div id="resetbox"></div></div>'));
-  const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp}); resumeFrom(sv); };
-  $("#start").onclick=()=>{ if(saveData){ clearSave(); location.reload(); return; } log("chapter_start",{}); sceneIntro(); };
+  const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
+  /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
+  const c0done=localStorage.getItem(CH0DONEKEY)==="1";
+  const CH_MENU=[
+    {id:"ch00", label:'0장 · 오리엔테이션 — 백수, 선생이 되다'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
+    {id:"ch01", label:'1주차 · '+CH01.meta.title, go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
+  ];
+  const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
+  const chl=$("#chlist");
+  CH_MENU.forEach(c=>{
+    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="min-width:320px;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
+    b.onclick=()=>{ clearSave(); c.go(); }; /* 새 챕터 시작 = 이어하기 진행은 초기화 (잔고·가방은 유지) */
+    chl.appendChild(b);
+  });
   const s0=$("#shop0"); if(s0) s0.onclick=()=>sceneShop(sceneTitle);
   $("#codebtn").onclick=()=>{
     const box=$("#codebox2"); box.innerHTML="";
@@ -802,7 +1058,7 @@ function sceneTitle(){
       '<div style="margin-top:10px;text-align:right;"><button class="btn ghost" id="resetNo">취소</button> <button class="btn" id="resetYes" style="background:var(--wrong);color:#fff;">전부 삭제</button></div></div>'));
     $("#resetNo").onclick=()=>{ box.innerHTML=""; };
     $("#resetYes").onclick=()=>{
-      ["dsgame_wallet","dsgame_logs","dsgame_sent_upto","dsgame_token","dsgame_save"].forEach(k=>localStorage.removeItem(k));
+      ["dsgame_wallet","dsgame_logs","dsgame_sent_upto","dsgame_token","dsgame_save","dsgame_ch0done"].forEach(k=>localStorage.removeItem(k));
       location.reload();
     };
   };
@@ -819,4 +1075,16 @@ function sceneIntro(idx=0){
   btn.querySelector("button").onclick=()=> idx<CH.intro.length-1 ? sceneIntro(idx+1) : sceneStudy("A",sceneTrialA);
   box.appendChild(btn); stage.appendChild(box);
 }
+/* ============ 홈 버튼 — 어느 화면에서든 타이틀 메뉴로 ============ */
+(function(){
+  const hb=$("#hud-home"); if(!hb) return;
+  hb.onclick=()=>{
+    const old=$("#homepanel"); if(old){ old.remove(); return; }
+    const p=el('<div id="homepanel" class="card fade" style="position:fixed;top:54px;right:14px;z-index:99;max-width:300px;box-shadow:0 8px 30px rgba(0,0,0,.5);">🏠 <b>타이틀 메뉴로 돌아갈까?</b><br><span style="color:var(--ink-dim);font-size:12.5px;">진행은 마지막 저장 지점부터 이어서 할 수 있다.</span>'+
+      '<div style="margin-top:10px;text-align:right;"><button class="btn ghost" id="homeNo">취소</button> <button class="btn" id="homeYes">돌아가기</button></div></div>');
+    document.body.appendChild(p);
+    $("#homeNo").onclick=()=>p.remove();
+    $("#homeYes").onclick=()=>{ p.remove(); log("home_menu",{}); sceneTitle(); };
+  };
+})();
 sceneTitle();
