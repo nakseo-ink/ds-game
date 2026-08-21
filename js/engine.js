@@ -25,7 +25,9 @@ let saveData=JSON.parse(localStorage.getItem(SAVEKEY)||"null");
 function saveCP(cp){
   saveData={v:1, cp, ch:CURCH,
     S:{tutorFirstTry:S.tutorFirstTry, tutorPassed:S.tutorPassed, aplusAccepted:S.aplusAccepted, aplusSuccess:S.aplusSuccess},
-    streaks:{A:streakA,B:streakB,C:streakC,D:streakD,E:streakE,G5:streak0}, tracesB, runsD, ts:Date.now()};
+    streaks:{A:streakA,B:streakB,C:streakC,D:streakD,E:streakE,G5:streak0}, tracesB, runsD,
+    gwSave:(CH.flow&&GW)?{streaks:GW.streaks,attempts:GW.attempts,poolIds:GW.poolLeft.map(p=>p.id)}:undefined,
+    ts:Date.now()};
   localStorage.setItem(SAVEKEY,JSON.stringify(saveData));
 }
 function clearSave(){ saveData=null; localStorage.removeItem(SAVEKEY); }
@@ -210,6 +212,8 @@ function sceneStudy(unitKey, onDone){
     }
     if(b.code){ const cb=el('<div class="codebox fade"></div>'); b.code.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>'))); box.appendChild(cb); }
     if(b.strip) box.appendChild(memoryStrip(b.strip));
+    if(b.viz) renderViz(box,{viz:b.viz});
+    if(b.table) box.appendChild(el('<div class="fade" style="overflow-x:auto;">'+b.table+'</div>'));
     if(b.sparse){ const w=el('<div class="fade" style="display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap;"></div>');
       w.appendChild(sparseGrid(b.sparse.n,b.sparse.elems,null));
       w.appendChild(tripleTable(b.sparse.n,b.sparse.elems,b.sparse.mode||"full",null));
@@ -780,28 +784,28 @@ function sceneSundayIntro(){
   stage.appendChild(el('<div class="card fade" style="text-align:center; padding:40px;">'+
     '<div style="font-size:15px; color:var(--ink-dim);">월요일 — 학교 수업 시간, 도윤이 쪽지시험을 치르는 중…</div>'+
     '<div style="font-size:38px; margin:18px 0;">✍️</div>'+
-    '<div class="inner" style="font-size:14px;">수업 시작종이 울리고, 시험지가 넘어간다. 유닛 숙달 5개 × '+CH.exam.unitPts+'점 + 과외 첫 시도 정답 × '+CH.exam.tutorPts+'점.</div>'+
+    '<div class="inner" style="font-size:14px;">수업 시작종이 울리고, 시험지가 넘어간다. 유닛 숙달 '+(CH.flow?CH.flow.filter(t=>t.indexOf("trial-")===0).length:5)+'개 × '+CH.exam.unitPts+'점 + 과외 첫 시도 정답 × '+CH.exam.tutorPts+'점.</div>'+
     '<div style="margin-top:22px;"><button class="btn" id="result">결과 확인 ▶</button></div></div>'));
-  $("#result").onclick=sceneSettlement;
+  $("#result").onclick=()=>sceneSettlement(false);
 }
-function sceneSettlement(){
+function sceneSettlement(noPay){
   BookFab.hide();
-  const unitScore=5*CH.exam.unitPts;
+  const gwUnits = CH.flow ? CH.flow.filter(t=>t.indexOf("trial-")===0).map(t=>t.slice(6)) : ["A","B","C","D","E"];
+  const unitScore=gwUnits.length*CH.exam.unitPts;
   const tutorScore=S.tutorFirstTry*CH.exam.tutorPts;
   const score=unitScore+tutorScore;
   const passed=score>=CH.exam.passLine;
   let pay=0, bonus=0;
   if(passed){ pay=score*CH.economy.payPerPoint; if(S.aplusSuccess) bonus=CH.economy.aplusBonus; }
-  S.balance+=pay+bonus; saveWallet(); clearSave();
+  if(!noPay){ S.balance+=pay+bonus; saveWallet(); clearSave(); }
   $("#hud-money").textContent=money(S.balance);
   $("#hud-grade").textContent=S.aplusSuccess?"A+ 페이스":(score+"점");
-  log("quiz_score",{score, unitScore, tutorScore, passed, aplus:S.aplusSuccess, pay, bonus});
-  Log.flush();
+  if(!noPay){ log("quiz_score",{score, unitScore, tutorScore, passed, aplus:S.aplusSuccess, pay, bonus}); Log.flush(); }
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
     '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+CH.meta.week+'주차 "'+CH.meta.title+'"</div>'+
     '<div class="card" style="background:var(--panel2); margin-top:14px; font-size:15px; line-height:2;">'+
-    '유닛 숙달 (A·B·C·D·E) — <b>'+unitScore+'점</b><br>'+
+    '유닛 숙달 ('+gwUnits.join("·")+') — <b>'+unitScore+'점</b><br>'+
     '과외 문답 첫 시도 정답 '+S.tutorFirstTry+'/3 — <b>'+tutorScore+'점</b><br>'+
     '<span style="color:var(--accent); font-size:19px;">합계 '+score+'점 '+(passed?"— 통과 ✅":"— 미달 🔁")+'</span>'+
     (S.aplusAccepted?('<br>A+ 심화: '+(S.aplusSuccess?'<b style="color:var(--accent2);">성공 — 도윤 성적 A+ 페이스 🔥</b>':"아쉽게 미달 (불이익 없음)")):"")+
@@ -810,14 +814,373 @@ function sceneSettlement(){
       '<div class="card" style="background:var(--panel2); margin-top:14px;">💰 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+score+'점 × '+CH.economy.payPerPoint.toLocaleString()+'원)</span>'+(bonus?' · A+ 보너스 +'+money(bonus):"")+' → 잔고 <b>'+money(S.balance)+'</b></div>')
       :'<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…한 번 더 기회를 드리죠. 다음 주에 재시험이라는군요.</div></div>')+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
-    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>챕터 1 '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
+    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+CH.meta.week+'주차 "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
     '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn" id="again">처음부터 다시</button></div>'+
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
   $("#dump").onclick=()=>{const d=$("#dumpbox"); d.style.display="block"; d.textContent=JSON.stringify(Log.all().slice(-50),null,1);};
-  const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(sceneSettlement);
-  $("#again").onclick=()=>{ clearSave(); streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
+  const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(()=>sceneSettlement(true)); /* 재방문 시 재지급 금지 */
+  $("#again").onclick=()=>{ clearSave(); GW=null; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
     S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; sceneTitle(); };
+}
+
+/* ================================================================
+   주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
+   ================================================================ */
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i) };
+let GW=null;
+function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; }
+function gwStart(){ gwInit(); gwGo(0); }
+
+/* ---- 위젯: 스택(세로) ---- */
+function stackVizEl(v){
+  const w=el('<div class="fade" style="display:flex;gap:20px;align-items:flex-end;margin:10px 0;flex-wrap:wrap;"></div>');
+  const col=el('<div style="display:flex;flex-direction:column-reverse;gap:4px;"></div>');
+  for(let i=0;i<v.max;i++){
+    const filled=i<v.cells.length;
+    col.appendChild(el('<div style="display:flex;align-items:center;gap:8px;">'+
+      '<div style="width:28px;text-align:right;font-size:11px;color:var(--ink-dim);">['+i+']</div>'+
+      '<div class="cell" style="width:54px;'+(filled?'':'opacity:.22;')+'">'+(filled?v.cells[i]:'')+'</div>'+
+      '<div style="width:62px;font-size:12px;color:var(--accent);">'+(i===v.top?'← top':'')+'</div></div>'));
+  }
+  w.appendChild(col);
+  if(v.top===-1) w.appendChild(el('<div class="caption" style="min-height:auto;">top = -1 (공백)</div>'));
+  return w;
+}
+/* ---- 위젯: 큐(가로) ---- */
+function queueVizEl(v){
+  const w=el('<div class="fade" style="margin:10px 0;overflow-x:auto;"></div>');
+  const row=el('<div style="display:flex;gap:4px;align-items:flex-start;"></div>');
+  const gut=el('<div style="text-align:center;"><div style="width:30px;height:38px;"></div><div style="font-size:11px;color:var(--ink-dim);height:16px;">'+((v.front===-1?'F ':'')+(v.rear===-1?'R':''))+'</div></div>');
+  row.appendChild(gut);
+  for(let i=0;i<v.max;i++){
+    const val=v.slots[i];
+    const used=(v.usedUpto!==undefined&&i<=v.usedUpto);
+    const marks=(i===v.front?'F':'')+(i===v.rear?(i===v.front?' R':'R'):'');
+    row.appendChild(el('<div style="text-align:center;">'+
+      '<div style="font-size:11px;color:var(--ink-dim);">['+i+']</div>'+
+      '<div class="cell" style="width:46px;'+(val===null||val===undefined?'opacity:.22;':(used?'opacity:.4;':''))+'">'+(val||'')+'</div>'+
+      '<div style="font-size:11.5px;height:16px;color:'+(marks.includes('F')?'var(--accent2)':'var(--accent)')+';">'+marks+'</div></div>'));
+  }
+  w.appendChild(row);
+  w.appendChild(el('<div style="font-size:11.5px;color:var(--ink-dim);margin-top:2px;">F = front · R = rear'+(v.usedUpto!==undefined&&v.usedUpto>=0?' · 흐린 칸 = 이미 dequeue된 자리':'')+'</div>'));
+  return w;
+}
+/* ---- 위젯: 원형 큐 (SVG) ---- */
+function circVizEl(v){
+  const S=232, C=S/2, R=84;
+  let s='<svg viewBox="0 0 '+S+' '+S+'" width="'+S+'" height="'+S+'" style="display:block;">';
+  for(let i=0;i<v.max;i++){
+    const ang=(-90+i*360/v.max)*Math.PI/180;
+    const x=C+R*Math.cos(ang), y=C+R*Math.sin(ang);
+    const lx=C+(R+30)*Math.cos(ang), ly=C+(R+30)*Math.sin(ang);
+    const val=v.vals&&v.vals[i];
+    const isF=i===v.front, isR=i===v.rear;
+    s+='<circle cx="'+x+'" cy="'+y+'" r="21" fill="'+(val?'#2a3040':'#1c202a')+'" stroke="'+(isF||isR?'var(--accent)':'#3a4152')+'" stroke-width="'+(isF||isR?2:1)+'"/>';
+    s+='<text x="'+x+'" y="'+(y+4)+'" text-anchor="middle" font-size="12" fill="#e8eaf0">'+(val||'')+'</text>';
+    s+='<text x="'+lx+'" y="'+(ly+3)+'" text-anchor="middle" font-size="10" fill="#59606e">['+i+']</text>';
+    if(isF) s+='<text x="'+x+'" y="'+(y-26)+'" text-anchor="middle" font-size="11" font-weight="bold" fill="#7ec8a9">F</text>';
+    if(isR) s+='<text x="'+x+'" y="'+(y+34)+'" text-anchor="middle" font-size="11" font-weight="bold" fill="#f4b860">R</text>';
+  }
+  s+='<text x="'+C+'" y="'+(C+4)+'" text-anchor="middle" font-size="11" fill="#8a93a5">MAX='+v.max+'</text></svg>';
+  const w=el('<div class="fade" style="display:flex;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap;"></div>');
+  w.appendChild(el('<div>'+s+'</div>'));
+  return w;
+}
+/* ---- 공통: 문항 시각 자료 렌더 ---- */
+function renderViz(card,item){
+  if(item.ops&&item.ops.length){
+    const box=el('<div class="codebox fade" style="max-width:280px;"></div>');
+    item.ops.forEach(o=>box.appendChild(el('<div class="codeline">'+o+'</div>')));
+    const wrap=el('<div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;"></div>');
+    wrap.appendChild(box);
+    if(item.viz){
+      if(item.viz.type==="stack") wrap.appendChild(stackVizEl(item.viz));
+      else if(item.viz.type==="queue") wrap.appendChild(queueVizEl(item.viz));
+      else if(item.viz.type==="circ") wrap.appendChild(circVizEl(item.viz));
+    }
+    card.appendChild(wrap);
+    return;
+  }
+  if(item.viz){
+    if(item.viz.type==="stack") card.appendChild(stackVizEl(item.viz));
+    else if(item.viz.type==="queue") card.appendChild(queueVizEl(item.viz));
+    else if(item.viz.type==="circ") card.appendChild(circVizEl(item.viz));
+    else if(item.viz.type==="ops"){
+      card.appendChild(el('<div class="terms fade" style="margin:8px 0;">'+item.viz.list.map(t=>'<span class="term">'+t+'</span>').join('')+'</div>'));
+    }
+  }
+  if(item.code){
+    const cb=el('<div class="codebox fade"></div>');
+    item.code.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>')));
+    card.appendChild(cb);
+  }
+}
+
+/* ---- 러너 ---- */
+function gwGo(i){
+  const tok=CH.flow[i];
+  if(tok===undefined){ sceneTitle(); return; }
+  if(tok==="sunday"){ sceneSundayIntro(); return; }        /* 정산은 기존 공용 씬 */
+  if(tok==="saturday"){ gwSaturday(i); return; }
+  const m=tok.match(/^(study|trial|il|tutor|mission|maze)(?:-(.+))?$/);
+  const kind=m[1], key=m[2];
+  if(kind==="study"){ sceneStudy(key, ()=>gwGo(i+1)); return; }
+  if(kind==="trial"){ gwTrial(key,i); return; }
+  if(kind==="il"){ gwInterlude(key,i); return; }
+  if(kind==="tutor"){ gwTutor(i,1); return; }
+  if(kind==="mission"){ gwMission(i); return; }
+  if(kind==="maze"){ gwMaze(i,0,[]); return; }
+  sceneTitle();
+}
+function gwTrial(key,i){
+  saveCP(CH.flow[i]);
+  const t=CH.trials[key];
+  setHUD(CH.study[key].day, CH.study[key].label+" 시련");
+  GW.attempts[key]=(GW.attempts[key]||0)+1;
+  let item, src;
+  const poolItems=GW.poolLeft.filter(p=>p.unit===key);
+  if(poolItems.length && Math.random()<0.4){
+    const p=poolItems[0];
+    GW.poolLeft.splice(GW.poolLeft.indexOf(p),1);
+    item={...p, choices:shuffle(p.choices.map(c=>({...c})))}; src="pool:"+p.id;
+  } else { item=GEN2[t.gen](); src=t.gen; }
+  log("item_shown",{unit:key, gen:src, qtype:item.qtype||"", params:item.params||{}, attempt:GW.attempts[key]});
+  stage.innerHTML="";
+  const card=el('<div class="card fade">'+streakBar(GW.streaks[key]||0, t.label+" · 문제 #"+GW.attempts[key])+'</div>');
+  renderViz(card,item);
+  let answered=false;
+  const qbox=el('<div style="margin-top:12px;"></div>'); card.appendChild(qbox); stage.appendChild(card);
+  const getHint=attachBook(card, CH.hints[key], key, ()=>answered);
+  renderMCQ(qbox,item,{unit:key,hintUsed:getHint,onDone:(correct,hintUsed,fb)=>{
+    answered=true;
+    if(correct){ if(!hintUsed) GW.streaks[key]=(GW.streaks[key]||0)+1; } else GW.streaks[key]=0;
+    if((GW.streaks[key]||0)>=3){
+      log("mastery_reached",{unit:key, attempts:GW.attempts[key]});
+      fb.appendChild(nextBtnRow(t.doneLabel||(CH.study[key].label+" 숙달 ▶"),()=>gwGo(gwIdx(i)+1)));
+    } else fb.appendChild(nextBtnRow("다음 문제 ▶",()=>gwTrial(key,i)));
+  }});
+}
+function gwIdx(i){ return i; }
+function gwInterlude(key,i){
+  BookFab.hide();
+  saveCP(CH.flow[i]);
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🌙 자습 끝 — 오늘의 마무리</div></div>');
+  (CH.interludes[key]||[]).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
+  card.appendChild(el('<div style="margin-top:16px;text-align:right;"><button class="btn" id="ilnext">'+(CH.ilNext&&CH.ilNext[key]||"다음 ▶")+'</button></div>'));
+  stage.appendChild(card);
+  $("#ilnext").onclick=()=>gwGo(i+1);
+}
+function gwTutor(i,round,cont){
+  BookFab.hide();
+  if(round===1) saveCP(CH.flow[i]);
+  setHUD(round===1?"수요일":"토요일", round===1?"과외":"보충 과외");
+  const firstTry=[];
+  log("tutoring_start",{round});
+  askQ(0);
+  function askQ(qi){
+    stage.innerHTML=""; BookFab.hide();
+    const q=CH.tutorQs[qi];
+    const shuffled=shuffle(q.choices.map(c=>({...c})));
+    const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🏠 도윤의 방 — '+(round===1?"과외":"보충")+' '+(qi+1)+'/'+CH.tutorQs.length+(q.boss?' <span class="tag" style="color:var(--accent);border-color:var(--accent);">보스 질문</span>':'')+'</div></div>');
+    card.appendChild(el('<div class="dlg"><div class="portrait">'+AV("doyun")+'</div><div class="bubble"><div class="who">도윤</div>'+q.ask+'</div></div>'));
+    const body=el('<div style="margin-top:16px;"></div>'); card.appendChild(body); stage.appendChild(card);
+    let tries=0; render();
+    function render(){
+      body.innerHTML="";
+      renderMCQ(body,{id:q.id, stem:tries===0?"뭐라고 답할까?":"다시 답해 보자.", choices:shuffled},
+        {unit:"tutor", fbPrefix:'<b>도윤</b> — ', hintUsed:()=>false, onDone:(correct,_,fb)=>{
+          tries++;
+          if(correct){
+            if(tries===1) firstTry.push(q.id);
+            log("tutor_answer",{q:q.id, round, firstTry:tries===1, tries});
+            fb.querySelector(".feedback").innerHTML='<b>도윤</b> — '+q.choices.find(c=>c.correct).fb;
+            fb.appendChild(nextBtnRow(qi<CH.tutorQs.length-1?"다음 질문 ▶":"결과 보기 ▶",()=> qi<CH.tutorQs.length-1?askQ(qi+1):finish()));
+          }else{
+            const n=el('<div style="margin-top:14px;text-align:right;"><button class="btn ghost">다시 답하기 ↺</button></div>');
+            n.querySelector("button").onclick=render; fb.appendChild(n);
+          }
+        }});
+    }
+  }
+  function finish(){
+    const passed=firstTry.length>=2;
+    log("tutoring_result",{round, firstTryCount:firstTry.length, passed});
+    if(round===1){ S.tutorFirstTry=firstTry.length; S.tutorPassed=passed; gwTutorResult(passed,firstTry.length,i); }
+    else {
+      if(passed){ S.tutorPassed=true; (cont||function(){})(); }
+      else {
+        stage.innerHTML="";
+        stage.appendChild(el('<div class="card fade"><div class="dlg"><div class="portrait">'+AV("doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>으으… 한 번만 더요. 이번엔 진짜 알 것 같단 말이에요.</div></div>'+
+          '<div style="margin-top:16px;text-align:right;"><button class="btn" id="re">보충 다시 ↺</button></div></div>'));
+        $("#re").onclick=()=>gwTutor(i,2,cont);
+      }
+    }
+  }
+}
+function gwTutorResult(passed,count,i){
+  $("#hud-grade").textContent=passed?"상승 중":"불안";
+  stage.innerHTML="";
+  const msg=passed
+    ? '<div class="dlg"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+(CH.tutorPassMsg||'오늘 좀 이해된 것 같아요.')+'</div></div>'
+    : '<div class="dlg"><div class="portrait">'+AV("doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>'+(CH.tutorFailMsg||'음… 쌤, 오늘 설명 좀 헷갈렸어요. 토요일에 한 번 더 해주시면 안 돼요?')+'</div></div>';
+  stage.appendChild(el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">과외 결과 <span class="tag">통과 기준: 첫 시도 정답 2/3</span></div>'+msg+
+    '<div class="caption">첫 시도 정답 '+count+'/3 — '+(passed?"통과 ✅":"미달 🔁 토요일 보충 과외가 잡혔다.")+'</div>'+
+    '<div style="margin-top:16px; text-align:right;"><button class="btn" id="tnext">'+(CH.tutorNextLabel||"다음 ▶")+'</button></div></div>'));
+  $("#tnext").onclick=()=>gwGo(i+1);
+}
+function gwSaturday(i){
+  BookFab.hide();
+  saveCP("saturday");
+  setHUD("토요일","과외 2일차");
+  if(!S.tutorPassed){
+    stage.innerHTML="";
+    stage.appendChild(el('<div class="card fade"><div class="dlg"><div class="portrait">'+AV("doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 수요일에 헷갈렸던 거… 오늘 다시 물어볼게요. 월요일이 시험이란 말이에요.</div></div>'+
+      '<div style="margin-top:16px;text-align:right;"><button class="btn" id="go">보충 과외 시작 ▶</button></div></div>'));
+    $("#go").onclick=()=>gwTutor(i,2,()=>gwAplusOffer(i));
+  } else gwAplusOffer(i);
+}
+function gwAplusOffer(i){
+  BookFab.hide();
+  saveCP("saturday");
+  setHUD("토요일","A+ 트랙?");
+  stage.innerHTML="";
+  stage.appendChild(el('<div class="card fade">'+
+    '<div class="dlg"><div class="portrait">'+AV("doyun")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 이번 주도 <b>A+ 보너스</b> 노려볼까요? 교수님이 심화 문제도 낸다고 했거든요.</div></div>'+
+    '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">'+
+    '<button class="btn ghost" id="basic">"이번 주는 기본기부터 다지자" (기본 트랙)</button>'+
+    '<button class="btn" id="aplus">"좋아, A+ 노려보자" (심화 3문제)</button></div></div>'));
+  $("#basic").onclick=()=>{ S.aplusAccepted=false; log("aplus_choice",{accepted:false}); gwGo(i+1); };
+  $("#aplus").onclick=()=>{ S.aplusAccepted=true; log("aplus_choice",{accepted:true}); gwAplus(0,0,i); };
+}
+function gwAplus(idx,correctCnt,i){
+  BookFab.hide();
+  setHUD("토요일","A+ 심화 "+(idx+1)+"/3");
+  const item=GENAP[CH.apGen](idx);
+  log("item_shown",{unit:"aplus",itemId:item.id});
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🔥 A+ 트랙 — 심화 '+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
+  renderViz(card,item);
+  const body=el('<div style="margin-top:10px;"></div>'); card.appendChild(body); stage.appendChild(card);
+  renderMCQ(body,item,{unit:"aplus",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
+    const nc=correctCnt+(correct?1:0);
+    if(idx<2) fb.appendChild(nextBtnRow("다음 심화 ▶",()=>gwAplus(idx+1,nc,i)));
+    else {
+      S.aplusSuccess=nc>=2;
+      log("aplus_result",{correct:nc, success:S.aplusSuccess});
+      fb.appendChild(nextBtnRow("결과 ▶",()=>{
+        stage.innerHTML="";
+        stage.appendChild(el('<div class="card fade"><div class="dlg"><div class="portrait">'+AV(S.aplusSuccess?"doyun-excited":"doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+
+          (S.aplusSuccess?"심화 "+nc+"/3… 쌤, 이 정도면 진짜 A+ 각인데요? 월요일 시험 기대하세요."
+                         :"심화 "+nc+"/3… 아직 좀 어렵네요. 그래도 기본은 확실해진 것 같아요. 기본으로 승부!")+'</div></div>'+
+          '<div style="margin-top:16px;text-align:right;"><button class="btn" id="sun2">월요일 — 쪽지시험 ▶</button></div></div>'));
+        $("#sun2").onclick=()=>gwGo(i+1);
+      }));
+    }
+  }});
+}
+/* ---- 원형 큐 조작 미션 ---- */
+function gwMission(i){
+  BookFab.info();
+  saveCP(CH.flow[i]);
+  setHUD(CH.mission.day||"목요일","조작 미션");
+  const MAXQ=CH.mission.max, goal=MAXQ-1;
+  let front=0, rear=0, count=0, n=0;
+  const vals={};
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🎛 조작 미션 — 원형 큐 <span class="tag">목표: 정확히 가득('+goal+'개) 만들기</span></div>'+
+    '<div class="caption">'+CH.mission.intro+'</div><div id="cqviz"></div>'+
+    '<div style="display:flex;gap:10px;margin-top:10px;"><button class="btn" id="mq-enq">enqueue ▶</button><button class="btn ghost" id="mq-deq">dequeue ▶</button></div>'+
+    '<div id="mq-log" class="caption" style="min-height:24px;"></div><div id="mq-done"></div></div>');
+  stage.appendChild(card);
+  function draw(){ $("#cqviz").innerHTML=""; $("#cqviz").appendChild(circVizEl({max:MAXQ,front,rear,vals})); }
+  draw();
+  $("#mq-enq").onclick=()=>{
+    const nr=(rear+1)%MAXQ;
+    if(nr===front){
+      $("#mq-log").innerHTML='⚠ rear를 회전시키면 front와 같아진다 — <b>queue_full()</b>. 이 한 칸은 가득/텅 빔을 구별하는 신호용이라 쓸 수 없다.';
+      log("mission",{ev:"full-attempt"}); return;
+    }
+    rear=nr; n++; vals[rear]="J"+n; count++;
+    $("#mq-log").textContent="enqueue(J"+n+") — rear가 "+rear+"로 회전";
+    draw(); check();
+  };
+  $("#mq-deq").onclick=()=>{
+    if(front===rear){ $("#mq-log").innerHTML='⚠ front == rear — 공백. <b>queue_empty()</b>.'; log("mission",{ev:"empty-attempt"}); return; }
+    front=(front+1)%MAXQ; delete vals[front]; count--;
+    $("#mq-log").textContent="dequeue() — front가 "+front+"로 회전";
+    draw(); check();
+  };
+  function check(){
+    if(count===goal && !$("#mq-done").children.length){
+      log("mission",{ev:"goal", max:MAXQ});
+      $("#mq-done").appendChild(el('<div class="feedback ok fade">✅ 가득! '+MAXQ+'칸 중 <b>'+goal+'개</b> — 남은 한 칸이 front 자리(신호용)다. 여기서 enqueue를 한 번 더 눌러 보면 queue_full을 직접 볼 수 있다.'+
+        '<div style="margin-top:10px;text-align:right;"><button class="btn" id="mq-next">계속 ▶</button></div></div>'));
+      $("#mq-next").onclick=()=>gwGo(i+1);
+    }
+  }
+}
+/* ---- 미로 시뮬레이션 (개념 — 유도 진행) ---- */
+function mazeVizEl(grid,path,cur){
+  const w=el('<div class="fade" style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;margin:8px 0;"></div>');
+  const g=el('<div style="display:grid;grid-template-columns:repeat('+grid[0].length+',34px);gap:3px;"></div>');
+  const inPath=(r,c)=>path.some(p=>p[0]===r&&p[1]===c);
+  for(let r=0;r<grid.length;r++)for(let c=0;c<grid[0].length;c++){
+    const wall=grid[r][c]===1;
+    const isCur=cur&&cur[0]===r&&cur[1]===c;
+    g.appendChild(el('<div style="width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;'+
+      (wall?'background:#3a4152;':'background:#1c202a;border:1px solid #2a3040;')+
+      (inPath(r,c)&&!wall?'background:#24443a;':'')+'">'+(isCur?'🐕':'')+'</div>'));
+  }
+  w.appendChild(g);
+  const st=el('<div><div style="font-size:12px;color:var(--ink-dim);margin-bottom:4px;">경로 스택 (아래→위)</div><div style="display:flex;flex-direction:column-reverse;gap:3px;"></div></div>');
+  path.forEach(p=>st.children[1].appendChild(el('<div class="cell sm" style="width:64px;">('+p[0]+','+p[1]+')</div>')));
+  w.appendChild(st);
+  return w;
+}
+function gwMaze(i,si,pathIn){
+  BookFab.info();
+  if(si===0) saveCP(CH.flow[i]);
+  setHUD(CH.mazeCfg.day||"금요일 밤","보너스 — 미로");
+  const M=CH.mazeCfg;
+  let path=pathIn.length?pathIn.slice():[[0,0]];
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🐕 보너스 — 미로와 스택 <span class="tag">교재 Special Bonus · 점수 무관</span></div></div>');
+  const body=el('<div></div>'); card.appendChild(body); stage.appendChild(card);
+  function show(k,path){
+    if(k>=M.steps.length){
+      body.appendChild(el('<div class="feedback ok fade">🏁 출구 도착! <b>스택 = 되돌아갈 길의 기억.</b> 막히면 pop — 이것이 백트래킹(backtracking)이다. (제대로 된 코드는 교재 pp.114~119)</div>'));
+      body.appendChild(nextBtnRow("토요일 ▶",()=>gwGo(i+1)));
+      window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+      return;
+    }
+    const st=M.steps[k];
+    if(st.say){ body.appendChild(el('<div class="dlg fade" style="margin-top:10px;"><div class="portrait">'+AV("me"+(st.mood?"-"+st.mood:""))+'</div><div class="bubble"><div class="who">나</div>'+st.say+'</div></div>')); }
+    if(st.move){ path=path.concat([st.move]); }
+    if(st.pop){ path=path.slice(0,path.length-st.pop); }
+    if(st.move||st.pop||st.say){
+      const viz=mazeVizEl(M.grid,path,path[path.length-1]);
+      body.appendChild(viz);
+    }
+    if(st.predict){
+      const item={...st.predict, choices:shuffle(st.predict.choices.map(c=>({...c})))};
+      const qb=el('<div style="margin-top:8px;"></div>'); body.appendChild(qb);
+      renderMCQ(qb,item,{unit:"maze",hintUsed:()=>false,onDone:(correct,_,fb)=>{
+        log("maze_predict",{id:st.predict.id,correct});
+        const nb=nextBtnRow("계속 ▶",()=>{ nb.remove(); show(k+1,path); }); /* 일회용 — 과거 버튼 재클릭 방지 */
+        fb.appendChild(nb);
+        window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+      }});
+      return;
+    }
+    const btn=el('<div style="margin-top:8px;text-align:right;"><button class="btn ghost" style="padding:6px 16px;">계속 ▼</button></div>');
+    btn.querySelector("button").onclick=()=>{ btn.remove(); show(k+1,path); };
+    body.appendChild(btn);
+    window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+  }
+  show(si,path);
 }
 
 /* ================================================================ 챕터 0 — 오리엔테이션 ================ */
@@ -997,15 +1360,33 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-function cpLabel(sv){ return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기"; }
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null };
+function cpLabel(sv){
+  const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
+  if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(fc.meta.week+"주차 · 이어서");
+  return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기";
+}
 function resumeFrom(sv){
   const s=sv.S||{};
   S.tutorFirstTry=s.tutorFirstTry||0; S.tutorPassed=!!s.tutorPassed; S.aplusAccepted=!!s.aplusAccepted; S.aplusSuccess=!!s.aplusSuccess;
   const st=sv.streaks||{};
   streakA=st.A||0; streakB=st.B||0; streakC=st.C||0; streakD=st.D||0; streakE=st.E||0; streak0=st.G5||0;
   tracesB=sv.tracesB||0; runsD=sv.runsD||0;
-  if(sv.ch==="ch00"){ setChapter(CH00); (CPMAP0[sv.cp]||sceneTitle)(); }
-  else { setChapter(CH01); (CPMAP[sv.cp]||sceneTitle)(); }
+  if(sv.ch==="ch00"){ setChapter(CH00); (CPMAP0[sv.cp]||sceneTitle)(); return; }
+  const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
+  if(fc){
+    setChapter(fc);
+    if(sv.gwSave){ GW={streaks:sv.gwSave.streaks||{}, attempts:sv.gwSave.attempts||{},
+      poolLeft:(fc.pool||[]).filter(p=>(sv.gwSave.poolIds||[]).includes(p.id))}; }
+    else gwInit();
+    if(sv.cp==="intro"){ sceneIntro(); return; }
+    if(sv.cp==="sunday"){ sceneSundayIntro(); return; }
+    if(sv.cp==="saturday"){ gwSaturday(fc.flow.indexOf("saturday")); return; }
+    const idx=fc.flow.indexOf(sv.cp);
+    if(idx>=0){ gwGo(idx); return; }
+    sceneTitle(); return;
+  }
+  setChapter(CH01); (CPMAP[sv.cp]||sceneTitle)();
 }
 function sceneTitle(){
   setChapter(CH01); /* 타이틀 기본 컨텍스트 — 이어하기 시 resumeFrom이 재설정 */
@@ -1030,6 +1411,8 @@ function sceneTitle(){
     {id:"ch00", label:'0장 · 오리엔테이션 — 백수, 선생이 되다'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
     {id:"ch01", label:'1주차 · '+CH01.meta.title, go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
   ];
+  if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:'2주차 · '+CH02.meta.title, go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH03!=="undefined") CH_MENU.push({id:"ch03", label:'3주차 · '+CH03.meta.title, go:()=>{ setChapter(CH03); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
@@ -1072,7 +1455,7 @@ function sceneIntro(idx=0){
     box.appendChild(el('<div class="dlg"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
   }
   const btn=el('<div style="margin-top:18px; text-align:right;"><button class="btn">▶ '+(idx<CH.intro.length-1?"계속":"월요일 밤 — 자습 시작")+'</button></div>');
-  btn.querySelector("button").onclick=()=> idx<CH.intro.length-1 ? sceneIntro(idx+1) : sceneStudy("A",sceneTrialA);
+  btn.querySelector("button").onclick=()=> idx<CH.intro.length-1 ? sceneIntro(idx+1) : (CH.flow ? gwStart() : sceneStudy("A",sceneTrialA));
   box.appendChild(btn); stage.appendChild(box);
 }
 /* ============ 홈 버튼 — 어느 화면에서든 타이틀 메뉴로 ============ */

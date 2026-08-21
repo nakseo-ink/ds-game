@@ -205,18 +205,18 @@ const CH01 = {
     {id:"Q1", ask:'교수님이 <span class="mono">list[2]</span>는 시작 주소에다 8을 더한 거래요. 왜 8이에요? 2칸 갔으면 2 아니에요?',
      choices:[
       {text:'"int 하나가 4바이트라서, 2칸이면 2×4=8이야."', correct:true, fb:'아~ 칸 수가 아니라 바이트 수구나. 그럼 double이면 16이겠네요?'},
-      {text:'"컴퓨터가 8진법을 써서 그래."', correct:false, mc:"addr-no-sizeof", fb:'엥? 근데 <span class="mono">list[3]</span>은 교수님이 12라고 했는데요. 8진법이랑 무슨 상관이에요?'},
-      {text:'"그건 그냥 외우는 거야."', correct:false, mc:"no-explanation", fb:'쌤… 저 외우는 거 진짜 못해요. 이유가 있을 거 아니에요.'}]},
+      {text:'"컴퓨터가 숫자를 8진법으로 세니까, 한 칸이 8로 계산되는 거야."', correct:false, mc:"addr-no-sizeof", fb:'엥? 근데 <span class="mono">list[3]</span>은 교수님이 12라고 했는데요. 8진법이랑 무슨 상관이에요?'},
+      {text:'"주소 계산 규칙이라 이유는 없어. 그냥 외우면 되는 거야."', correct:false, mc:"no-explanation", fb:'쌤… 저 외우는 거 진짜 못해요. 이유가 있을 거 아니에요.'}]},
     {id:"Q2", ask:'책에서 봤는데 <b>배열 이름은 첫 원소의 주소</b>라면서요. 그럼 포인터 변수처럼 <span class="mono">list = &x;</span> 이렇게 딴 데를 가리키게 해도 돼요?',
      choices:[
-      {text:'"돼. 주소니까 포인터 변수랑 똑같아."', correct:false, mc:"array-name-constant", fb:'어? 방금 비주얼 스튜디오에서 해봤는데 빨간 줄 뜨는데요?'},
+      {text:'"돼. 배열 이름도 결국 주소니까 포인터 변수랑 완전히 같은 거야. list = &x; 로 다른 주소를 대입하면 배열이 통째로 그쪽을 가리키게 되지. 이름과 포인터는 같은 문법이거든."', correct:false, mc:"array-name-constant", fb:'어? 방금 비주얼 스튜디오에서 해봤는데 빨간 줄 뜨는데요?'},
       {text:'"안 돼. 포인터 변수는 주소를 담는 저장 공간이 따로 있어서 내용을 바꿀 수 있지만, 배열 이름은 컴파일러가 그 배열의 시작 주소로 해석하는 이름일 뿐이야. 담는 공간이 없으니 대입도 안 돼."', correct:true, fb:'아… list는 변수가 아니라 이름이군요. 바꿔 넣을 저장 공간 자체가 없는 거네요.'},
-      {text:'"배열은 주소랑 상관없어."', correct:false, mc:"over-correction", fb:'근데 책에는 <span class="mono">list+i</span>가 <span class="mono">&list[i]</span>라던데요…'}]},
+      {text:'"배열은 주소랑 아예 상관없어. 이름은 그냥 라벨이고, 주소라는 건 & 를 붙였을 때만 잠깐 만들어졌다 사라지는 값이야."', correct:false, mc:"over-correction", fb:'근데 책에는 <span class="mono">list+i</span>가 <span class="mono">&list[i]</span>라던데요…'}]},
     {id:"Q3", boss:true, ask:'쌤, 제일 이상한 거요. C는 함수에 값을 <b>복사</b>해서 넘긴다면서요. 근데 왜 sum 함수 안에서 배열을 바꾸면 <b>원본이</b> 바뀌어요?',
      choices:[
-      {text:'"배열은 특별해서 복사 규칙이 적용 안 돼."', correct:false, mc:"array-exception", fb:'특별하다는 게 뭔데요? 그런 식이면 다 특별하다고 하면 되겠네요.'},
+      {text:'"배열은 특별한 타입이라 복사 규칙 자체가 적용되지 않아. 그래서 함수 안에서 고친 게 밖에 그대로 보이는 거야. C가 배열만 예외로 두거든."', correct:false, mc:"array-exception", fb:'특별하다는 게 뭔데요? 그런 식이면 다 특별하다고 하면 되겠네요.'},
       {text:'"복사되는 건 맞아. 단, 복사되는 게 배열 전체가 아니라 시작 주소야. 주소의 복사본으로도 같은 집을 찾아갈 수 있잖아."', correct:true, fb:'…집 주소를 복사해 준 거지, 집을 복사해 준 게 아니다? 오, 이건 좀 소름인데요.'},
-      {text:'"C는 사실 참조로 넘겨."', correct:false, mc:"reference-confusion", fb:'교수님은 분명 C는 몽땅 call by value랬어요. 누가 맞는 거예요?'}]}
+      {text:'"C는 사실 몰래 참조(reference)로 넘겨. 값 복사라는 건 교과서의 단순화 설명이고, 배열쯤 크면 참조 방식으로 바뀌는 거야."', correct:false, mc:"reference-confusion", fb:'교수님은 분명 C는 몽땅 call by value랬어요. 누가 맞는 거예요?'}]}
   ],
 
   poolC: [
@@ -231,10 +231,10 @@ const CH01 = {
     {id:"C-11", stem:'<span class="mono">typedef struct { char name[10]; int age; } human_being;</span> 다음 올바른 변수 선언은?', mono:true,
      choices:[{text:"human_being p1;",correct:true},{text:"struct human_being p1;",correct:false,mc:"typedef-usage",fb:"태그 없는 typedef라 struct 키워드로는 부를 이름이 없다."},{text:"typedef p1;",correct:false,mc:"typedef-usage",fb:"typedef는 별칭을 '만들 때' 쓰는 키워드다."}]},
     {id:"C-13", stem:'person1의 생일 월(dob 안의 month)에 2를 넣는 올바른 문장은?', mono:true,
-     choices:[{text:"person1.dob.month = 2;",correct:true},{text:"person1.month = 2;",correct:false,mc:"member-access-path",fb:"month는 person1의 직속 멤버가 아니다. dob를 거쳐야 한다."},{text:"dob.month = 2;",correct:false,mc:"member-access-path",fb:"누구의 dob인지가 없다."}]},
+     choices:[{text:"person1.dob.month = 2;",correct:true},{text:"person1.month.dob = 2;",correct:false,mc:"member-access-path",fb:"경로가 뒤집혔다 — 바깥(person1)에서 안(dob→month)으로 들어간다."},{text:"dob.month = 2;",correct:false,mc:"member-access-path",fb:"누구의 dob인지가 없다."}]},
     {id:"C-14", stem:'<span class="mono">person.name</span>(char name[10])에 "james"를 넣는 올바른 방법은?', mono:true,
      choices:[{text:'strcpy(person.name, "james");',correct:true},{text:'person.name = "james";',correct:false,mc:"string-assign",fb:"배열엔 대입(=)이 안 된다. 배열 이름은 저장 공간을 가진 변수가 아니다."},{text:'person.name[10] = "james";',correct:false,mc:"string-assign",fb:"name[10]은 존재하지 않는 11번째 칸이다."}]},
     {id:"C-16", stem:'struct가 배열과 <b>근본적으로 다른</b> 점은?',
-     choices:[{text:"서로 다른 타입을 한 단위로 묶을 수 있다",correct:true},{text:"더 많은 원소를 담을 수 있다",correct:false,mc:"struct-mixed-types",fb:"개수의 문제가 아니다."},{text:"메모리를 덜 쓴다",correct:false,mc:"struct-mixed-types",fb:"오히려 더 쓸 수도 있다."}]}
+     choices:[{text:"서로 다른 타입을 한 단위로 묶을 수 있다",correct:true},{text:"배열보다 훨씬 더 많은 원소를 담을 수 있다",correct:false,mc:"struct-mixed-types",fb:"개수의 문제가 아니다."},{text:"같은 자료라도 메모리를 훨씬 덜 쓴다",correct:false,mc:"struct-mixed-types",fb:"오히려 더 쓸 수도 있다."}]}
   ]
 };
