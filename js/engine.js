@@ -1645,7 +1645,7 @@ function sceneTitle(){
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
-    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="width:min(560px,92vw);box-sizing:border-box;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
+    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="width:min(470px,92vw);box-sizing:border-box;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
     b.onclick=()=>{ clearSave(); c.go(); }; /* 새 챕터 시작 = 이어하기 진행은 초기화 (잔고·가방은 유지) */
     chl.appendChild(b);
   });
