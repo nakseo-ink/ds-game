@@ -235,6 +235,14 @@ const CH01 = {
     {id:"C-14", stem:'<span class="mono">person.name</span>(char name[10])에 "james"를 넣는 올바른 방법은?', mono:true,
      choices:[{text:'strcpy(person.name, "james");',correct:true},{text:'person.name = "james";',correct:false,mc:"string-assign",fb:"배열엔 대입(=)이 안 된다. 배열 이름은 저장 공간을 가진 변수가 아니다."},{text:'person.name[10] = "james";',correct:false,mc:"string-assign",fb:"name[10]은 존재하지 않는 11번째 칸이다."}]},
     {id:"C-16", stem:'struct가 배열과 <b>근본적으로 다른</b> 점은?',
-     choices:[{text:"서로 다른 타입을 한 단위로 묶을 수 있다",correct:true},{text:"배열보다 훨씬 더 많은 원소를 담을 수 있다",correct:false,mc:"struct-mixed-types",fb:"개수의 문제가 아니다."},{text:"같은 자료라도 메모리를 훨씬 덜 쓴다",correct:false,mc:"struct-mixed-types",fb:"오히려 더 쓸 수도 있다."}]}
+     choices:[{text:"서로 다른 타입을 한 단위로 묶을 수 있다",correct:true},{text:"배열보다 훨씬 더 많은 원소를 담을 수 있다",correct:false,mc:"struct-mixed-types",fb:"개수의 문제가 아니다."},{text:"같은 자료라도 메모리를 훨씬 덜 쓴다",correct:false,mc:"struct-mixed-types",fb:"오히려 더 쓸 수도 있다."}]},
+    /* 코드 검증 보강 (2026-08-24) */
+    {id:"C-17", stem:'빈칸에 들어갈 코드는? — 선언된 변수 p의 나이 멤버에 26을 저장한다.', mono:true,
+     code:["typedef struct { char name[10]; int age; } human_being;","human_being p;","________ = 26;"],
+     okfb:'변수 이름에서 점(.)으로 멤버로 들어간다 — p.age.',
+     choices:[{text:"p.age",correct:true},{text:"age.p",correct:false,mc:"member-access-path",fb:"경로 방향이 거꾸로다 — 바깥(변수)에서 안(멤버)으로."},{text:"p->age",correct:false,mc:"arrow-vs-dot",fb:"화살표(->)는 '포인터'로 접근할 때다 — p는 포인터가 아니다."},{text:"human_being.age",correct:false,mc:"type-vs-var",fb:"타입 이름에는 값을 넣을 수 없다 — 변수(p)에 넣는다."}]},
+    {id:"C-18", stem:'다음 중 <b>잘못된</b> 문장은? (person의 name은 char name[10])', mono:true,
+     okfb:'배열에는 대입(=)이 안 된다 — 문자열은 strcpy로 복사한다.',
+     choices:[{text:'person.name = "james";',correct:true},{text:'strcpy(person.name, "james");',correct:false,mc:"find-the-bug",fb:"이 문장은 올바르다 — 문자열 복사의 정석이다."},{text:"person.age = 26;",correct:false,mc:"find-the-bug",fb:"이 문장은 올바르다 — int 멤버에는 대입이 된다."},{text:"person.dob.month = 2;",correct:false,mc:"find-the-bug",fb:"이 문장은 올바르다 — 중첩 구조체 접근이다."}]}
   ]
 };

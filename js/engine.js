@@ -17,14 +17,32 @@ const stage = document.getElementById("stage");
 const WALLETKEY="dsgame_wallet";
 const wallet=JSON.parse(localStorage.getItem(WALLETKEY)||'{"balance":0,"inventory":[]}');
 function saveWallet(){ wallet.balance=S.balance; localStorage.setItem(WALLETKEY,JSON.stringify(wallet)); }
-const S = { balance:wallet.balance||0, tutorFirstTry:0, tutorPassed:false, aplusAccepted:false, aplusSuccess:false };
+const S = { balance:wallet.balance||0, tutorFirstTry:0, tutorPassed:false, aplusAccepted:false, aplusSuccess:false, retake:false };
+/* ---- 서사 상태 (지갑에 영속 — 챕터를 넘어 유지) ---- */
+if(typeof wallet.trust!=="number") wallet.trust=5;          /* 어머니의 신뢰 0~10 (숨김) */
+if(typeof wallet.aplusStreak!=="number") wallet.aplusStreak=0;
+if(!Array.isArray(wallet.clues)) wallet.clues=[];            /* 역추적 단서 수첩 */
+function addClue(id,text){
+  if(wallet.clues.some(c=>c.id===id)) return false;
+  wallet.clues.push({id,text}); saveWallet(); log("clue_found",{id});
+  return true;
+}
+/* 비트 조건부 표시: {cond:{trustMax,trustMin,aplusMin,clue}} — 조건 없으면 항상 표시 */
+function evalCond(c){
+  if(!c) return true;
+  if(c.trustMax!==undefined && wallet.trust>c.trustMax) return false;
+  if(c.trustMin!==undefined && wallet.trust<c.trustMin) return false;
+  if(c.aplusMin!==undefined && wallet.aplusStreak<c.aplusMin) return false;
+  if(c.clue!==undefined && !wallet.clues.some(x=>x.id===c.clue)) return false;
+  return true;
+}
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
 const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1주차로 */
 let saveData=JSON.parse(localStorage.getItem(SAVEKEY)||"null");
 function saveCP(cp){
   saveData={v:1, cp, ch:CURCH,
-    S:{tutorFirstTry:S.tutorFirstTry, tutorPassed:S.tutorPassed, aplusAccepted:S.aplusAccepted, aplusSuccess:S.aplusSuccess},
+    S:{tutorFirstTry:S.tutorFirstTry, tutorPassed:S.tutorPassed, aplusAccepted:S.aplusAccepted, aplusSuccess:S.aplusSuccess, retake:S.retake},
     streaks:{A:streakA,B:streakB,C:streakC,D:streakD,E:streakE,G5:streak0}, tracesB, runsD,
     gwSave:(CH.flow&&GW)?{streaks:GW.streaks,attempts:GW.attempts,poolIds:GW.poolLeft.map(p=>p.id)}:undefined,
     ts:Date.now()};
@@ -111,6 +129,56 @@ function renderMCQ(container,item,opts){
   });
   container.appendChild(ch); container.appendChild(fb);
 }
+/* ---- Parsons 문항 (코드 줄 순서 조립 — 클릭 순서식) ----
+   item={ptype:"parsons", id, stem, lines:[올바른 순서의 줄...], okfb, fb}
+   renderMCQ와 동일한 onDone(correct,hintUsed,fb) 계약 */
+function renderParsons(container,item,opts){
+  let answered=false; const t0=Date.now();
+  container.appendChild(el('<div class="stem">'+item.stem+'</div>'));
+  container.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin:6px 0;">🧩 아래 줄들을 <b>올바른 순서대로</b> 클릭해 조립하라. (조립한 줄을 다시 클릭하면 되돌아간다)</div>'));
+  const asm=el('<div class="codebox" style="min-height:34px;margin-top:8px;"></div>');       /* 조립 영역 */
+  const src=el('<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>'); /* 재료 줄 */
+  const fb=el('<div></div>');
+  const sub=el('<div style="margin-top:10px;text-align:right;"><button class="btn" disabled>조립 완료 — 제출</button></div>');
+  const subBtn=sub.querySelector("button");
+  let order=[];                                   /* 현재 조립된 원본 인덱스 순서 */
+  let idxs=shuffle(item.lines.map((_,i)=>i));
+  for(let t=0;t<20 && idxs.every((v,i)=>v===i);t++) idxs=shuffle(idxs);  /* 섞였는데 정답 순서면 다시 */
+  function draw(){
+    asm.innerHTML=""; src.innerHTML="";
+    order.forEach((li,pos)=>{
+      const e=el('<div class="codeline" style="cursor:pointer;">'+(pos+1)+'.  '+hlC(item.lines[li])+'</div>');
+      e.onclick=()=>{ if(answered) return; order.splice(pos,1); draw(); };
+      asm.appendChild(e);
+    });
+    if(!order.length) asm.appendChild(el('<div style="padding:4px 16px;color:var(--ink-dim);font-size:12.5px;">(아직 비어 있다 — 첫 줄부터 클릭)</div>'));
+    idxs.forEach(li=>{
+      if(order.includes(li)) return;
+      const b=el('<button class="choice mono" style="text-align:left;white-space:pre;">'+hlC(item.lines[li])+'</button>');
+      b.onclick=()=>{ if(answered) return; order.push(li); draw(); };
+      src.appendChild(b);
+    });
+    subBtn.disabled = order.length!==item.lines.length;
+  }
+  subBtn.onclick=()=>{
+    if(answered||order.length!==item.lines.length) return; answered=true;
+    const correct=order.every((v,i)=>v===i);
+    const hintUsed=opts.hintUsed?opts.hintUsed():false;
+    log("answer",{unit:opts.unit, itemId:item.id||"parsons", correct, mc:correct?null:(item.mc||"parsons-order"), hintUsed, elapsedMs:Date.now()-t0, order:order.slice()});
+    subBtn.disabled=true; [...src.children].forEach(x=>x.disabled=true);
+    [...asm.children].forEach(x=>x.style.cursor="default");
+    if(correct) fb.appendChild(el('<div class="feedback ok fade">✅ '+(item.okfb||"올바른 순서다.")+(hintUsed?"<br>📖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
+    else fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+(item.fb||"순서가 어긋났다. 각 줄이 무엇을 '읽고' 무엇을 '덮어쓰는지' 따져 보라 — 읽어야 할 값을 먼저 덮으면 길을 잃는다.")+'</div>'));
+    opts.onDone(correct,hintUsed,fb);
+  };
+  container.appendChild(asm); container.appendChild(src); container.appendChild(sub); container.appendChild(fb);
+  draw();
+}
+/* 문항 타입 라우터 — 시련·풀 공용 */
+function renderItem(container,item,opts){
+  if(item.ptype==="parsons") return renderParsons(container,item,opts);
+  return renderMCQ(container,item,opts);
+}
 /* ============ 낡은 책 — 하단 고정 아이콘 (구매 후 상시, 새 메모 = ❗ 뱃지) ============ */
 const BookFab=(function(){
   let hints=null, unit="", lv=0, used=false, answeredFn=null, mode="hidden";
@@ -145,6 +213,13 @@ const BookFab=(function(){
       }else if(done){
         box.appendChild(el('<div style="margin-top:8px;font-size:12.5px;color:var(--ink-dim);">이미 답한 문제 — 새 문제에서 다시 보자.</div>'));
       }
+    }
+    /* 단서 수첩 — 협박범 역추적 (해금된 단서가 있을 때만 표시) */
+    if(wallet.clues.length){
+      const cl=el('<div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;"></div>');
+      cl.appendChild(el('<div style="font-size:12.5px;color:var(--accent);margin-bottom:6px;">🕵️ 단서 수첩 — 그자는 누구인가 ('+wallet.clues.length+'/6)</div>'));
+      wallet.clues.forEach(c=>cl.appendChild(el('<div style="font-size:13px;color:var(--ink);line-height:1.6;">· '+c.text+'</div>')));
+      box.appendChild(cl);
     }
     const close=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost" style="padding:5px 14px;font-size:12.5px;">덮기 ✕</button></div>');
     close.querySelector("button").onclick=()=>{ panel.style.display="none"; };
@@ -547,6 +622,7 @@ function sceneTrialC(){
   log("item_shown",{unit:"C",itemId:item.id,attempt:attemptsC});
   stage.innerHTML="";
   const card=el('<div class="card fade">'+streakBar(streakC,"문제 #"+attemptsC+" · "+item.id)+'</div>');
+  renderViz(card,item);   /* 코드형 문항(code 필드) 표시 */
   let answered=false;
   const qbox=el('<div></div>'); card.appendChild(qbox); stage.appendChild(card);
   const getHint=attachBook(card,CH.hints.C,"C",()=>answered);
@@ -802,10 +878,24 @@ function sceneSettlement(noPay){
   const passed=score>=CH.exam.passLine;
   let pay=0, bonus=0;
   if(passed){ pay=score*CH.economy.payPerPoint; if(S.aplusSuccess) bonus=CH.economy.aplusBonus; }
-  if(!noPay){ S.balance+=pay+bonus; saveWallet(); clearSave(); }
+  if(!noPay){
+    /* 서사 게이지 (숨김) — 주 단위 산출물로만 변동 (규약: 문항 오답 미반영) */
+    let dTrust=0;
+    if(passed){ dTrust += S.retake ? 0 : (S.aplusSuccess ? 2 : 1); if(S.tutorFirstTry===3) dTrust+=1; }
+    wallet.trust=Math.max(0,Math.min(10,wallet.trust+dTrust));
+    wallet.aplusStreak = (passed&&S.aplusSuccess) ? wallet.aplusStreak+1 : 0;
+    if(!passed) S.retake=true;
+    S.balance+=pay+bonus; saveWallet(); clearSave();
+  }
   $("#hud-money").textContent=money(S.balance);
   $("#hud-grade").textContent=S.aplusSuccess?"A+ 페이스":(score+"점");
-  if(!noPay){ log("quiz_score",{score, unitScore, tutorScore, passed, aplus:S.aplusSuccess, pay, bonus}); Log.flush(); }
+  if(!noPay){ log("quiz_score",{score, unitScore, tutorScore, passed, aplus:S.aplusSuccess, pay, bonus, trust:wallet.trust, aplusStreak:wallet.aplusStreak}); Log.flush(); }
+  /* 어머니의 한마디 — 게이지의 유일한 간접 노출 (챕터 데이터 momLines로 오버라이드 가능) */
+  const momLine=(CH.momLines&&CH.momLines(wallet.trust,passed,S.aplusSuccess)) || (
+    !passed ? '"…이번 주는 도윤이가 많이 어려워하던가요."' :
+    wallet.trust<=2 ? '"…성적은 그렇다 치고. 선생님에 대해서는, 조만간 따로 이야기할 게 있어요."' :
+    wallet.trust>=7 ? '"요즘 도윤이가 밥상에서 선생님 얘기를 해요. 처음 있는 일이에요."' :
+    '"수고했어요. 다음 주도 부탁드려요."');
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
     '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+CH.meta.week+'주차 "'+CH.meta.title+'"</div>'+
@@ -818,6 +908,7 @@ function sceneSettlement(noPay){
     (passed?('<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>도윤이가 요즘 책상에 앉아 있더군요. 과외비는 <b>도윤이 점수만큼</b> 계산했어요 — '+score+'점.'+(bonus?" …그리고 약속한 보너스.":"")+'</div></div>'+
       '<div class="card" style="background:var(--panel2); margin-top:14px;">💰 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+score+'점 × '+CH.economy.payPerPoint.toLocaleString()+'원)</span>'+(bonus?' · A+ 보너스 +'+money(bonus):"")+' → 잔고 <b>'+money(S.balance)+'</b></div>')
       :'<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…한 번 더 기회를 드리죠. 다음 주에 재시험이라는군요.</div></div>')+
+    '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 지나가듯 한마디를 얹는다. '+momLine+'</div>'+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
     '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+CH.meta.week+'주차 "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
@@ -826,7 +917,7 @@ function sceneSettlement(noPay){
   $("#dump").onclick=()=>{const d=$("#dumpbox"); d.style.display="block"; d.textContent=JSON.stringify(Log.all().slice(-50),null,1);};
   const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(()=>sceneSettlement(true)); /* 재방문 시 재지급 금지 */
   $("#again").onclick=()=>{ clearSave(); GW=null; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
-    S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; sceneTitle(); };
+    S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; S.retake=false; sceneTitle(); };
 }
 
 /* ================================================================
@@ -1080,7 +1171,7 @@ function gwTrial(key,i){
   if(poolItems.length && Math.random()<0.4){
     const p=poolItems[0];
     GW.poolLeft.splice(GW.poolLeft.indexOf(p),1);
-    item={...p, choices:shuffle(p.choices.map(c=>({...c})))}; src="pool:"+p.id;
+    item={...p}; if(p.choices) item.choices=shuffle(p.choices.map(c=>({...c}))); src="pool:"+p.id;
   } else { item=GEN2[t.gen](); src=t.gen; }
   log("item_shown",{unit:key, gen:src, qtype:item.qtype||"", params:item.params||{}, attempt:GW.attempts[key]});
   stage.innerHTML="";
@@ -1089,7 +1180,7 @@ function gwTrial(key,i){
   let answered=false;
   const qbox=el('<div style="margin-top:12px;"></div>'); card.appendChild(qbox); stage.appendChild(card);
   const getHint=attachBook(card, CH.hints[key], key, ()=>answered);
-  renderMCQ(qbox,item,{unit:key,hintUsed:getHint,onDone:(correct,hintUsed,fb)=>{
+  renderItem(qbox,item,{unit:key,hintUsed:getHint,onDone:(correct,hintUsed,fb)=>{
     answered=true;
     if(correct){ if(!hintUsed) GW.streaks[key]=(GW.streaks[key]||0)+1; } else GW.streaks[key]=0;
     if((GW.streaks[key]||0)>=3){
@@ -1104,7 +1195,7 @@ function gwInterlude(key,i){
   saveCP(CH.flow[i]);
   stage.innerHTML="";
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🌙 자습 끝 — 오늘의 마무리</div></div>');
-  (CH.interludes[key]||[]).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
+  (CH.interludes[key]||[]).filter(d=>evalCond(d.cond)).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
   card.appendChild(el('<div style="margin-top:16px;text-align:right;"><button class="btn" id="ilnext">'+(CH.ilNext&&CH.ilNext[key]||"다음 ▶")+'</button></div>'));
   stage.appendChild(card);
   $("#ilnext").onclick=()=>gwGo(i+1);
@@ -1200,7 +1291,7 @@ function gwAplus(idx,correctCnt,i){
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🔥 A+ 트랙 — 심화 '+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
   renderViz(card,item);
   const body=el('<div style="margin-top:10px;"></div>'); card.appendChild(body); stage.appendChild(card);
-  renderMCQ(body,item,{unit:"aplus",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
+  renderItem(body,item,{unit:"aplus",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
     const nc=correctCnt+(correct?1:0);
     if(idx<2) fb.appendChild(nextBtnRow("다음 심화 ▶",()=>gwAplus(idx+1,nc,i)));
     else {
@@ -1504,7 +1595,7 @@ function cpLabel(sv){
 }
 function resumeFrom(sv){
   const s=sv.S||{};
-  S.tutorFirstTry=s.tutorFirstTry||0; S.tutorPassed=!!s.tutorPassed; S.aplusAccepted=!!s.aplusAccepted; S.aplusSuccess=!!s.aplusSuccess;
+  S.tutorFirstTry=s.tutorFirstTry||0; S.tutorPassed=!!s.tutorPassed; S.aplusAccepted=!!s.aplusAccepted; S.aplusSuccess=!!s.aplusSuccess; S.retake=!!s.retake;
   const st=sv.streaks||{};
   streakA=st.A||0; streakB=st.B||0; streakC=st.C||0; streakD=st.D||0; streakE=st.E||0; streak0=st.G5||0;
   tracesB=sv.tracesB||0; runsD=sv.runsD||0;
@@ -1586,13 +1677,14 @@ function sceneTitle(){
 function sceneIntro(idx=0){
   if(!idx) saveCP("intro");
   stage.innerHTML="";
+  const intro=CH.intro.filter(d=>evalCond(d.cond));
   const box=el('<div class="fade"></div>');
   for(let k=0;k<=idx;k++){
-    const d=CH.intro[k];
+    const d=intro[k];
     box.appendChild(el('<div class="dlg"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
   }
-  const btn=el('<div style="margin-top:18px; text-align:right;"><button class="btn">▶ '+(idx<CH.intro.length-1?"계속":"월요일 밤 — 자습 시작")+'</button></div>');
-  btn.querySelector("button").onclick=()=> idx<CH.intro.length-1 ? sceneIntro(idx+1) : (CH.flow ? gwStart() : sceneStudy("A",sceneTrialA));
+  const btn=el('<div style="margin-top:18px; text-align:right;"><button class="btn">▶ '+(idx<intro.length-1?"계속":"월요일 밤 — 자습 시작")+'</button></div>');
+  btn.querySelector("button").onclick=()=> idx<intro.length-1 ? sceneIntro(idx+1) : (CH.flow ? gwStart() : sceneStudy("A",sceneTrialA));
   box.appendChild(btn); stage.appendChild(box);
 }
 /* ============ 홈 버튼 — 어느 화면에서든 타이틀 메뉴로 ============ */

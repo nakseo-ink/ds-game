@@ -281,7 +281,20 @@ const CH02 = {
      choices:[{text:"도착 = enqueue(rear에 삽입), 탑승 = dequeue(front에서 삭제)",correct:true},{text:"도착 = dequeue(front에서 삭제), 탑승 = enqueue(rear에 삽입)",correct:false,mc:"swap",fb:"들어오는 쪽과 나가는 쪽이 뒤집혔다 — 줄 끝과 줄 앞을 다시 보라."},{text:"도착도 탑승도 push — 스택 하나로 충분하다",correct:false,mc:"lifo-misapply",fb:"스택이라면 방금 온 손님이 먼저 탄다 — 줄 선 보람이 없다."},{text:"도착 = enqueue, 탑승 = 줄 중간의 임의 위치에서 삭제",correct:false,mc:"random-misapply",fb:"큐의 삭제는 front 한 곳에서만 일어난다."}]},
     {id:"P26", unit:"C", stem:'MAX_QUEUE_SIZE = 4 인 원형 큐가 <b>가득 찼다</b>고 판정될 때, 실제 저장된 원소 수와 그 근거는?', mono:true,
      okfb:'MAX-1 = 3개 — 하나 더 넣으려고 rear를 회전시키는 순간 front와 같아진다.',
-     choices:[{text:"3개 — 하나 더 넣으려는 순간 회전된 rear가 front와 같아진다",correct:true},{text:"4개 — 배열의 네 칸을 남김없이 모두 쓴다",correct:false,mc:"capacity",fb:"다 채우면 front==rear가 공백 조건과 겹친다 — 한 칸은 남긴다."},{text:"3개 — rear가 배열의 마지막 칸(MAX-1)에 닿았기 때문이다",correct:false,mc:"linear-mix",fb:"끝 칸 도달은 '선형 큐'의 포화다 — 원형은 위치가 아니라 front와의 관계로 판정한다."},{text:"2개 — 안전을 위해 두 칸을 항상 비워 둔다",correct:false,mc:"over-sacrifice",fb:"가득/텅 빔 구별에 희생하는 칸은 하나면 충분하다."}]}
+     choices:[{text:"3개 — 하나 더 넣으려는 순간 회전된 rear가 front와 같아진다",correct:true},{text:"4개 — 배열의 네 칸을 남김없이 모두 쓴다",correct:false,mc:"capacity",fb:"다 채우면 front==rear가 공백 조건과 겹친다 — 한 칸은 남긴다."},{text:"3개 — rear가 배열의 마지막 칸(MAX-1)에 닿았기 때문이다",correct:false,mc:"linear-mix",fb:"끝 칸 도달은 '선형 큐'의 포화다 — 원형은 위치가 아니라 front와의 관계로 판정한다."},{text:"2개 — 안전을 위해 두 칸을 항상 비워 둔다",correct:false,mc:"over-sacrifice",fb:"가득/텅 빔 구별에 희생하는 칸은 하나면 충분하다."}]},
+    /* 코드 검증 보강 (2026-08-24) */
+    {id:"P27", unit:"A", stem:'push 코드의 빈칸에 들어갈 것은?', mono:true,
+     code:["void push(int *top, element item) {","    if (*top >= MAX_STACK_SIZE - 1) {","        stack_full(); return;","    }","    stack[________] = item;","}"],
+     okfb:'++*top — 전위 증가: top을 먼저 1 올린 뒤 그 자리에 저장한다. (top=-1일 때 첫 push가 stack[0])',
+     choices:[{text:"++*top",correct:true},{text:"(*top)++",correct:false,mc:"pre-post",fb:"후위라면 '지금 자리'에 저장하고 나서 올린다 — top=-1이면 stack[-1]에 쓴다."},{text:"*top",correct:false,mc:"no-incr",fb:"올리지 않으면 톱 자리를 덮어쓴다 — 새 칸이 필요하다."},{text:"*top + 1",correct:false,mc:"no-store",fb:"그 자리에 저장은 되지만 top 자신은 제자리 — 다음 push가 같은 칸을 또 쓴다."}]},
+    {id:"P28", unit:"B", stem:'이 deleteq 코드에서 <b>잘못된 줄</b>은?', mono:true,
+     code:["element deleteq(int *front, int *rear) {","    if (*front == *rear + 1)      /* ㉠ */","        return queue_empty();","    return queue[++*front];       /* ㉡ */","}"],
+     okfb:'공백 조건은 front == rear 다 (㉠) — ㉡의 "front를 먼저 올리고 그 자리를 반환"은 올바르다.',
+     choices:[{text:"㉠ — 공백 검사는 *front == *rear 여야 한다",correct:true},{text:"㉡ — ++*front가 아니라 (*front)++ 여야 한다",correct:false,mc:"pre-post",fb:"front는 첫 원소의 한 칸 앞 — 먼저 올리고 그 자리를 반환하는 것이 맞다."},{text:"㉠㉡ 둘 다 잘못되어 고쳐 써야 한다",correct:false,mc:"over-fix",fb:"㉡은 교재 코드 그대로다 — 잘못은 한 곳뿐이다."},{text:"잘못된 줄이 없다 — 그대로 동작한다",correct:false,mc:"no-bug",fb:"공백 큐(front==rear)에서 ㉠이 거짓이 되어, 없는 원소를 꺼내게 된다."}]},
+    {id:"P29", unit:"C", ptype:"parsons", stem:'원형 큐의 삽입 addq — 코드를 <b>올바른 순서</b>로 조립하라. (회전과 검사의 순서가 핵심이다)', mono:true,
+     lines:["void addq(int *front, int *rear, element item) {","    *rear = (*rear + 1) % MAX_QUEUE_SIZE;","    if (*front == *rear) { queue_full(rear); return; }","    queue[*rear] = item;"],
+     okfb:'addq는 회전을 먼저 하고 검사한다 — 회전한 rear가 front와 만나면 포화. (deleteq는 반대로 검사 먼저)',
+     fb:"addq의 리듬을 떠올려라 — 돌리고, 확인하고, 넣는다. 검사를 먼저 하면 '회전한 뒤의 자리'를 확인할 수 없다."},
   ],
 
   /* ================= 조작 미션 ================= */

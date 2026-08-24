@@ -267,7 +267,18 @@ const CH03 = {
      choices:[{text:"abc*+",correct:true},{text:"ab+c*",correct:false,mc:"precedence-ignored",fb:"왼쪽부터 묶은 모양 — (a+b)*c는 다른 식이다."},{text:"abc+*",correct:false,mc:"op-order",fb:"+ 는 가장 바깥 괄호의 자리 — 맨 끝이 맞지만, * 가 먼저 나와야 한다."},{text:"bca*+",correct:false,mc:"operand-order",fb:"피연산자 순서는 a, b, c 그대로다."}]},
     {id:"P13", unit:"D", stem:'<span class="mono">(a+b)*c</span> 의 후위 표기는?', mono:true,
      okfb:'괄호가 +를 먼저 묶는다: ((a+b)*c) → ab+c*.',
-     choices:[{text:"ab+c*",correct:true},{text:"abc*+",correct:false,mc:"paren-ignored",fb:"괄호를 무시하면 a+(b*c) — 다른 식이 된다."},{text:"abc+*",correct:false,mc:"lump-ops",fb:"+ 는 (a+b)의 오른쪽 괄호 자리 — c 앞이다."},{text:"ab+*c",correct:false,mc:"op-order",fb:"* 는 가장 바깥 괄호의 자리 — 맨 끝이다."}]}
+     choices:[{text:"ab+c*",correct:true},{text:"abc*+",correct:false,mc:"paren-ignored",fb:"괄호를 무시하면 a+(b*c) — 다른 식이 된다."},{text:"abc+*",correct:false,mc:"lump-ops",fb:"+ 는 (a+b)의 오른쪽 괄호 자리 — c 앞이다."},{text:"ab+*c",correct:false,mc:"op-order",fb:"* 는 가장 바깥 괄호의 자리 — 맨 끝이다."}]},
+    /* 코드 검증 보강 (2026-08-24) */
+    {id:"P14", unit:"D", ptype:"parsons", stem:'괄호 묶기법 — 중위식을 후위식으로 바꾸는 절차를 <b>올바른 순서</b>로 조립하라.',
+     lines:["식 전체를 우선순위와 좌결합 순서대로 괄호로 묶는다","각 연산자를 자기 짝의 오른쪽 괄호 자리로 옮긴다","남아 있는 모든 괄호를 삭제한다"],
+     okfb:'묶고 → 옮기고 → 지운다. 연산자가 오른쪽 괄호 자리로 가기에 "후위" 표기가 된다.',
+     fb:"세 동작의 이름을 떠올려라 — 묶기, 옮기기, 지우기. 옮길 자리는 묶어야 생기고, 지우는 것은 다 옮긴 뒤다."},
+    {id:"P15", unit:"C", stem:'다음 후위식 평가 절차 중 <b>잘못된</b> 단계는?',
+     okfb:'먼저 pop된 값이 "오른쪽" 피연산자다 — 5 3 - 에서 먼저 나온 3이 오른쪽, 5-3=2.',
+     choices:[{text:"연산자를 만나면 먼저 pop된 값이 왼쪽 피연산자가 된다",correct:true},{text:"식을 왼쪽에서 오른쪽으로 한 토큰씩 차례로 읽어 나간다",correct:false,mc:"find-the-bug",fb:"이 단계는 올바르다 — 한 방향 한 번 훑기가 후위식의 장점이다."},{text:"피연산자를 만나면 스택에 push해 둔다",correct:false,mc:"find-the-bug",fb:"이 단계는 올바르다."},{text:"연산 결과를 다시 스택에 push한다",correct:false,mc:"find-the-bug",fb:"이 단계는 올바르다 — 다음 연산의 재료가 된다."}]},
+    {id:"P16", unit:"D", stem:'중위→후위 변환의 <b>검산 규칙</b> — 변환 전후로 변하지 않아야 하는 것은?',
+     okfb:'자리를 옮기는 것은 연산자뿐 — 피연산자의 순서와 연산자의 개수는 그대로여야 한다.',
+     choices:[{text:"피연산자의 순서와 연산자의 개수",correct:true},{text:"연산자의 순서와 괄호의 개수",correct:false,mc:"op-order",fb:"연산자는 자리를 옮기고, 괄호는 사라진다 — 남는 불변량이 아니다."},{text:"식의 전체 길이와 토큰의 개수",correct:false,mc:"length-myth",fb:"괄호가 빠지므로 길이는 줄 수 있다."},{text:"각 피연산자와 연산자의 쌍",correct:false,mc:"pair-myth",fb:"짝은 변환 과정에서 재배치된다 — 불변은 순서(피연산자)와 개수(연산자)다."}]}
   ],
 
   /* ================= 미로 (금요일 밤 보너스) ================= */

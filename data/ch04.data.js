@@ -490,6 +490,19 @@ const CH04 = {
       {text:"head 홀로 남아 양쪽 링크가 자기 자신을 가리킨다",correct:true},
       {text:"head까지 함께 사라져 아무것도 남지 않게 된다",correct:false,mc:"head-count",fb:"head는 상주 기준점 — ddelete가 삭제를 허락하지 않는다."},
       {text:"30의 자리에 head가 옮겨 가서 고리를 유지한다",correct:false,mc:"swap-myth",fb:"아무도 이사하지 않는다 — 링크가 다시 닫힐 뿐이다."},
-      {text:"고리가 끊어져 더 이상 리스트로 쓸 수 없게 된다",correct:false,mc:"null-fear",fb:"양쪽 이웃(둘 다 head)이 서로를 잡으며 고리는 항상 닫힌다."}]}
+      {text:"고리가 끊어져 더 이상 리스트로 쓸 수 없게 된다",correct:false,mc:"null-fear",fb:"양쪽 이웃(둘 다 head)이 서로를 잡으며 고리는 항상 닫힌다."}]},
+    /* 코드 검증 보강 (2026-08-24) */
+    {id:"P24", unit:"B", stem:'insert 코드의 빈칸에 들어갈 <b>한 줄</b>은?', mono:true,
+     code:["/* node 뒤에 새 노드 temp 삽입 (리스트는 공백 아님) */","temp->data = 50;","________________________;","node->link = temp;"],
+     okfb:'temp->link = node->link — 앞 노드의 링크를 덮기 전에, 그 안의 "다음 주소"를 새 노드가 먼저 물려받는다.',
+     choices:[{text:"temp->link = node->link",correct:true},{text:"node->link = temp->link",correct:false,mc:"reverse-link",fb:"방향이 거꾸로다 — 물려받는 쪽은 새 노드(temp)다."},{text:"temp->link = node",correct:false,mc:"self-link",fb:"뒤로 가리키면 고리가 생긴다 — temp는 node의 '다음'을 물려받아야 한다."},{text:"temp->link = NULL",correct:false,mc:"lost-tail",fb:"항상 NULL이면 node 뒤의 리스트가 통째로 끊긴다."}]},
+    {id:"P25", unit:"C", stem:'이 delete 코드의 <b>잘못된 곳</b>은?', mono:true,
+     code:["void delete(list_pointer *ptr, list_pointer trail, list_pointer node) {","    if (trail)","        trail->link = node->link;","    else","        *ptr = (*ptr)->link;","    free(trail);                  /* ← */","}"],
+     okfb:'반환할 것은 삭제 대상 node다 — free(trail)은 멀쩡한 선행 노드를 반환해 버린다.',
+     choices:[{text:"free의 대상이 node가 아니라 trail이다",correct:true},{text:"if와 else 분기의 두 문장이 서로 뒤바뀌어 있다",correct:false,mc:"branch-swap",fb:"분기는 교재 그대로다 — trail이 있으면 링크 대체, 없으면 시작 변경."},{text:"free는 링크를 고치기 전에 먼저 호출해야 한다",correct:false,mc:"free-first",fb:"먼저 반환하면 node->link를 읽을 때 이미 남의 공간이다."},{text:"잘못된 곳이 없다 — 그대로 동작한다",correct:false,mc:"no-bug",fb:"이대로면 산 노드가 반환되고, 죽은 노드는 힙에 남는다 — 이중 사고다."}]},
+    {id:"P26", unit:"C", ptype:"parsons", stem:'delete 함수 — 코드를 <b>올바른 순서</b>로 조립하라. (분기 구조와 free의 자리에 주의)', mono:true,
+     lines:["void delete(list_pointer *ptr, list_pointer trail, list_pointer node) {","    if (trail)","        trail->link = node->link;","    else","        *ptr = (*ptr)->link;","    free(node);","}"],
+     okfb:'분기(있으면 trail의 링크, 없으면 *ptr)를 끝낸 뒤 마지막에 free — 먼저 반환하면 node->link를 읽을 수 없다.',
+     fb:"뼈대부터 — 선언, if/else 분기, 그리고 반환. free가 앞으로 오면 반환된 공간의 링크를 읽게 된다."}
   ]
 };
