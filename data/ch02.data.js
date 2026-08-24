@@ -2,7 +2,7 @@
 /* 챕터 2 데이터 — "스택과 큐" (강의 3장 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
    연산명은 표준(push/pop/enqueue/dequeue), 교재 명칭(add/delete/addq/deleteq) 병기. */
 const CH02 = {
-  meta: { id:"ch02", week:2, title:"스택과 큐", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
+  meta: { id:"ch02", week:2, title:"스택과 큐", sub:"쌓는 통, 늘어서는 줄", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:20, tutorPts:10, passLine:54 },   /* 3유닛 × 20 + 과외 30 = 90 만점 */
   apGen: "AP2",
@@ -15,11 +15,11 @@ const CH02 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","mission","trial-C","il-C","saturday","sunday"],
   cpl: {
-    "study-A":"2주차 · 월 — 스택 자습","trial-A":"2주차 · 월 — 스택 시련","il-A":"2주차 · 월요일 밤",
-    "study-B":"2주차 · 화 — 큐 자습","trial-B":"2주차 · 화 — 큐 시련","il-B":"2주차 · 화요일 밤",
-    "tutor":"2주차 · 수 — 과외",
-    "study-C":"2주차 · 목 — 원형 큐 자습","mission":"2주차 · 목 — 조작 미션","trial-C":"2주차 · 목 — 원형 큐 시련","il-C":"2주차 · 목요일 밤",
-    "saturday":"2주차 · 토 — 보충/A+","sunday":"2주차 · 월 — 쪽지시험"
+    "study-A":"2장 · 월 — 스택 자습","trial-A":"2장 · 월 — 스택 시련","il-A":"2장 · 월요일 밤",
+    "study-B":"2장 · 화 — 큐 자습","trial-B":"2장 · 화 — 큐 시련","il-B":"2장 · 화요일 밤",
+    "tutor":"2장 · 수 — 과외",
+    "study-C":"2장 · 목 — 원형 큐 자습","mission":"2장 · 목 — 조작 미션","trial-C":"2장 · 목 — 원형 큐 시련","il-C":"2장 · 목요일 밤",
+    "saturday":"2장 · 토 — 보충/A+","sunday":"2장 · 월 — 쪽지시험"
   },
 
   trials: {
@@ -42,7 +42,7 @@ const CH02 = {
       {who:"book", say:'"구현은 1차원 배열이다. 최하위 원소는 stack[0], 변수 <b>top</b>은 최상위 원소의 인덱스. <b>초기값 top = -1 이 곧 공백 스택</b>이다."',
        code:["#define MAX_STACK_SIZE 100","typedef struct {","    int key;","    /* 다른 필드 */","} element;","element stack[MAX_STACK_SIZE];","int top = -1;   /* 비어 있음 */"]},
       {gate:{id:"c2-g-typedef", q:'잠깐 — <span class="mono">typedef struct</span>… 지난주에 봤는데, 확실히 기억나나?', basics:[
-        {who:"book", say:'"typedef struct { … } element; — 구조체에 <b>element라는 별칭</b>을 붙인 것이다. 이제 element 한 단어로 이 구조체 타입을 쓸 수 있다. (1주차 유닛 C)"'},
+        {who:"book", say:'"typedef struct { … } element; — 구조체에 <b>element라는 별칭</b>을 붙인 것이다. 이제 element 한 단어로 이 구조체 타입을 쓸 수 있다. (1장 유닛 C)"'},
         {say:'아, 그 별칭. int처럼 쓸 수 있게 이름을 만들어 둔 거였지.'}
       ]}},
       {who:"book", say:'"<b>삽입 — push</b>. (이 책은 함수 이름을 add라고 쓰지만, 표준 명칭은 push다 — 같은 함수다.)"',

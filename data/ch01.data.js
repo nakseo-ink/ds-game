@@ -2,7 +2,7 @@
 /* 챕터 1 데이터 — "배열과 구조" (강의 2장)
    엔진(js/engine.js)은 이 객체만 읽는다. 챕터 추가 = 이런 데이터 파일 추가. */
 const CH01 = {
-  meta: { id:"ch01", week:1, title:"배열과 구조", nextTeaser:"스택이랑 큐", nextHint:'교수님이 "접시 쌓기"라던데… 그게 뭔 소리예요?' },
+  meta: { id:"ch01", week:1, title:"배열과 구조", sub:"첫 수업, 하루 먼저", nextTeaser:"스택이랑 큐", nextHint:'교수님이 "접시 쌓기"라던데… 그게 뭔 소리예요?' },
 
   economy: { payPerPoint:1000, aplusBonus:200000 },   /* 과외비 = 점수 × 1000원 · A+ 보너스는 크게! */
   exam: { unitPts:14, tutorPts:10, passLine:60 },

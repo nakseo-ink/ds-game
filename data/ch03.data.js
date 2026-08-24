@@ -2,7 +2,7 @@
 /* 챕터 3 데이터 — "스택과 큐의 응용" (강의 3장 후반 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
    챕터 2에서 분리(감수: 한 주 분량 과다) — 괄호 검사 / 표기법·우선순위 / 후위식 평가 / 중위→후위 변환 + 미로. */
 const CH03 = {
-  meta: { id:"ch03", week:3, title:"스택과 큐의 응용", nextTeaser:"리스트", nextHint:'교수님이 "다음 칸의 주소를 쪽지에 적어 두는 공책" 얘기를 하던데요… 공책 페이지가 왜 흩어져 있는 거죠?' },
+  meta: { id:"ch03", week:3, title:"스택과 큐의 응용", sub:"스택, 계산기가 되다", nextTeaser:"리스트", nextHint:'교수님이 "다음 칸의 주소를 쪽지에 적어 두는 공책" 얘기를 하던데요… 공책 페이지가 왜 흩어져 있는 거죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:15, tutorPts:10, passLine:54 },   /* 4유닛 × 15 + 과외 30 = 90 만점 */
   apGen: "AP3",
@@ -15,12 +15,12 @@ const CH03 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","trial-C","il-C","study-D","trial-D","maze","saturday","sunday"],
   cpl: {
-    "study-A":"3주차 · 월 — 괄호 검사 자습","trial-A":"3주차 · 월 — 괄호 검사 시련","il-A":"3주차 · 월요일 밤",
-    "study-B":"3주차 · 화 — 표기법 자습","trial-B":"3주차 · 화 — 표기법 시련","il-B":"3주차 · 화요일 밤",
-    "tutor":"3주차 · 수 — 과외",
-    "study-C":"3주차 · 목 — 후위식 평가 자습","trial-C":"3주차 · 목 — 후위식 평가 시련","il-C":"3주차 · 목요일 밤",
-    "study-D":"3주차 · 금 — 변환 자습","trial-D":"3주차 · 금 — 변환 시련","maze":"3주차 · 금요일 밤 — 미로",
-    "saturday":"3주차 · 토 — 보충/A+","sunday":"3주차 · 월 — 쪽지시험"
+    "study-A":"3장 · 월 — 괄호 검사 자습","trial-A":"3장 · 월 — 괄호 검사 시련","il-A":"3장 · 월요일 밤",
+    "study-B":"3장 · 화 — 표기법 자습","trial-B":"3장 · 화 — 표기법 시련","il-B":"3장 · 화요일 밤",
+    "tutor":"3장 · 수 — 과외",
+    "study-C":"3장 · 목 — 후위식 평가 자습","trial-C":"3장 · 목 — 후위식 평가 시련","il-C":"3장 · 목요일 밤",
+    "study-D":"3장 · 금 — 변환 자습","trial-D":"3장 · 금 — 변환 시련","maze":"3장 · 금요일 밤 — 미로",
+    "saturday":"3장 · 토 — 보충/A+","sunday":"3장 · 월 — 쪽지시험"
   },
 
   trials: {

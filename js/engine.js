@@ -38,7 +38,7 @@ function evalCond(c){
 }
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
-const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1주차로 */
+const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1장으로 */
 let saveData=JSON.parse(localStorage.getItem(SAVEKEY)||"null");
 function saveCP(cp){
   saveData={v:1, cp, ch:CURCH,
@@ -64,7 +64,7 @@ function importCode(str){
   }catch(e){ return false; }
 }
 function setHUD(day,unit){
-  if(day){ const wk=(CH.meta.weekLabel!==undefined)?CH.meta.weekLabel:(CH.meta.week+"주차"); $("#hud-day").textContent=wk+" · "+day; }
+  if(day){ const wk=(CH.meta.weekLabel!==undefined)?CH.meta.weekLabel:(CH.meta.week+"장"); $("#hud-day").textContent=wk+" · "+day; }
   if(unit)$("#hud-unit").textContent=unit;
 }
 function streakBar(n,extra){return '<div class="streak">숙달까지 — 힌트 없이 연속 정답'+
@@ -898,7 +898,7 @@ function sceneSettlement(noPay){
     '"수고했어요. 다음 주도 부탁드려요."');
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
-    '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+CH.meta.week+'주차 "'+CH.meta.title+'"</div>'+
+    '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+CH.meta.week+'장 "'+CH.meta.title+'"</div>'+
     '<div class="card" style="background:var(--panel2); margin-top:14px; font-size:15px; line-height:2;">'+
     '유닛 숙달 ('+gwUnits.join("·")+') — <b>'+unitScore+'점</b><br>'+
     '과외 문답 첫 시도 정답 '+S.tutorFirstTry+'/3 — <b>'+tutorScore+'점</b><br>'+
@@ -910,7 +910,7 @@ function sceneSettlement(noPay){
       :'<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…한 번 더 기회를 드리죠. 다음 주에 재시험이라는군요.</div></div>')+
     '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 지나가듯 한마디를 얹는다. '+momLine+'</div>'+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
-    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+CH.meta.week+'주차 "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
+    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+CH.meta.week+'장 "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
     '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn" id="again">처음부터 다시</button></div>'+
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
@@ -1545,7 +1545,7 @@ function c0Contract(){
 }
 function c0Epilogue(){
   setHUD("며칠 뒤","에필로그"); BookFab.hide();
-  c0Dlg(CH00.epilogue,{cp:"epilogue", header:"🌙 에필로그", last:"오리엔테이션 클리어 — 1주차 시작 ▶", next:c0Finish});
+  c0Dlg(CH00.epilogue,{cp:"epilogue", header:"🌙 에필로그", last:"오리엔테이션 클리어 — 1장 시작 ▶", next:c0Finish});
 }
 function c0Finish(){
   localStorage.setItem(CH0DONEKEY,"1");
@@ -1590,7 +1590,7 @@ const CPLABEL={
 const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null };
 function cpLabel(sv){
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
-  if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(fc.meta.week+"주차 · 이어서");
+  if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(fc.meta.week+"장 · 이어서");
   return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기";
 }
 function resumeFrom(sv){
@@ -1634,17 +1634,18 @@ function sceneTitle(){
   const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
   /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
   const c0done=localStorage.getItem(CH0DONEKEY)==="1";
+  const chLabel=C=>C.meta.week+'장 · '+C.meta.title+(C.meta.sub?' — '+C.meta.sub:'');
   const CH_MENU=[
     {id:"ch00", label:'0장 · 오리엔테이션 — 백수, 선생이 되다'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
-    {id:"ch01", label:'1주차 · '+CH01.meta.title, go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
+    {id:"ch01", label:chLabel(CH01), go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
   ];
-  if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:'2주차 · '+CH02.meta.title, go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
-  if(typeof CH03!=="undefined") CH_MENU.push({id:"ch03", label:'3주차 · '+CH03.meta.title, go:()=>{ setChapter(CH03); gwInit(); log("chapter_start",{}); sceneIntro(); }});
-  if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:'4주차 · '+CH04.meta.title, go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:chLabel(CH02), go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH03!=="undefined") CH_MENU.push({id:"ch03", label:chLabel(CH03), go:()=>{ setChapter(CH03); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:chLabel(CH04), go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
-    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="min-width:320px;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
+    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="width:min(560px,92vw);box-sizing:border-box;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
     b.onclick=()=>{ clearSave(); c.go(); }; /* 새 챕터 시작 = 이어하기 진행은 초기화 (잔고·가방은 유지) */
     chl.appendChild(b);
   });
