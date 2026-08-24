@@ -234,6 +234,11 @@ function sceneStudy(unitKey, onDone){
       g.appendChild(yes); g.appendChild(no); box.appendChild(g); scrollBottom();
       return;
     }
+    if(b.steps){
+      renderBody(b);                       /* say 등 동반 필드 먼저 */
+      renderSteps(box,b.steps,next);
+      return;
+    }
     if(b.memo){
       box.appendChild(el('<div class="caption fade" style="min-height:auto;">📖 …책 여백에 낡은 손글씨가 보인다. <b style="color:var(--accent);">화면 왼쪽 아래의 책</b>을 펼쳐 보자.</div>'));
       BookFab.memo(b.memo, unitKey);
@@ -827,8 +832,8 @@ function sceneSettlement(noPay){
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i) };
 let GW=null;
 function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; }
 function gwStart(){ gwInit(); gwGo(0); }
@@ -888,6 +893,140 @@ function circVizEl(v){
   w.appendChild(el('<div>'+s+'</div>'));
   return w;
 }
+/* ---- 위젯: 단순 연결 리스트 (ch4+) ----
+   v={type:"list", name:"ptr", nodes:[{v,hl,dim}], null:true(기본),
+      arrows:[스타일...] (노드 수와 동일 — 마지막은 NULL로 가는 화살표; 'ok'|'new'|'cut'|'none'),
+      over:{from,to} (from 노드에서 to 노드로 건너뛰는 강조 화살표),
+      below:{gap, v, hl, note} (gap번 노드 뒤 아래에 떠 있는 노드 + 위쪽 주석 html)} */
+function lvArrowStyle(st){
+  if(st==="new") return 'color:var(--accent);font-weight:700;';
+  if(st==="cut") return 'color:var(--ink-dim);opacity:.30;text-decoration:line-through;';
+  if(st==="none") return 'visibility:hidden;';
+  return 'color:var(--ink-dim);';
+}
+function lvNodeEl(n,short){
+  const bg=n.dim?'opacity:.35;':'';
+  const bd=n.hl?'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);':'';
+  return '<span style="display:inline-flex;align-items:stretch;background:var(--cell);border:1px solid var(--line);border-radius:8px;overflow:hidden;'+bg+bd+'">'+
+    '<span style="padding:7px 12px;font-weight:600;">'+n.v+'</span>'+
+    '<span style="border-left:1px solid var(--line);padding:7px 8px;color:var(--accent2);font-size:11px;display:flex;align-items:center;">●</span></span>';
+}
+function listVizEl(v){
+  const nodes=v.nodes, L=nodes.length;
+  const colOf=k=>3+2*k;                       /* 노드 k의 grid 열 */
+  const g=el('<div class="fade" style="display:inline-grid;align-items:center;row-gap:2px;margin:10px 0;max-width:100%;overflow-x:auto;padding:4px 2px;"></div>');
+  const put=(html,row,col,colEnd)=>{ const e=el(html); e.style.gridRow=row; e.style.gridColumn=colEnd?(col+' / '+colEnd):col; g.appendChild(e); return e; };
+  /* row2: 본 체인 */
+  put('<span style="color:var(--accent);font-weight:700;padding-right:2px;">'+(v.name||"ptr")+'</span>',2,1);
+  put('<span style="'+lvArrowStyle(v.nameArrow||"ok")+'padding:0 6px;">─▶</span>',2,2);
+  nodes.forEach((n,k)=>{
+    put(lvNodeEl(n),2,colOf(k));
+    const st=(v.arrows&&v.arrows[k])||"ok";
+    if(k<L-1) put('<span style="'+lvArrowStyle(st)+'padding:0 6px;">─▶</span>',2,colOf(k)+1);
+    else if(v.null!==false) put('<span style="'+lvArrowStyle(st)+'padding:0 6px;">─▶</span>',2,colOf(k)+1);
+  });
+  if(v.null!==false)
+    put('<span style="border:1px dashed var(--line);border-radius:8px;padding:7px 10px;color:var(--ink-dim);font-size:12.5px;">NULL</span>',2,colOf(L));
+  /* row1: 건너뛰기 화살표 */
+  if(v.over){
+    const e=put('<div style="position:relative;height:14px;margin:0 10px 2px;border-top:2px solid var(--accent);border-left:2px solid var(--accent);border-right:2px solid var(--accent);border-radius:8px 8px 0 0;"><span style="position:absolute;right:-6px;bottom:-7px;color:var(--accent);font-size:12px;">▼</span></div>',1,colOf(v.over.from),colOf(v.over.to)+1);
+    e.style.alignSelf='end';
+  }
+  /* row3: 아래 떠 있는 노드 (width:0 트릭 — 열 폭을 늘리지 않음) */
+  if(v.below){
+    const b=v.below;
+    const e=put('<div style="width:0;overflow:visible;justify-self:center;">'+
+      '<div style="display:flex;flex-direction:column;align-items:center;margin-top:2px;transform:translateX(-50%);white-space:nowrap;">'+
+      '<div style="font-size:13px;line-height:1.1;min-height:15px;">'+(b.note||'')+'</div>'+
+      lvNodeEl({v:b.v,hl:b.hl})+
+      '</div></div>',3,colOf(b.gap)+1,colOf(b.gap)+3);
+    e.style.justifySelf='center';
+  }
+  return g;
+}
+/* ---- 위젯: 이중 연결 (원형·헤드) 리스트 ----
+   v={type:"dlist", nodes:[{v,head,hl,dim}], conns:[{r,l}...] (노드수-1),
+      wrap:true(기본 — 양끝 ⇄ head 닫힘 표시), below:{gap,v,hl,note}} */
+function dlConnEl(c){
+  c=c||{};
+  return '<span style="display:inline-flex;flex-direction:column;line-height:1.02;padding:0 5px;font-size:13px;">'+
+    '<span style="'+lvArrowStyle(c.r||"ok")+'">─▶</span>'+
+    '<span style="'+lvArrowStyle(c.l||"ok")+'">◀─</span></span>';
+}
+function dlNodeEl(n){
+  const bg=n.dim?'opacity:.35;':'';
+  const bd=n.hl?'border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);':'';
+  const head=n.head;
+  return '<span style="display:inline-flex;align-items:stretch;background:'+(head?'var(--panel2)':'var(--cell)')+';border:1px solid var(--line);border-radius:8px;overflow:hidden;'+bg+bd+'">'+
+    '<span style="border-right:1px solid var(--line);padding:7px 7px;color:var(--accent2);font-size:11px;display:flex;align-items:center;">●</span>'+
+    '<span style="padding:7px 11px;font-weight:600;'+(head?'color:var(--ink-dim);':'')+'">'+(head?'head':n.v)+'</span>'+
+    '<span style="border-left:1px solid var(--line);padding:7px 7px;color:var(--accent2);font-size:11px;display:flex;align-items:center;">●</span></span>';
+}
+function dlistVizEl(v){
+  const nodes=v.nodes, L=nodes.length;
+  const colOf=k=>2+2*k;
+  const g=el('<div class="fade" style="display:inline-grid;align-items:center;row-gap:2px;margin:10px 0;max-width:100%;overflow-x:auto;padding:4px 2px;"></div>');
+  const put=(html,row,col,colEnd)=>{ const e=el(html); e.style.gridRow=row; e.style.gridColumn=colEnd?(col+' / '+colEnd):col; g.appendChild(e); return e; };
+  if(v.wrap!==false) put('<span style="color:var(--ink-dim);font-size:12px;padding-right:4px;">⟲⇄</span>',1,1);
+  nodes.forEach((n,k)=>{
+    put(dlNodeEl(n),1,colOf(k));
+    if(k<L-1) put(dlConnEl(v.conns&&v.conns[k]),1,colOf(k)+1);
+  });
+  if(v.wrap!==false) put('<span style="color:var(--ink-dim);font-size:12px;padding-left:4px;">⇄⟳ (다시 head)</span>',1,colOf(L-1)+1);
+  if(v.below){
+    const b=v.below;
+    const e=put('<div style="width:0;overflow:visible;justify-self:center;">'+
+      '<div style="display:flex;flex-direction:column;align-items:center;margin-top:4px;transform:translateX(-50%);white-space:nowrap;">'+
+      '<div style="font-size:13px;line-height:1.15;min-height:15px;">'+(b.note||'')+'</div>'+
+      dlNodeEl({v:b.v,hl:b.hl})+
+      '</div></div>',2,colOf(b.gap)+1,colOf(b.gap)+3);
+    e.style.justifySelf='center';
+  }
+  return g;
+}
+function anyVizEl(v){
+  if(v.type==="stack") return stackVizEl(v);
+  if(v.type==="queue") return queueVizEl(v);
+  if(v.type==="circ") return circVizEl(v);
+  if(v.type==="list") return listVizEl(v);
+  if(v.type==="dlist") return dlistVizEl(v);
+  return null;
+}
+/* ---- 위젯: 스텝 플레이어 (코드 한 줄 ↔ 그림 한 프레임) ----
+   S={code:[줄...], frames:[{hl:줄번호(-1=없음), viz:{...}, html:'...', cap:'설명'}], startLabel?} */
+function renderSteps(box,S,done){
+  const wrap=el('<div class="fade" style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;background:var(--panel2);"></div>');
+  let lineEls=[];
+  if(S.code){
+    const cb=el('<div class="codebox" style="margin-top:0;"></div>');
+    S.code.forEach(ln=>{ const e=el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>'); lineEls.push(e); cb.appendChild(e); });
+    wrap.appendChild(cb);
+  }
+  const vizSlot=el('<div style="margin-top:6px;"></div>');
+  const cap=el('<div class="caption" style="min-height:auto;margin-top:6px;"></div>');
+  const btnRow=el('<div style="margin-top:10px;text-align:right;"></div>');
+  wrap.appendChild(vizSlot); wrap.appendChild(cap); wrap.appendChild(btnRow);
+  box.appendChild(wrap);
+  let k=-1;
+  function show(){
+    k++;
+    const f=S.frames[k];
+    lineEls.forEach((e,i)=>e.classList.toggle('hi', f.hl===i));
+    vizSlot.innerHTML='';
+    if(f.viz){ const e=anyVizEl(f.viz); if(e) vizSlot.appendChild(e); }
+    if(f.html) vizSlot.appendChild(el('<div class="fade" style="overflow-x:auto;">'+f.html+'</div>'));
+    cap.innerHTML='<b style="color:var(--accent);">단계 '+(k+1)+'/'+S.frames.length+'</b> — '+f.cap;
+    btnRow.innerHTML='';
+    const last=k>=S.frames.length-1;
+    const b=el('<button class="btn'+(last?'':' ghost')+'" style="padding:6px 16px;">'+(last?'계속 ▼':'다음 단계 ▶')+'</button>');
+    b.onclick=()=>{ if(last) done(); else show(); };
+    btnRow.appendChild(b);
+    window.scrollTo({top:document.body.scrollHeight, behavior:"smooth"});
+  }
+  const s=el('<button class="btn" style="padding:6px 16px;">'+(S.startLabel||'▶ 한 단계씩 따라가 보기')+'</button>');
+  s.onclick=()=>{ s.remove(); show(); };
+  btnRow.appendChild(s);
+}
 /* ---- 공통: 문항 시각 자료 렌더 ---- */
 function renderViz(card,item){
   if(item.ops&&item.ops.length){
@@ -896,17 +1035,14 @@ function renderViz(card,item){
     const wrap=el('<div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;"></div>');
     wrap.appendChild(box);
     if(item.viz){
-      if(item.viz.type==="stack") wrap.appendChild(stackVizEl(item.viz));
-      else if(item.viz.type==="queue") wrap.appendChild(queueVizEl(item.viz));
-      else if(item.viz.type==="circ") wrap.appendChild(circVizEl(item.viz));
+      const ve=anyVizEl(item.viz); if(ve) wrap.appendChild(ve);
     }
     card.appendChild(wrap);
     return;
   }
   if(item.viz){
-    if(item.viz.type==="stack") card.appendChild(stackVizEl(item.viz));
-    else if(item.viz.type==="queue") card.appendChild(queueVizEl(item.viz));
-    else if(item.viz.type==="circ") card.appendChild(circVizEl(item.viz));
+    const ve=anyVizEl(item.viz);
+    if(ve) card.appendChild(ve);
     else if(item.viz.type==="ops"){
       card.appendChild(el('<div class="terms fade" style="margin:8px 0;">'+item.viz.list.map(t=>'<span class="term">'+t+'</span>').join('')+'</div>'));
     }
@@ -1360,7 +1496,7 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null };
 function cpLabel(sv){
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(fc.meta.week+"주차 · 이어서");
@@ -1413,6 +1549,7 @@ function sceneTitle(){
   ];
   if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:'2주차 · '+CH02.meta.title, go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH03!=="undefined") CH_MENU.push({id:"ch03", label:'3주차 · '+CH03.meta.title, go:()=>{ setChapter(CH03); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:'4주차 · '+CH04.meta.title, go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
