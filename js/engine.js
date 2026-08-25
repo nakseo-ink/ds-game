@@ -137,7 +137,7 @@ function renderMCQ(container,item,opts){
 function renderParsons(container,item,opts){
   let answered=false; const t0=Date.now();
   container.appendChild(el('<div class="stem">'+item.stem+'</div>'));
-  container.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin:6px 0;">🧩 아래 줄들을 <b>올바른 순서대로</b> 클릭해 조립하라. (조립한 줄을 다시 클릭하면 되돌아간다)</div>'));
+  container.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin:6px 0;">🧩 아래 줄들을 클릭해 조립하고, <b>▲▼로 순서를 옮겨 가며</b> 전체를 확인한 뒤 제출하라. (✕ = 조립에서 빼기)</div>'));
   const asm=el('<div class="codebox" style="min-height:34px;margin-top:8px;"></div>');       /* 조립 영역 */
   const src=el('<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>'); /* 재료 줄 */
   const fb=el('<div></div>');
@@ -149,9 +149,16 @@ function renderParsons(container,item,opts){
   function draw(){
     asm.innerHTML=""; src.innerHTML="";
     order.forEach((li,pos)=>{
-      const e=el('<div class="codeline" style="cursor:pointer;">'+(pos+1)+'.  '+hlC(item.lines[li])+'</div>');
-      e.onclick=()=>{ if(answered) return; order.splice(pos,1); draw(); };
-      asm.appendChild(e);
+      const row=el('<div style="display:flex;align-items:stretch;gap:5px;margin:3px 10px;">'+
+        '<div class="codeline" style="flex:1;border:1px solid var(--line);border-radius:6px;background:#161920;overflow-x:auto;">'+(pos+1)+'.  '+hlC(item.lines[li])+'</div>'+
+        '<button class="btn ghost" style="padding:1px 9px;font-size:12px;'+(pos===0?'opacity:.25;cursor:default;':'')+'" title="위로">▲</button>'+
+        '<button class="btn ghost" style="padding:1px 9px;font-size:12px;'+(pos===order.length-1?'opacity:.25;cursor:default;':'')+'" title="아래로">▼</button>'+
+        '<button class="btn ghost" style="padding:1px 9px;font-size:12px;" title="조립에서 빼기">✕</button></div>');
+      const bs=row.querySelectorAll('button');
+      bs[0].onclick=()=>{ if(answered||pos===0) return; const t=order[pos-1]; order[pos-1]=order[pos]; order[pos]=t; draw(); };
+      bs[1].onclick=()=>{ if(answered||pos===order.length-1) return; const t=order[pos+1]; order[pos+1]=order[pos]; order[pos]=t; draw(); };
+      bs[2].onclick=()=>{ if(answered) return; order.splice(pos,1); draw(); };
+      asm.appendChild(row);
     });
     if(!order.length) asm.appendChild(el('<div style="padding:4px 16px;color:var(--ink-dim);font-size:12.5px;">(아직 비어 있다 — 첫 줄부터 클릭)</div>'));
     idxs.forEach(li=>{
@@ -168,7 +175,7 @@ function renderParsons(container,item,opts){
     const hintUsed=opts.hintUsed?opts.hintUsed():false;
     log("answer",{unit:opts.unit, itemId:item.id||"parsons", correct, mc:correct?null:(item.mc||"parsons-order"), hintUsed, elapsedMs:Date.now()-t0, order:order.slice()});
     subBtn.disabled=true; [...src.children].forEach(x=>x.disabled=true);
-    [...asm.children].forEach(x=>x.style.cursor="default");
+    asm.querySelectorAll("button").forEach(x=>{ x.disabled=true; x.style.opacity=".25"; });
     if(correct) fb.appendChild(el('<div class="feedback ok fade">✅ '+(item.okfb||"올바른 순서다.")+(hintUsed?"<br>📖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
     else fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+(item.fb||"순서가 어긋났다. 각 줄이 무엇을 '읽고' 무엇을 '덮어쓰는지' 따져 보라 — 읽어야 할 값을 먼저 덮으면 길을 잃는다.")+'</div>'));
     opts.onDone(correct,hintUsed,fb);
@@ -913,8 +920,9 @@ function sceneSettlement(noPay){
       '"성적은 확인했어요. 다음 주도 이 시간에 뵙죠."',
       '"도윤이가 요즘 책상에 앉아 있는 시간이 늘었어요. 계속 지켜볼게요."']
   };
-  const momLine=(CH.momLines&&CH.momLines(wallet.trust,passed,S.aplusSuccess)) ||
+  if(!S.momLine) S.momLine=(CH.momLines&&CH.momLines(wallet.trust,passed,S.aplusSuccess)) ||
     pick(!passed ? MOMLINES.fail : wallet.trust<=2 ? MOMLINES.low : wallet.trust>=7 ? MOMLINES.high : MOMLINES.mid);
+  const momLine=S.momLine;
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
     '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+chNum(CH)+' "'+CH.meta.title+'"</div>'+
@@ -928,24 +936,59 @@ function sceneSettlement(noPay){
       '<div class="card" style="background:var(--panel2); margin-top:14px;">💰 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+score+'점 × '+CH.economy.payPerPoint.toLocaleString()+'원)</span>'+(bonus?' · A+ 보너스 +'+money(bonus):"")+' → 잔고 <b>'+money(S.balance)+'</b></div>')
       :'<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…한 번 더 기회를 드리죠. 다음 주에 재시험이라는군요.</div></div>')+
     '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 지나가듯 한마디를 얹는다. '+momLine+'</div>'+
+    ((passed && !S.duelDone && wallet.aplusStreak>=2 && CH.duel)?
+      ('<div class="dlg" style="margin-top:14px;"><div class="portrait">📵</div><div class="bubble"><div class="who">발신 번호 없음</div>'+(CH.duel.tease||'(문자) 두 주 연속 A+라. …좋다, 정식으로 겨뤄 보지.')+'</div></div>'+
+       '<div style="text-align:right;margin-top:8px;"><button class="btn" id="duelbtn">'+(CH.duel.enterLabel||'⚔ 결투장 — 받아들인다 ▶')+'</button> <button class="btn ghost" id="duelskip">무시한다</button></div>'):"")+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
     '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+chNum(CH)+' "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
     '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn" id="again">처음부터 다시</button></div>'+
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
   $("#dump").onclick=()=>{const d=$("#dumpbox"); d.style.display="block"; d.textContent=JSON.stringify(Log.all().slice(-50),null,1);};
+  const db=$("#duelbtn"); if(db) db.onclick=()=>{ log("duel_choice",{accepted:true}); duelScene(()=>sceneSettlement(true)); };
+  const ds=$("#duelskip"); if(ds) ds.onclick=()=>{ S.duelDone=true; log("duel_choice",{accepted:false}); sceneSettlement(true); };
   const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(()=>sceneSettlement(true)); /* 재방문 시 재지급 금지 */
-  $("#again").onclick=()=>{ clearSave(); GW=null; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
+  $("#again").onclick=()=>{ clearSave(); GW=null; S.momLine=null; S.duelDone=false; S.duelRewarded=false; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
     S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; S.retake=false; sceneTitle(); };
+}
+
+/* ---- 결투장 — 연속 A+ 특별 씬 (CH.duel: {tease, enterLabel, header, intro[], item(Parsons), win[], lose[], reward}) ---- */
+function duelScene(back){
+  BookFab.hide();
+  setHUD("일요일 밤","결투장");
+  stage.innerHTML="";
+  const D=CH.duel;
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">'+(D.header||'⚔ 결투장 — 발신 번호 없는 문자')+'</div></div>');
+  (D.intro||[]).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
+  const body=el('<div style="margin-top:14px;"></div>'); card.appendChild(body); stage.appendChild(card);
+  log("item_shown",{unit:"duel",itemId:D.item.id||"duel"});
+  renderItem(body,{...D.item},{unit:"duel",fbPrefix:'⚔ ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
+    S.duelDone=true;
+    log("duel_result",{win:correct});
+    const res=(correct?D.win:D.lose)||[];
+    res.forEach(d=>{
+      fb.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
+      if(d.clue && addClue(d.clue.id,d.clue.text))
+        fb.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+    });
+    if(correct && D.reward && !S.duelRewarded){ S.duelRewarded=true; S.balance+=D.reward; saveWallet(); $("#hud-money").textContent=money(S.balance);
+      fb.appendChild(el('<div class="card fade" style="background:var(--panel2); margin-top:12px;">💰 결투 보너스 +'+money(D.reward)+' → 잔고 <b>'+money(S.balance)+'</b></div>')); }
+    if(!correct){ /* 패배 — 해설을 확인한 뒤 재도전으로 이해를 검증할 수 있다 */
+      const rr=el('<div style="margin-top:12px;text-align:right;"><button class="btn" id="duelretry">다시 조립하기 ↺</button></div>');
+      fb.appendChild(rr);
+      $("#duelretry").onclick=()=>{ log("duel_retry",{}); duelScene(back); };
+    }
+    fb.appendChild(nextBtnRow("정산으로 돌아가기 ▶", back));
+  }});
 }
 
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i) };
 let GW=null;
-function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; }
+function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; S.momLine=null; S.duelDone=false; S.duelRewarded=false; }
 function gwStart(){ gwInit(); gwGo(0); }
 
 /* ---- 위젯: 스택(세로) ---- */
@@ -1381,20 +1424,40 @@ function gwAplus(idx,correctCnt,i){
   const item=GENAP[CH.apGen](idx);
   log("item_shown",{unit:"aplus",itemId:item.id,qtype:item.qtype||"",params:item.params||{}});
   stage.innerHTML="";
-  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">'+(skin?(skin.qHeader||"🗡 도발장")+" — ":"🔥 A+ 트랙 — 심화 ")+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">'+(skin?(skin.qHeader||"🗡 도발장")+" — ":"🔥 A+ 트랙 — 심화 ")+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음 · 오답 시 복습 가능(점수는 첫 시도만)</span></div></div>');
   renderViz(card,item);
   const body=el('<div style="margin-top:10px;"></div>'); card.appendChild(body); stage.appendChild(card);
-  renderItem(body,item,{unit:"aplus",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
-    const nc=correctCnt+(correct?1:0);
+  let firstTry=true, nc=correctCnt;
+  function proceed(fb){
     if(idx<2) fb.appendChild(nextBtnRow("다음 심화 ▶",()=>gwAplus(idx+1,nc,i)));
-    else {
+    else finish(fb);
+  }
+  function attempt(){
+    body.innerHTML="";
+    const inst = firstTry ? item : {...item, choices:item.choices?shuffle(item.choices.map(c=>({...c}))):undefined};
+    renderItem(body,inst,{unit:firstTry?"aplus":"aplus-retry",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
+      if(firstTry){ nc=correctCnt+(correct?1:0); firstTry=false; }
+      if(correct){ proceed(fb); return; }
+      /* 오답 — 해설을 본 뒤 같은 문제로 이해를 검증할 수 있다 (점수 무관) */
+      const row=el('<div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end;"><button class="btn" id="apretry">같은 문제 다시 풀기 ↺ <span style="font-size:11px;color:var(--ink-dim);">점수 무관</span></button></div>');
+      fb.appendChild(row);
+      $("#apretry").onclick=()=>{ log("aplus_retry",{idx}); attempt(); };
+      proceed(fb);
+    }});
+  }
+  attempt();
+  function finish(fb){
       S.aplusSuccess=nc>=2;
       log("aplus_result",{correct:nc, success:S.aplusSuccess});
       fb.appendChild(nextBtnRow("결과 ▶",()=>{
         stage.innerHTML="";
         const card2=el('<div class="card fade"></div>');
         const res=skin && (S.aplusSuccess?skin.resultWin:skin.resultLose);
-        if(res){ res.forEach(d=>card2.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text.replace('{n}',nc)+'</div></div>'))); }
+        if(res){ res.forEach(d=>{
+          card2.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text.replace('{n}',nc)+'</div></div>'));
+          if(d.clue && addClue(d.clue.id,d.clue.text))
+            card2.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+        }); }
         else card2.appendChild(el('<div class="dlg"><div class="portrait">'+AV(S.aplusSuccess?"doyun-excited":"doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+
           (S.aplusSuccess?"심화 "+nc+"/3… 쌤, 이 정도면 진짜 A+ 각인데요? 월요일 시험 기대하세요."
                          :"심화 "+nc+"/3… 아직 좀 어렵네요. 그래도 기본은 확실해진 것 같아요. 기본으로 승부!")+'</div></div>'));
@@ -1402,8 +1465,7 @@ function gwAplus(idx,correctCnt,i){
         stage.appendChild(card2);
         $("#sun2").onclick=()=>gwGo(i+1);
       }));
-    }
-  }});
+  }
 }
 /* ---- 원형 큐 조작 미션 ---- */
 function gwMission(i){
@@ -1684,7 +1746,7 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null };
 function cpLabel(sv){
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(chNum(fc)+" · 이어서");
@@ -1741,6 +1803,7 @@ function sceneTitle(){
   if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:chLabel(CH04), go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH05!=="undefined") CH_MENU.push({id:"ch05", label:chLabel(CH05), go:()=>{ setChapter(CH05); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH06!=="undefined") CH_MENU.push({id:"ch06", label:chLabel(CH06), go:()=>{ setChapter(CH06); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH07!=="undefined") CH_MENU.push({id:"ch07", label:chLabel(CH07), go:()=>{ setChapter(CH07); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{

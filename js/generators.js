@@ -1819,3 +1819,379 @@ function genAP6ch(idx){
     okfb:'자신, 왼쪽, 오른쪽 — '+ans+'. (전위·중위·후위 순회가 곧 세 가지 수식 표기법이다.)',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
+
+/* ================= 4장(C) 히프·BST — G25~G28 + AP7 ================= */
+/* ---- 히프 유틸 (1번 인덱스 배열) ---- */
+function h7Vals(n){ return shuffle([12,25,31,44,57,63,78,86,91,17,38,72].slice()).slice(0,n); }
+function h7Insert(heap,v){ /* heap: [null,...] 1-기준, 제자리 수정 */
+  heap.push(v); let i=heap.length-1;
+  while(i>1 && heap[Math.floor(i/2)]<heap[i]){ const t=heap[i]; heap[i]=heap[Math.floor(i/2)]; heap[Math.floor(i/2)]=t; i=Math.floor(i/2); }
+  return heap;
+}
+function h7Build(n){ const h=[null]; for(const v of h7Vals(n)) h7Insert(h,v); return h; }
+function h7Delete(heap){ /* 최댓값 삭제 — 새 배열 반환 */
+  const h=heap.slice(); const last=h.pop();
+  if(h.length<=1) return h;
+  let parent=1, child=2; const n=h.length-1;
+  while(child<=n){
+    if(child<n && h[child]<h[child+1]) child++;
+    if(last>=h[child]) break;
+    h[parent]=h[child]; parent=child; child*=2;
+  }
+  h[parent]=last;
+  return h;
+}
+function h7Viz(h,hlIdx,tags){ /* 배열(1-기준) → 트리 viz */
+  const n=h.length-1;
+  function bt(i){ const o={v:String(h[i])}; if(tags) o.tag=i; if(hlIdx===i) o.hl=1;
+    if(2*i<=n||2*i+1<=n) o.c=[2*i<=n?bt(2*i):null, 2*i+1<=n?bt(2*i+1):null];
+    return o; }
+  return {type:"tree", data:bt(1), slots:true};
+}
+const h7Arr=h=>h.slice(1).join(", ");
+function h7Fill(cands,ansArr){ /* 부족한 오답을 '두 자리 교환' 변형으로 보충 */
+  let guard=0;
+  while(cands.length<3 && guard++<30){
+    const a2=ansArr.slice(); const i=g2R(1,a2.length-1); let j=g2R(1,a2.length-1);
+    if(i===j) continue;
+    const t=a2[i]; a2[i]=a2[j]; a2[j]=t;
+    const txt=h7Arr(a2);
+    if(txt!==h7Arr(ansArr) && !cands.some(c=>c.text===txt))
+      cands.push({text:txt,correct:false,mc:"trace-off",fb:"삽입·삭제 절차를 처음부터 한 단계씩 다시 밟아 보라."});
+  }
+  return cands;
+}
+
+/* --- G25. 우선순위 큐와 히프 (유닛 A) --- */
+function genG25(){
+  const qtype=pick(["judge","second","parentval","minmax"]);
+  if(qtype==="judge"){
+    const h=h7Build(g2R(6,7));
+    const ok=Math.random()<0.5;
+    let bi=-1;
+    if(!ok){ /* 부모<자식이 되도록 한 쌍을 골라 교환 — 위반 생성 */
+      const n=h.length-1;
+      const cands=[]; for(let i=2;i<=n;i++) if(h[Math.floor(i/2)]>h[i]) cands.push(i);
+      bi=pick(cands); const p=Math.floor(bi/2);
+      const t=h[p]; h[p]=h[bi]; h[bi]=t;
+    }
+    /* 교환 후 실제 위반 지점 재계산(연쇄 가능) — 가장 위의 위반 하나를 지목 */
+    let vio=0; const n=h.length-1;
+    for(let i=2;i<=n;i++) if(h[Math.floor(i/2)]<h[i]){ vio=i; break; }
+    const isHeap=vio===0;
+    const cands=[
+      {text:"max 히프다 — 모든 부모가 자식보다 크거나 같다",correct:isHeap},
+      {text:isHeap?"아니다 — 부모보다 큰 자식이 존재한다":("아니다 — "+h[Math.floor(vio/2)]+"의 자식 "+h[vio]+"가 부모보다 크다"),correct:!isHeap},
+      {text:"아니다 — 완전 이진 트리 모양이 아니다",correct:false,mc:"shape-myth",fb:"모양은 완전 이진 트리가 맞다 — 검사할 것은 부모·자식의 값 조건이다."},
+      {text:"max 히프다 — 루트가 최댓값이기만 하면 된다",correct:false,mc:"root-only-myth",fb:"루트만이 아니라 '모든' 부모-자식 쌍이 조건을 지켜야 한다."}
+    ];
+    cands.forEach(c=>{ if(!c.correct&&!c.mc){ c.mc="pair-check"; c.fb="모든 부모-자식 쌍을 위에서부터 하나씩 비교해 보라."; } });
+    return {id:"G25",qtype,params:{ans:cands.find(c=>c.correct).text},viz:h7Viz(h),
+      stem:'그림의 완전 이진 트리는 <b>max 히프</b>인가?',
+      okfb:isHeap?'모든 부모-자식 쌍에서 부모 ≥ 자식 — max 히프다.':('부모 '+h[Math.floor(vio/2)]+' < 자식 '+h[vio]+' — 조건 위반, 히프가 아니다.'),
+      choices:shuffle(cands)};
+  }
+  if(qtype==="second"){
+    const h=h7Build(7);
+    const kids=[h[2],h[3]].filter(v=>v!==undefined);
+    const ans=String(Math.max.apply(null,kids));
+    const rest=h.slice(1).filter(v=>String(v)!==ans && v!==h[1]);
+    const cands=[
+      {text:String(h[1]),correct:false,mc:"max-confuse",fb:"그것은 최댓값(루트) — '두 번째'를 묻고 있다."},
+      {text:String(Math.min.apply(null,kids)),correct:false,mc:"other-child",fb:"루트의 두 자식 중 '큰 쪽'이 둘째다 — 히프는 형제 사이의 순서는 정하지 않지만, 둘째는 반드시 루트의 자식이다."},
+      {text:String(Math.max.apply(null,rest.filter(v=>!kids.includes(v)).concat([-1]))),correct:false,mc:"deep-pick",fb:"루트의 자식이 아닌 노드는 그 위로 더 큰 조상이 둘 이상 있다 — 둘째가 될 수 없다."}
+    ].filter(c=>c.text!==ans&&c.text!=="-1");
+    return {id:"G25",qtype,params:{ans},viz:h7Viz(h),
+      stem:'그림의 max 히프에서 <b>두 번째로 큰 값</b>은?',
+      okfb:'둘째는 반드시 루트의 자식 중 큰 쪽 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="parentval"){
+    const h=h7Build(7);
+    const i=g2R(4,7);
+    const ans=String(h[Math.floor(i/2)]);
+    const cands=[
+      {text:String(h[i]),correct:false,mc:"self-pick",fb:"그것은 "+i+"번 노드 자신의 값이다."},
+      {text:String(h[i-1]),correct:false,mc:"minus-myth",fb:"배열의 옆 칸은 부모가 아니다 — 부모는 i/2번 칸이다."},
+      {text:String(h[1]),correct:false,mc:"root-pick",fb:"루트(1번)가 아니라 i/2 = "+Math.floor(i/2)+"번이 부모다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G25",qtype,params:{i,ans},viz:h7Viz(h,i,true),
+      stem:'그림의 max 히프(노드 옆 숫자 = 배열 인덱스)에서 <b>'+i+'번 노드의 부모</b>에 저장된 값은?',
+      okfb:'부모 인덱스 = '+i+'/2 = '+Math.floor(i/2)+' — 값은 '+ans+'. (4장(A)의 공식이 히프의 기본 동작이 된다.)',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* minmax — min 히프 or max 히프 제시 후 판별 */
+  const isMax=Math.random()<0.5;
+  let h=h7Build(g2R(6,7));
+  if(!isMax){ const vals=h.slice(1).sort((a,b)=>a-b); const h2=[null]; /* min heap: 부호 뒤집어 삽입 */
+    for(const v of h.slice(1)){ h2.push(v); let i=h2.length-1; while(i>1&&h2[Math.floor(i/2)]>h2[i]){const t=h2[i];h2[i]=h2[Math.floor(i/2)];h2[Math.floor(i/2)]=t;i=Math.floor(i/2);} }
+    h=h2; }
+  const ansKey=isMax?"max":"min";
+  const TXT={max:"max 히프 — 모든 부모가 자식보다 크거나 같다", min:"min 히프 — 모든 부모가 자식보다 작거나 같다",
+             both:"max 히프이면서 min 히프이기도 하다", none:"어느 쪽 히프도 아니다"};
+  return {id:"G25",qtype,params:{ans:TXT[ansKey]},viz:h7Viz(h),
+    stem:'그림의 완전 이진 트리는 어느 쪽인가?',
+    okfb:isMax?'위로 갈수록 크다 — 루트가 최댓값인 max 히프다.':'위로 갈수록 작다 — 루트가 최솟값인 min 히프다.',
+    choices:shuffle(Object.keys(TXT).map(k=>({text:TXT[k],correct:k===ansKey,mc:k===ansKey?undefined:"dir-check",fb:k===ansKey?undefined:"부모와 자식의 대소 방향을 위에서부터 확인해 보라."})))};
+}
+
+/* --- G26. 히프 삽입·삭제 트레이스 (유닛 B) --- */
+function genG26(){
+  const qtype=pick(["ins","inspos","del"]);
+  const h=h7Build(g2R(5,6));
+  if(qtype==="del"){
+    const res=h7Delete(h);
+    const ans=h7Arr(res);
+    const naive=h.slice(1); naive.shift();                 /* 배열 당기기 신화 */
+    const lastup=h.slice(); lastup[1]=lastup.pop();        /* 내려보내기 생략 */
+    const cands=[
+      {text:naive.join(", "),correct:false,mc:"shift-myth",fb:"배열을 한 칸 당기면 완전 트리 모양은 유지돼도 히프 조건이 무너진다 — 마지막 원소를 루트로 올려 내려보내는 것이 규칙이다."},
+      {text:h7Arr(lastup),correct:false,mc:"no-sift",fb:"마지막 원소를 루트에 올린 뒤, 큰 자식과 비교하며 '내려보내는' 단계까지 해야 히프가 복구된다."},
+      {text:h7Arr(h.slice(0,-1)),correct:false,mc:"drop-last",fb:"삭제되는 것은 마지막 원소가 아니라 '루트(최댓값)'다."}
+    ].filter(c=>c.text!==ans);
+    h7Fill(cands,res);
+    return {id:"G26",qtype,params:{ans},viz:h7Viz(h,1,true), mono:true,
+      stem:'그림의 max 히프(배열: <span class="mono">'+h7Arr(h)+'</span>)에서 <span class="mono">delete_max_heap</span> 을 한 번 실행한 뒤의 배열은?',
+      okfb:'루트를 꺼내고 마지막 원소를 루트에 올린 뒤 큰 자식과 비교하며 내려보낸다 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const nv=pick([15,29,48,69,83,95].filter(v=>!h.includes(v)));
+  const res=h.slice(); h7Insert(res,nv);
+  if(qtype==="inspos"){
+    const ans=String(res.indexOf(nv));
+    const cands=[
+      {text:String(h.length),correct:false,mc:"no-sift",fb:"끝에 붙인 뒤 부모와 비교하며 '올라가는' 단계까지가 삽입이다."},
+      {text:"1",correct:false,mc:"root-rush",fb:"루트까지 올라가는 것은 새 값이 기존 최댓값보다 클 때뿐이다 — 부모보다 작아지는 순간 멈춘다."},
+      {text:String(Math.floor(h.length/2)),correct:false,mc:"parent-guess",fb:"올라가는 경로를 실제 값 비교로 밟아 보라."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G26",qtype,params:{ans},viz:h7Viz(h,0,true), mono:true,
+      stem:'그림의 max 히프(배열: <span class="mono">'+h7Arr(h)+'</span>)에 <span class="mono">insert_max_heap('+nv+')</span> 을 실행하면, '+nv+'는 최종적으로 <b>몇 번 인덱스</b>에 놓이는가?',
+      okfb:'끝('+h.length+'번)에 붙인 뒤 부모('+'i/2'+')와 비교하며 올라간다 — 최종 위치 '+ans+'번.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const ans=h7Arr(res);
+  const tail=h.slice(); tail.push(nv);                     /* 올리기 생략 */
+  const rootSwap=h.slice(); rootSwap.push(rootSwap[1]); rootSwap[1]=nv;  /* 무조건 루트에 넣는 신화 */
+  const cands=[
+    {text:h7Arr(tail),correct:false,mc:"no-sift",fb:"끝에 붙인 것으로 끝나지 않는다 — 부모보다 큰 동안 자리를 바꾸며 올라간다."},
+    {text:h7Arr(rootSwap),correct:false,mc:"root-rush",fb:"새 값이 곧장 루트로 가지 않는다 — 마지막 자리에서 출발해 부모와 비교하며 올라갈 뿐이다."}
+  ].filter(c=>c.text!==ans);
+  h7Fill(cands,res);
+  return {id:"G26",qtype,params:{ans},viz:h7Viz(h,0,true), mono:true,
+    stem:'그림의 max 히프(배열: <span class="mono">'+h7Arr(h)+'</span>)에 <span class="mono">insert_max_heap('+nv+')</span> 을 실행한 뒤의 배열은?',
+    okfb:'마지막 자리에 붙이고, 부모보다 큰 동안 자리를 바꾸며 올라간다 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* ---- BST 유틸 ---- */
+function b7Insert(root,v){ if(!root) return {v,l:null,r:null}; if(v<root.v) root.l=b7Insert(root.l,v); else root.r=b7Insert(root.r,v); return root; }
+function b7Build(n){ let root=null; const vs=h7Vals(n); for(const v of vs) root=b7Insert(root,v); return {root,order:vs}; }
+function b7All(n,out){ if(!n) return out; out.push(n); b7All(n.l,out); b7All(n.r,out); return out; }
+function b7Path(root,k){ const p=[]; let c=root; while(c){ p.push(c.v); if(k===c.v) return p; c=k<c.v?c.l:c.r; } return p; }
+function b7In(n,out){ if(!n) return out; b7In(n.l,out); out.push(n.v); b7In(n.r,out); return out; }
+function b7Pre(n,out){ if(!n) return out; out.push(n.v); b7Pre(n.l,out); b7Pre(n.r,out); return out; }
+function b7Viz(n,hlv){ if(!n) return null; const o={v:String(n.v)}; if(hlv===n.v) o.hl=1;
+  if(n.l||n.r) o.c=[b7Viz(n.l,hlv),b7Viz(n.r,hlv)]; return o; }
+const b7Seq=a=>a.join(" → ");
+
+/* --- G27. BST 탐색·삽입 (유닛 C) --- */
+function genG27(){
+  const qtype=pick(["path","cmp","inspos","inorder"]);
+  const {root,order}=b7Build(7);
+  const viz={type:"tree",data:b7Viz(root),slots:true};
+  if(qtype==="inorder"){
+    const ino=b7In(root,[]);
+    const ans=ino.join(", ");
+    const cands=[
+      {text:b7Pre(root,[]).join(", "),correct:false,mc:"pre-mix",fb:"그것은 전위 순회 — 정렬 순서가 나오는 것은 '중위'다."},
+      {text:order.join(", "),correct:false,mc:"insert-order",fb:"삽입한 순서는 트리 모양을 정할 뿐 — 중위 순회는 언제나 오름차순이다."},
+      {text:ino.slice().reverse().join(", "),correct:false,mc:"reverse-mix",fb:"내림차순이 아니라 오름차순 — 왼쪽(작은 쪽)부터 방문한다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G27",qtype,params:{ans},viz,
+      stem:'그림의 이진 탐색 트리를 <b>중위 순회</b>한 출력은?',
+      okfb:'BST의 중위 순회는 언제나 오름차순 — '+ans+'. (왼쪽<자신<오른쪽 규칙의 결과다.)',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const all=b7All(root,[]);
+  if(qtype==="inspos"){
+    const nv=pick([15,29,48,69,83,95].filter(v=>!order.includes(v)));
+    const p=b7Path(root,nv);              /* 실패 경로 — 마지막이 삽입 부모 */
+    const parent=p[p.length-1];
+    const side=nv<parent?"왼쪽":"오른쪽";
+    const ans=parent+"의 "+side+" 자식 자리";
+    const cands=[
+      {text:parent+"의 "+(side==="왼쪽"?"오른쪽":"왼쪽")+" 자식 자리",correct:false,mc:"side-flip",fb:nv+"과 "+parent+"의 대소를 다시 비교하라 — 작으면 왼쪽, 크면 오른쪽이다."},
+      {text:"루트 자리 — 기존 루트를 밀어내고 들어간다",correct:false,mc:"root-swap-myth",fb:"BST 삽입은 기존 노드를 옮기지 않는다 — 탐색이 실패한 빈자리에 붙인다."},
+      {text:p[p.length-2]!==undefined?(p[p.length-2]+"의 "+side+" 자식 자리"):"트리의 가장 왼쪽 끝",correct:false,mc:"early-stop",fb:"탐색이 NULL을 만날 때까지 끝까지 내려가야 한다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G27",qtype,params:{ans},viz, mono:true,
+      stem:'그림의 이진 탐색 트리에 <span class="mono">insert('+nv+')</span> 를 실행하면 새 노드가 붙는 자리는?',
+      okfb:'탐색이 실패한 그 자리가 새 노드의 자리 — 경로 '+b7Seq(p)+' 끝에서 '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const target=pick(all.filter(n=>n.v!==root.v)).v;
+  const p=b7Path(root,target);
+  if(qtype==="cmp"){
+    const ans=String(p.length);
+    const cands=[
+      {text:String(p.length-1),correct:false,mc:"off-by-one",fb:"루트와의 비교도 한 번으로 센다 — 경로의 노드 수만큼 비교한다."},
+      {text:String(all.length),correct:false,mc:"all-visit",fb:"모든 노드를 보지 않는다 — 비교마다 반쪽을 통째로 버리는 것이 BST의 힘이다."},
+      {text:String(p.length+1),correct:false,mc:"off-by-one",fb:"찾은 순간 멈춘다 — 경로 위 노드 수만큼이다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G27",qtype,params:{ans},viz, mono:true,
+      stem:'그림의 이진 탐색 트리에서 <span class="mono">search('+target+')</span> 가 수행하는 <b>비교 횟수</b>는? (방문한 노드마다 1회)',
+      okfb:'경로 '+b7Seq(p)+' — 노드 '+ans+'개를 지나며 '+ans+'회 비교한다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const ans=b7Seq(p);
+  const wrongTarget=pick(all.filter(n=>n.v!==target&&n.v!==root.v)).v;
+  const cands=[
+    {text:b7Seq(p.slice().reverse()),correct:false,mc:"reverse-mix",fb:"탐색은 루트에서 출발한다."},
+    {text:b7Seq(b7Path(root,wrongTarget)),correct:false,mc:"wrong-branch",fb:"각 노드에서 '작으면 왼쪽, 크면 오른쪽' — 대소 비교를 한 번씩 다시 하라."},
+    {text:b7Seq(p.slice(0,-1)),correct:false,mc:"early-stop",fb:"목표 값에 도달할 때까지가 경로다 — 마지막 비교가 빠졌다."}
+  ].filter(c=>c.text!==ans);
+  return {id:"G27",qtype,params:{ans},viz, mono:true,
+    stem:'그림의 이진 탐색 트리에서 <span class="mono">search('+target+')</span> 가 <b>지나는 노드</b>를 차례로 나열하면?',
+    okfb:'루트부터 — 작으면 왼쪽, 크면 오른쪽 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G28. BST 삭제·성능 (유닛 D) --- */
+function genG28(){
+  const qtype=pick(["case","repl","worst","best"]);
+  if(qtype==="worst"){
+    const n=pick([7,10,15]);
+    const cands=[
+      {text:String(Math.ceil(Math.log2(n+1))),correct:false,mc:"balanced-confuse",fb:"그것은 완전 트리 모양일 때의 이야기 — 정렬된 순서로 넣으면 한 줄로 늘어선다."},
+      {text:String(n-1),correct:false,mc:"off-by-one",fb:"마지막 노드까지 내려가 비교한다 — n회다."},
+      {text:String(Math.floor(n/2)),correct:false,mc:"half-myth",fb:"반씩 버리는 것은 균형이 잡혀 있을 때만이다."}
+    ];
+    return {id:"G28",qtype,params:{ans:String(n)},
+      stem:'키 <b>'+n+'개</b>를 <b>작은 것부터 정렬된 순서로</b> 삽입해 만든 이진 탐색 트리에서, search의 <b>최대 비교 횟수</b>는?',
+      okfb:'정렬된 순서로 넣으면 오른쪽으로만 자라는 경사 트리(높이 '+n+') — 연결 리스트와 같아져 최대 '+n+'회 비교한다.',
+      choices:g2Fill(cands,{text:String(n),correct:true},4)};
+  }
+  if(qtype==="best"){
+    const CASE=pick([[7,3],[15,4],[31,5]]);
+    const n=CASE[0], ans=String(CASE[1]);
+    const cands=[
+      {text:String(n),correct:false,mc:"skew-confuse",fb:"n회는 경사 트리(최악)의 이야기 — 완전 트리는 높이만큼만 비교한다."},
+      {text:String(CASE[1]+1),correct:false,mc:"off-by-one",fb:"높이 h = ⌈log₂(n+1)⌉ — 2^"+CASE[1]+"−1 = "+n+"이므로 딱 "+ans+"층이다."},
+      {text:String(CASE[1]-1),correct:false,mc:"off-by-one",fb:"마지막 층의 리프까지 내려가면 "+ans+"회다."}
+    ];
+    return {id:"G28",qtype,params:{ans},
+      stem:'키 <b>'+n+'개</b>가 <b>포화 이진 트리</b> 모양으로 저장된 이진 탐색 트리에서, search의 <b>최대 비교 횟수</b>는?',
+      okfb:'비교 횟수 = 내려간 층 수 — 높이 '+ans+'인 포화 트리이므로 최대 '+ans+'회. (같은 '+n+'개도 모양에 따라 '+n+'회가 될 수 있다 — 균형의 가치.)',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const {root}=b7Build(7);
+  const all=b7All(root,[]);
+  if(qtype==="case"){
+    const X=pick(all);
+    const kids=(X.l?1:0)+(X.r?1:0);
+    const ansKey=kids===0?"leaf":(kids===1?"one":"two");
+    const TXT={leaf:"리프 — 부모의 링크를 NULL로 만들면 끝난다",
+               one:"자식 하나 — 그 자식을 자기 자리로 끌어올린다",
+               two:"자식 둘 — 왼쪽 최댓값이나 오른쪽 최솟값으로 대체한다"};
+    return {id:"G28",qtype,params:{ans:TXT[ansKey]},viz:{type:"tree",data:b7Viz(root,X.v),slots:true},
+      stem:'그림의 이진 탐색 트리에서 <b>'+X.v+'를 삭제</b>하려 한다. 어느 경우이고, 어떻게 처리하는가?',
+      okfb:X.v+'의 자식은 '+kids+'개 — '+TXT[ansKey],
+      choices:shuffle(Object.keys(TXT).map(k=>({text:TXT[k],correct:k===ansKey,mc:k===ansKey?undefined:"case-check",fb:k===ansKey?undefined:X.v+"의 자식 수를 그림에서 다시 세어 보라."}))
+        .concat([{text:"삭제 불가 — BST는 삽입과 탐색만 지원한다",correct:false,mc:"no-delete-myth",fb:"세 경우 모두 삭제 절차가 정의되어 있다."}]))};
+  }
+  /* repl — 자식 둘인 노드의 대체 후보 (서브트리가 잎 하나뿐이면 오답이 정답과 겹치므로 제외) */
+  const twos=all.filter(n=>n.l&&n.r&&((n.l.l||n.l.r)||(n.r.l||n.r.r)));
+  if(!twos.length) return genG28();
+  const X=pick(twos);
+  const lmax=(function m(n){ while(n.r) n=n.r; return n.v; })(X.l);
+  const rmin=(function m(n){ while(n.l) n=n.l; return n.v; })(X.r);
+  const ans=lmax+" 또는 "+rmin;
+  const lmin=(function m(n){ while(n.l) n=n.l; return n.v; })(X.l);
+  const rmax=(function m(n){ while(n.r) n=n.r; return n.v; })(X.r);
+  const wrongPool=[
+    {text:lmin+" 또는 "+rmax,mc:"minmax-flip",fb:"왼쪽에서는 '최댓값', 오른쪽에서는 '최솟값' — 중위 순서에서 "+X.v+"의 바로 양옆 이웃이어야 자리가 유지된다."},
+    {text:(X.l.v)+" 또는 "+(X.r.v),mc:"child-pick",fb:"바로 아래 자식이 아니라, 왼쪽 서브트리 전체의 최댓값 / 오른쪽 서브트리 전체의 최솟값이다."},
+    {text:String(root.v)+" 하나뿐",mc:"root-pick",fb:"루트는 무관하다 — 삭제 자리의 중위 이웃만 자리를 이어받을 수 있다."},
+    {text:lmax+" 또는 "+rmax,mc:"pair-mix",fb:"오른쪽에서는 '최솟값'이다 — 큰 값을 올리면 오른쪽 서브트리보다 커져 BST 조건이 깨진다."},
+    {text:lmin+" 또는 "+rmin,mc:"pair-mix",fb:"왼쪽에서는 '최댓값'이다 — 작은 값을 올리면 왼쪽 서브트리보다 작아져 조건이 깨진다."}
+  ];
+  const cands=[]; const seenT=new Set([ans]);
+  for(const w of wrongPool){ if(cands.length>=3) break; if(seenT.has(w.text)) continue; seenT.add(w.text); cands.push({...w,correct:false}); }
+  let guard=0;
+  while(cands.length<3 && guard++<30){ /* 그래도 부족하면 임의 두 값 짝으로 보충 */
+    const vs=shuffle(all.map(n=>n.v)).slice(0,2);
+    const txt=vs[0]+" 또는 "+vs[1];
+    if(!seenT.has(txt)){ seenT.add(txt); cands.push({text:txt,correct:false,mc:"pick-any",fb:"중위 순서에서 "+X.v+"의 바로 양옆(왼쪽 최대·오른쪽 최소)만 자리를 이어받을 수 있다."}); }
+  }
+  return {id:"G28",qtype,params:{ans},viz:{type:"tree",data:b7Viz(root,X.v),slots:true},
+    stem:'그림의 이진 탐색 트리에서 자식이 둘인 <b>'+X.v+'</b>를 삭제할 때, 그 자리를 <b>대체할 수 있는 값</b>은?',
+    okfb:'왼쪽 서브트리의 최댓값 '+lmax+' 또는 오른쪽 서브트리의 최솟값 '+rmin+' — 중위 순서에서 '+X.v+'의 양옆 이웃이라 BST 조건이 유지된다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- AP7. 4장(C) 심화 (도발장 3) --- */
+function genAP7ch(idx){
+  if(idx===0){ /* 연속 두 번 삽입 */
+    const h=h7Build(5);
+    const two=shuffle([15,29,48,69,83,95].filter(v=>!h.includes(v))).slice(0,2);
+    const r1=h.slice(); h7Insert(r1,two[0]);
+    const res=r1.slice(); h7Insert(res,two[1]);
+    const ans=h7Arr(res);
+    const noSift=h.concat(two);
+    const onlyFirst=r1.concat([two[1]]);
+    const swapped=(function(){ const r2=h.slice(); h7Insert(r2,two[1]); h7Insert(r2,two[0]); return r2; })();   /* 삽입 순서를 바꾼 결과 */
+    const cands=[
+      {text:h7Arr(noSift),correct:false,mc:"no-sift",fb:"두 번 모두 '올라가기'까지가 삽입이다."},
+      {text:h7Arr(onlyFirst),correct:false,mc:"half-sift",fb:"두 번째 삽입의 올라가기가 빠졌다."},
+      {text:h7Arr(swapped),correct:false,mc:"order-swap",fb:"삽입 순서대로 — "+two[0]+"이 먼저다."}
+    ].filter(c=>c.text!==ans);
+    (function(){ const seen=new Set(cands.map(c=>c.text)); for(let i=cands.length-1;i>=0;i--){ if(seen.has(cands[i].text)&&cands.findIndex(c=>c.text===cands[i].text)!==i) cands.splice(i,1); } })();
+    h7Fill(cands,res);
+    return {id:"AP7",qtype:"ins2",params:{ans},viz:h7Viz(h,0,true), mono:true,
+      stem:'[심화 — 연속 삽입] 그림의 max 히프(배열: <span class="mono">'+h7Arr(h)+'</span>)에 <span class="mono">insert('+two[0]+')</span>, <span class="mono">insert('+two[1]+')</span> 을 차례로 실행한 뒤의 배열은?',
+      okfb:'한 번에 하나씩 — 붙이고 올리기를 두 번 반복하면 '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){ /* 자식 둘 삭제 실행 — 왼쪽 최댓값 규칙 → 전위 순회 */
+    let built=b7Build(7);
+    let twos=b7All(built.root,[]).filter(n=>n.l&&n.r);
+    while(!twos.length){ built=b7Build(7); twos=b7All(built.root,[]).filter(n=>n.l&&n.r); }
+    const X=pick(twos);
+    const lmax=(function m(n){ while(n.r) n=n.r; return n.v; })(X.l);
+    /* 삭제 시뮬: X.v를 lmax로 바꾸고, 왼쪽 서브트리에서 lmax 제거(그 노드는 오른쪽 자식이 없음) */
+    function removeMax(n){ if(!n.r){ return n.l; } n.r=removeMax(n.r); return n; }
+    const targetV=X.v;
+    const preBefore=b7Pre(built.root,[]).join(", ");     /* 삭제 전 전위 — 오답용 */
+    X.v=lmax; X.l=removeMax(X.l);
+    const ans=b7Pre(built.root,[]).join(", ");
+    const wrongIn=b7In(built.root,[]).join(", ");
+    const cands=[
+      {text:wrongIn,correct:false,mc:"traversal-mix",fb:"묻는 것은 전위 순회다 — 정렬 순서(중위)가 아니다."},
+      {text:preBefore,correct:false,mc:"no-delete",fb:targetV+"가 아직 남아 있다 — 삭제와 대체가 반영되어야 한다."},
+      {text:ans.split(", ").reverse().join(", "),correct:false,mc:"reverse-mix",fb:"전위는 루트부터다."}
+    ].filter(c=>c.text!==ans);
+    (function(){ const seen2=new Set(); for(let i2=0;i2<cands.length;i2++){ if(seen2.has(cands[i2].text)){ cands.splice(i2,1); i2--; } else seen2.add(cands[i2].text); } })();
+    return {id:"AP7",qtype:"del2",params:{ans,target:targetV},
+      stem:'[심화 — 두 자식 삭제] 어떤 이진 탐색 트리에서 자식이 둘인 노드 '+targetV+'를 <b>왼쪽 서브트리의 최댓값으로 대체</b>하는 규칙으로 삭제했다. 삭제 후 트리의 <b>전위 순회</b>가 다음 중 하나라면, 옳은 것은? (그림 없음 — 대체 규칙으로 추론하라)',
+      okfb:'대체 값 '+lmax+'가 '+targetV+'의 자리에 오르고, 왼쪽 서브트리에서는 그 노드가 빠진다 — 전위: '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},3)};
+  }
+  /* idx 2 — AVL 균형 판정 */
+  let built=b7Build(7), bad=null, tries=0;
+  function hgt(n){ return n?1+Math.max(hgt(n.l),hgt(n.r)):0; }
+  function findBad(n,out){ if(!n) return out; if(Math.abs(hgt(n.l)-hgt(n.r))>1) out.push(n.v); findBad(n.l,out); findBad(n.r,out); return out; }
+  let bads=findBad(built.root,[]);
+  while(bads.length!==1 && tries++<60){ built=b7Build(7); bads=findBad(built.root,[]); }
+  if(bads.length!==1) return genAP7ch(2);
+  const ans=String(bads[0]);
+  const all=b7All(built.root,[]);
+  const cands=[
+    {text:String(built.root.v),correct:false,mc:"root-pick",fb:"루트부터가 아니라 노드마다 좌우 서브트리 높이차를 재라."},
+    {text:"없다 — 모든 노드가 균형이다",correct:false,mc:"balanced-myth",fb:"높이차가 2 이상인 노드가 하나 있다 — 좌우 높이를 각각 세어 보라."},
+    {text:String(pick(all.filter(n=>String(n.v)!==ans&&n.v!==built.root.v)).v),correct:false,mc:"pick-any",fb:"그 노드의 좌우 높이차는 1 이하다."}
+  ].filter(c=>c.text!==ans);
+  return {id:"AP7",qtype:"avl",params:{ans},viz:{type:"tree",data:b7Viz(built.root),slots:true}, 
+    stem:'[심화 — 균형 판정] AVL 트리는 <b>모든 노드에서 좌우 서브트리의 높이차가 1 이하</b>여야 한다. 그림의 이진 탐색 트리에서 이 조건을 <b>어기는 노드</b>는?',
+    okfb:ans+'의 좌우 서브트리 높이차가 2 이상이다 — 이런 노드가 생기는 순간 AVL 트리는 회전으로 균형을 복구한다(구현은 다음 기회에).',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
