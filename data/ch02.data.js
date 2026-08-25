@@ -1,8 +1,8 @@
 "use strict";
-/* 챕터 2 데이터 — "스택과 큐" (강의 3장 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
+/* 챕터 2 데이터 — "스택과 큐" = 2장(A) (강의 3장 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
    연산명은 표준(push/pop/enqueue/dequeue), 교재 명칭(add/delete/addq/deleteq) 병기. */
 const CH02 = {
-  meta: { id:"ch02", week:2, title:"스택과 큐", sub:"쌓는 통, 늘어서는 줄", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
+  meta: { id:"ch02", week:2, part:"A", title:"스택과 큐", sub:"쌓는 통, 늘어서는 줄", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:20, tutorPts:10, passLine:54 },   /* 3유닛 × 20 + 과외 30 = 90 만점 */
   apGen: "AP2",
@@ -15,11 +15,11 @@ const CH02 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","mission","trial-C","il-C","saturday","sunday"],
   cpl: {
-    "study-A":"2장 · 월 — 스택 자습","trial-A":"2장 · 월 — 스택 시련","il-A":"2장 · 월요일 밤",
-    "study-B":"2장 · 화 — 큐 자습","trial-B":"2장 · 화 — 큐 시련","il-B":"2장 · 화요일 밤",
-    "tutor":"2장 · 수 — 과외",
-    "study-C":"2장 · 목 — 원형 큐 자습","mission":"2장 · 목 — 조작 미션","trial-C":"2장 · 목 — 원형 큐 시련","il-C":"2장 · 목요일 밤",
-    "saturday":"2장 · 토 — 보충/A+","sunday":"2장 · 월 — 쪽지시험"
+    "study-A":"2장(A) · 월 — 스택 자습","trial-A":"2장(A) · 월 — 스택 시련","il-A":"2장(A) · 월요일 밤",
+    "study-B":"2장(A) · 화 — 큐 자습","trial-B":"2장(A) · 화 — 큐 시련","il-B":"2장(A) · 화요일 밤",
+    "tutor":"2장(A) · 수 — 과외",
+    "study-C":"2장(A) · 목 — 원형 큐 자습","mission":"2장(A) · 목 — 조작 미션","trial-C":"2장(A) · 목 — 원형 큐 시련","il-C":"2장(A) · 목요일 밤",
+    "saturday":"2장(A) · 토 — 보충/A+","sunday":"2장(A) · 월 — 쪽지시험"
   },
 
   trials: {

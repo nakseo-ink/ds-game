@@ -36,6 +36,8 @@ function evalCond(c){
   if(c.clue!==undefined && !wallet.clues.some(x=>x.id===c.clue)) return false;
   return true;
 }
+/* ---- 장 번호 표기 — "N장" + 파트(A/B/C). 한 주제가 여러 강이면 meta.part 로 구분 ---- */
+const chNum=C=>C.meta.week+"장"+(C.meta.part?"("+C.meta.part+")":"");
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
 const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1장으로 */
@@ -64,7 +66,7 @@ function importCode(str){
   }catch(e){ return false; }
 }
 function setHUD(day,unit){
-  if(day){ const wk=(CH.meta.weekLabel!==undefined)?CH.meta.weekLabel:(CH.meta.week+"장"); $("#hud-day").textContent=wk+" · "+day; }
+  if(day){ const wk=(CH.meta.weekLabel!==undefined)?CH.meta.weekLabel:chNum(CH); $("#hud-day").textContent=wk+" · "+day; }
   if(unit)$("#hud-unit").textContent=unit;
 }
 function streakBar(n,extra){return '<div class="streak">숙달까지 — 힌트 없이 연속 정답'+
@@ -324,6 +326,7 @@ function sceneStudy(unitKey, onDone){
       const wrap=el('<div class="fade" style="margin-top:8px;"></div>');
       wrap.appendChild(el('<div style="font-size:12.5px;color:var(--accent);margin:6px 0;">✏️ 확인 — 맞혀야 넘어간다</div>'));
       const item={...b.check, choices:shuffle(b.check.choices.map(c=>({...c})))};
+      if(item.viz||item.code) renderViz(wrap,item);
       box.appendChild(wrap); scrollBottom();
       renderMCQ(wrap,item,{unit:unitKey+"-study",hintUsed:()=>false,onDone:(correct,_,fb)=>{
         if(correct){ const d=el('<div style="margin-top:10px;text-align:right;"><button class="btn" style="padding:7px 18px;">계속 ▼</button></div>');
@@ -600,14 +603,14 @@ function sceneLinkPuzzle(){
       const goalOK = links[0]===1&&links[1]===2&&links[2]==="NULL";
       log("link_check",{unit:"C", links:links.map(String), ok:goalOK});
       if(goalOK){
-        warn.appendChild(el('<div class="feedback ok fade">✅ <span class="mono">item1.link=&item2; item2.link=&item3; item3.link=NULL;</span> — a→b→c 사슬 완성. 이것이 4장에서 만날 <b>연결 리스트</b>의 씨앗이다.</div>'));
+        warn.appendChild(el('<div class="feedback ok fade">✅ <span class="mono">item1.link=&item2; item2.link=&item3; item3.link=NULL;</span> — a→b→c 사슬 완성. 이것이 3장에서 만날 <b>연결 리스트</b>의 씨앗이다.</div>'));
         warn.appendChild(nextBtnRow("시련 시작 ▶",sceneTrialC));
       }else{
         const visited=new Set(); let cur=0;
         while(typeof cur==="number"&&!visited.has(cur)){ visited.add(cur); cur=links[cur]; }
         const orphans=NAMES.filter((_,i)=>!visited.has(i));
         if(orphans.length&&visited.size>0)
-          warn.appendChild(el('<div class="warn fade">⚠ '+orphans.join(", ")+'… 어디에서도 가리켜지지 않는다. 지금은 변수라서 괜찮지만, 만약 <span class="mono">malloc</span>으로 만든 노드였다면 — 찾아갈 방법이 영영 사라진다. <i>이 이야기는 4장에서.</i> 다시 연결해 보자.</div>'));
+          warn.appendChild(el('<div class="warn fade">⚠ '+orphans.join(", ")+'… 어디에서도 가리켜지지 않는다. 지금은 변수라서 괜찮지만, 만약 <span class="mono">malloc</span>으로 만든 노드였다면 — 찾아갈 방법이 영영 사라진다. <i>이 이야기는 3장에서.</i> 다시 연결해 보자.</div>'));
         else warn.appendChild(el('<div class="warn fade">⚠ 목표는 a → b → c → NULL. 사슬을 다시 살펴보자. (link가 ?로 남아 있으면 아직 미연결)</div>'));
       }
     };
@@ -835,7 +838,7 @@ function sceneAplusTrial(idx,correctCnt){
   BookFab.hide();
   setHUD("토요일","A+ 심화 "+(idx+1)+"/3");
   const item=genAP(idx);
-  log("item_shown",{unit:"aplus",itemId:item.id});
+  log("item_shown",{unit:"aplus",itemId:item.id,qtype:item.qtype||"",params:item.params||{}});
   stage.innerHTML="";
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🔥 A+ 트랙 — 심화 '+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
   const body=el('<div style="margin-top:10px;"></div>'); card.appendChild(body); stage.appendChild(card);
@@ -890,15 +893,31 @@ function sceneSettlement(noPay){
   $("#hud-money").textContent=money(S.balance);
   $("#hud-grade").textContent=S.aplusSuccess?"A+ 페이스":(score+"점");
   if(!noPay){ log("quiz_score",{score, unitScore, tutorScore, passed, aplus:S.aplusSuccess, pay, bonus, trust:wallet.trust, aplusStreak:wallet.aplusStreak}); Log.flush(); }
-  /* 어머니의 한마디 — 게이지의 유일한 간접 노출 (챕터 데이터 momLines로 오버라이드 가능) */
-  const momLine=(CH.momLines&&CH.momLines(wallet.trust,passed,S.aplusSuccess)) || (
-    !passed ? '"…이번 주는 도윤이가 많이 어려워하던가요."' :
-    wallet.trust<=2 ? '"…성적은 그렇다 치고. 선생님에 대해서는, 조만간 따로 이야기할 게 있어요."' :
-    wallet.trust>=7 ? '"요즘 도윤이가 밥상에서 선생님 얘기를 해요. 처음 있는 일이에요."' :
-    '"수고했어요. 다음 주도 부탁드려요."');
+  /* 어머니의 한마디 — 게이지의 유일한 간접 노출. 반복 노출에 대비해 밴드별 여러 문장 중 랜덤 (챕터 데이터 momLines로 오버라이드 가능) */
+  const MOMLINES={
+    fail:[
+      '"…이번 주는 도윤이가 많이 어려워하던가요."',
+      '"성적표를 봤어요. …다음 주는 좀 다르길 바랄게요."',
+      '"도윤이가 방에서 한숨을 쉬더군요. 무슨 일 있었나요?"'],
+    low:[
+      '"…성적은 그렇다 치고. 선생님에 대해서는, 조만간 따로 이야기할 게 있어요."',
+      '"오늘은 그만 가 보셔도 좋아요. …요즘 선생님에 대해 이런저런 이야기가 들리더군요."',
+      '"도윤이 성적만 보고 있을 수는 없겠네요. 선생님, 다음 주에 시간 좀 내 주세요."'],
+    high:[
+      '"요즘 도윤이가 밥상에서 선생님 얘기를 해요. 처음 있는 일이에요."',
+      '"이번 주 점수도 좋더군요. 도윤이 방에서 웃음소리가 나는 것도… 나쁘지 않네요."',
+      '"선생님 오시는 날을 도윤이가 먼저 챙겨요. 계속 이대로 부탁드릴게요."',
+      '"남편에게도 선생님 이야기를 했어요. 좋은 분을 모신 것 같다고요."'],
+    mid:[
+      '"수고했어요. 다음 주도 부탁드려요."',
+      '"성적은 확인했어요. 다음 주도 이 시간에 뵙죠."',
+      '"도윤이가 요즘 책상에 앉아 있는 시간이 늘었어요. 계속 지켜볼게요."']
+  };
+  const momLine=(CH.momLines&&CH.momLines(wallet.trust,passed,S.aplusSuccess)) ||
+    pick(!passed ? MOMLINES.fail : wallet.trust<=2 ? MOMLINES.low : wallet.trust>=7 ? MOMLINES.high : MOMLINES.mid);
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
-    '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+CH.meta.week+'장 "'+CH.meta.title+'"</div>'+
+    '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+chNum(CH)+' "'+CH.meta.title+'"</div>'+
     '<div class="card" style="background:var(--panel2); margin-top:14px; font-size:15px; line-height:2;">'+
     '유닛 숙달 ('+gwUnits.join("·")+') — <b>'+unitScore+'점</b><br>'+
     '과외 문답 첫 시도 정답 '+S.tutorFirstTry+'/3 — <b>'+tutorScore+'점</b><br>'+
@@ -910,7 +929,7 @@ function sceneSettlement(noPay){
       :'<div class="dlg" style="margin-top:18px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>…한 번 더 기회를 드리죠. 다음 주에 재시험이라는군요.</div></div>')+
     '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 지나가듯 한마디를 얹는다. '+momLine+'</div>'+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
-    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+CH.meta.week+'장 "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
+    '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+chNum(CH)+' "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
     '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn" id="again">처음부터 다시</button></div>'+
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
@@ -923,8 +942,8 @@ function sceneSettlement(noPay){
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i) };
 let GW=null;
 function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; }
 function gwStart(){ gwInit(); gwGo(0); }
@@ -1075,12 +1094,73 @@ function dlistVizEl(v){
   }
   return g;
 }
+/* ---- 위젯: 트리 (SVG) ----
+   v={type:"tree", data:{v,id?,hl?,dim?,tag?,edge?("ok"|"hl"|"cut"|"new"|"none"),c:[자식...]},
+      links:[{a,b,style:"sib"|"hl",lab?}], slots:true(이진 빈자리 점선 표시), unit?:x간격px}
+   c 배열의 null = 자리만 차지하는 빈 자식(이진 트리 위치 잡기). id 생략 시 v가 id. */
+function treeVizEl(v){
+  const XU=v.unit||46, YU=58, R=17;
+  const flat=[]; let maxD=0;
+  function leaves(n){ if(!n) return 1; if(!n.c||!n.c.length) return 1; return n.c.reduce((s,ch)=>s+leaves(ch),0); }
+  function place(n,d,x0){ /* x0: 시작 리프 단위 → 중심 x 반환 */
+    if(!n) return x0+0.5;
+    maxD=Math.max(maxD,d);
+    const kids=n.c||[];
+    if(!kids.length){ const cx=x0+0.5; flat.push({n,d,cx}); return cx; }
+    let acc=x0; const cxs=[];
+    kids.forEach(ch=>{ const w=leaves(ch); cxs.push(place(ch,d+1,acc)); acc+=w; });
+    const cx=(cxs[0]+cxs[cxs.length-1])/2;
+    flat.push({n,d,cx,kidCxs:cxs,kids});
+    return cx;
+  }
+  place(v.data,0,0);
+  const W=leaves(v.data)*XU+16, H=(maxD+1)*YU+8;
+  const px=cx=>8+cx*XU, py=d=>R+6+d*YU;
+  const eStyle=k=>k==="hl"?'stroke:var(--accent);stroke-width:2;':k==="cut"?'stroke:var(--line);stroke-width:1.6;stroke-dasharray:4 4;opacity:.45;':k==="new"?'stroke:var(--accent2);stroke-width:2;':'stroke:var(--line);stroke-width:1.6;';
+  let edges='', nodes='', extra='';
+  const posOf={};
+  flat.forEach(f=>{ posOf[(f.n.id!==undefined?f.n.id:f.n.v)]=f; });
+  flat.forEach(f=>{
+    (f.kids||[]).forEach((ch,k)=>{
+      if(!ch){ if(v.slots) extra+='<circle cx="'+px(f.kidCxs[k])+'" cy="'+py(f.d+1)+'" r="'+(R-3)+'" style="fill:none;stroke:var(--line);stroke-dasharray:3 4;opacity:.5;"/>'; return; }
+      const st=ch.edge||"ok"; if(st==="none") return;
+      edges+='<line x1="'+px(f.cx)+'" y1="'+(py(f.d)+R)+'" x2="'+px(f.kidCxs[k])+'" y2="'+(py(f.d+1)-R)+'" style="'+eStyle(st)+'"/>';
+    });
+  });
+  flat.forEach(f=>{
+    const n=f.n, x=px(f.cx), y=py(f.d);
+    const dim=n.dim?'opacity:.35;':'';
+    const ring=n.hl?'stroke:var(--accent);stroke-width:2.4;':'stroke:var(--line);stroke-width:1.6;';
+    nodes+='<g style="'+dim+'"><circle cx="'+x+'" cy="'+y+'" r="'+R+'" style="fill:var(--cell);'+ring+'"/>'+
+      '<text x="'+x+'" y="'+(y+4.5)+'" text-anchor="middle" style="fill:var(--ink);font-size:13px;font-weight:700;">'+n.v+'</text>'+
+      (n.tag!==undefined?'<text x="'+(x+R+2)+'" y="'+(y-R+4)+'" style="fill:var(--accent2);font-size:11px;font-weight:700;">'+n.tag+'</text>':'')+'</g>';
+  });
+  (v.links||[]).forEach(l=>{
+    const A=posOf[l.a], B=posOf[l.b]; if(!A||!B) return;
+    const x1=px(A.cx), y1=py(A.d), x2=px(B.cx), y2=py(B.d);
+    const col=l.style==="hl"?"var(--accent)":"var(--accent2)";
+    const dx=x2>x1?R+2:-(R+2);
+    if(A.d===B.d){ /* 같은 층 — 수평(형제) */
+      extra+='<line x1="'+(x1+dx)+'" y1="'+y1+'" x2="'+(x2-dx)+'" y2="'+y2+'" style="stroke:'+col+';stroke-width:1.8;stroke-dasharray:5 4;"/>'+
+        '<text x="'+((x1+x2)/2)+'" y="'+(y1-6)+'" text-anchor="middle" style="fill:'+col+';font-size:10.5px;">'+(l.lab||"")+'</text>'+
+        '<polygon points="'+(x2-dx)+','+y2+' '+(x2-dx-(x2>x1?7:-7))+','+(y2-4)+' '+(x2-dx-(x2>x1?7:-7))+','+(y2+4)+'" style="fill:'+col+';"/>';
+    } else {
+      extra+='<line x1="'+x1+'" y1="'+(y1+(y2>y1?R:-R))+'" x2="'+x2+'" y2="'+(y2-(y2>y1?R+8:-(R+8)))+'" style="stroke:'+col+';stroke-width:1.8;stroke-dasharray:5 4;"/>'+
+        '<polygon points="'+x2+','+(y2-(y2>y1?R:-R))+' '+(x2-4)+','+(y2-(y2>y1?R+8:-(R+8)))+' '+(x2+4)+','+(y2-(y2>y1?R+8:-(R+8)))+'" style="fill:'+col+';"/>';
+    }
+  });
+  const w=el('<div class="fade" style="margin:10px 0;max-width:100%;overflow-x:auto;"></div>');
+  w.innerHTML='<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="display:block;">'+edges+extra+nodes+'</svg>';
+  if(v.name) w.insertBefore(el('<div style="font-size:12.5px;color:var(--accent);font-weight:700;margin-bottom:2px;">'+v.name+'</div>'),w.firstChild);
+  return w;
+}
 function anyVizEl(v){
   if(v.type==="stack") return stackVizEl(v);
   if(v.type==="queue") return queueVizEl(v);
   if(v.type==="circ") return circVizEl(v);
   if(v.type==="list") return listVizEl(v);
   if(v.type==="dlist") return dlistVizEl(v);
+  if(v.type==="tree") return treeVizEl(v);
   return null;
 }
 /* ---- 위젯: 스텝 플레이어 (코드 한 줄 ↔ 그림 한 프레임) ----
@@ -1195,7 +1275,11 @@ function gwInterlude(key,i){
   saveCP(CH.flow[i]);
   stage.innerHTML="";
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🌙 자습 끝 — 오늘의 마무리</div></div>');
-  (CH.interludes[key]||[]).filter(d=>evalCond(d.cond)).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
+  (CH.interludes[key]||[]).filter(d=>evalCond(d.cond)).forEach(d=>{
+    card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
+    if(d.clue && addClue(d.clue.id,d.clue.text))
+      card.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+  });
   card.appendChild(el('<div style="margin-top:16px;text-align:right;"><button class="btn" id="ilnext">'+(CH.ilNext&&CH.ilNext[key]||"다음 ▶")+'</button></div>'));
   stage.appendChild(card);
   $("#ilnext").onclick=()=>gwGo(i+1);
@@ -1269,26 +1353,35 @@ function gwSaturday(i){
     $("#go").onclick=()=>gwTutor(i,2,()=>gwAplusOffer(i));
   } else gwAplusOffer(i);
 }
+function apSkin(){ return (CH.aplusSkin && evalCond(CH.aplusSkin.cond)) ? CH.aplusSkin : null; }
 function gwAplusOffer(i){
   BookFab.hide();
   saveCP("saturday");
-  setHUD("토요일","A+ 트랙?");
+  const skin=apSkin();
+  setHUD("토요일", skin?(skin.hud||"도발장"):"A+ 트랙?");
   stage.innerHTML="";
-  stage.appendChild(el('<div class="card fade">'+
-    '<div class="dlg"><div class="portrait">'+AV("doyun")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 이번 주도 <b>A+ 보너스</b> 노려볼까요? 교수님이 심화 문제도 낸다고 했거든요.</div></div>'+
-    '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">'+
-    '<button class="btn ghost" id="basic">"이번 주는 기본기부터 다지자" (기본 트랙)</button>'+
-    '<button class="btn" id="aplus">"좋아, A+ 노려보자" (심화 3문제)</button></div></div>'));
-  $("#basic").onclick=()=>{ S.aplusAccepted=false; log("aplus_choice",{accepted:false}); gwGo(i+1); };
-  $("#aplus").onclick=()=>{ S.aplusAccepted=true; log("aplus_choice",{accepted:true}); gwAplus(0,0,i); };
+  const card=el('<div class="card fade"></div>');
+  if(skin){
+    if(skin.header) card.appendChild(el('<div style="font-size:13px;color:var(--ink-dim);">'+skin.header+'</div>'));
+    (skin.offer||[]).filter(d=>evalCond(d.cond)).forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
+  } else {
+    card.appendChild(el('<div class="dlg"><div class="portrait">'+AV("doyun")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 이번 주도 <b>A+ 보너스</b> 노려볼까요? 교수님이 심화 문제도 낸다고 했거든요.</div></div>'));
+  }
+  card.appendChild(el('<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">'+
+    '<button class="btn ghost" id="basic">'+(skin&&skin.declineLabel||'"이번 주는 기본기부터 다지자" (기본 트랙)')+'</button>'+
+    '<button class="btn" id="aplus">'+(skin&&skin.acceptLabel||'"좋아, A+ 노려보자" (심화 3문제)')+'</button></div>'));
+  stage.appendChild(card);
+  $("#basic").onclick=()=>{ S.aplusAccepted=false; log("aplus_choice",{accepted:false, skin:!!skin}); gwGo(i+1); };
+  $("#aplus").onclick=()=>{ S.aplusAccepted=true; log("aplus_choice",{accepted:true, skin:!!skin}); gwAplus(0,0,i); };
 }
 function gwAplus(idx,correctCnt,i){
   BookFab.hide();
-  setHUD("토요일","A+ 심화 "+(idx+1)+"/3");
+  const skin=apSkin();
+  setHUD("토요일",(skin?(skin.hud||"도발장"):"A+ 심화")+" "+(idx+1)+"/3");
   const item=GENAP[CH.apGen](idx);
-  log("item_shown",{unit:"aplus",itemId:item.id});
+  log("item_shown",{unit:"aplus",itemId:item.id,qtype:item.qtype||"",params:item.params||{}});
   stage.innerHTML="";
-  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🔥 A+ 트랙 — 심화 '+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">'+(skin?(skin.qHeader||"🗡 도발장")+" — ":"🔥 A+ 트랙 — 심화 ")+(idx+1)+'/3 <span class="tag">통과 기준 2/3 · 힌트 없음</span></div></div>');
   renderViz(card,item);
   const body=el('<div style="margin-top:10px;"></div>'); card.appendChild(body); stage.appendChild(card);
   renderItem(body,item,{unit:"aplus",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
@@ -1299,10 +1392,14 @@ function gwAplus(idx,correctCnt,i){
       log("aplus_result",{correct:nc, success:S.aplusSuccess});
       fb.appendChild(nextBtnRow("결과 ▶",()=>{
         stage.innerHTML="";
-        stage.appendChild(el('<div class="card fade"><div class="dlg"><div class="portrait">'+AV(S.aplusSuccess?"doyun-excited":"doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+
+        const card2=el('<div class="card fade"></div>');
+        const res=skin && (S.aplusSuccess?skin.resultWin:skin.resultLose);
+        if(res){ res.forEach(d=>card2.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text.replace('{n}',nc)+'</div></div>'))); }
+        else card2.appendChild(el('<div class="dlg"><div class="portrait">'+AV(S.aplusSuccess?"doyun-excited":"doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+
           (S.aplusSuccess?"심화 "+nc+"/3… 쌤, 이 정도면 진짜 A+ 각인데요? 월요일 시험 기대하세요."
-                         :"심화 "+nc+"/3… 아직 좀 어렵네요. 그래도 기본은 확실해진 것 같아요. 기본으로 승부!")+'</div></div>'+
-          '<div style="margin-top:16px;text-align:right;"><button class="btn" id="sun2">월요일 — 쪽지시험 ▶</button></div></div>'));
+                         :"심화 "+nc+"/3… 아직 좀 어렵네요. 그래도 기본은 확실해진 것 같아요. 기본으로 승부!")+'</div></div>'));
+        card2.appendChild(el('<div style="margin-top:16px;text-align:right;"><button class="btn" id="sun2">월요일 — 쪽지시험 ▶</button></div>'));
+        stage.appendChild(card2);
         $("#sun2").onclick=()=>gwGo(i+1);
       }));
     }
@@ -1587,10 +1684,10 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null };
 function cpLabel(sv){
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
-  if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(fc.meta.week+"장 · 이어서");
+  if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(chNum(fc)+" · 이어서");
   return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기";
 }
 function resumeFrom(sv){
@@ -1634,14 +1731,16 @@ function sceneTitle(){
   const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
   /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
   const c0done=localStorage.getItem(CH0DONEKEY)==="1";
-  const chLabel=C=>C.meta.week+'장 · '+C.meta.title+(C.meta.sub?' — '+C.meta.sub:'');
+  const chLabel=C=>chNum(C)+' · '+C.meta.title; /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
   const CH_MENU=[
-    {id:"ch00", label:'0장 · 오리엔테이션 — 백수, 선생이 되다'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
+    {id:"ch00", label:'0장 · 오리엔테이션'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
     {id:"ch01", label:chLabel(CH01), go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
   ];
   if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:chLabel(CH02), go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH03!=="undefined") CH_MENU.push({id:"ch03", label:chLabel(CH03), go:()=>{ setChapter(CH03); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:chLabel(CH04), go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH05!=="undefined") CH_MENU.push({id:"ch05", label:chLabel(CH05), go:()=>{ setChapter(CH05); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH06!=="undefined") CH_MENU.push({id:"ch06", label:chLabel(CH06), go:()=>{ setChapter(CH06); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{

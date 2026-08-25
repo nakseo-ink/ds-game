@@ -1,8 +1,8 @@
 "use strict";
-/* 챕터 4 데이터 — "리스트" (강의 4장 · 제작 규약 v1.2 · 주간 루프 공용 러너 사용)
+/* 챕터 4 데이터 — "리스트" = 3장 (강의 4장 · 제작 규약 v1.2 · 주간 루프 공용 러너 사용)
    순차 표현의 문제 → 포인터·malloc/free → 단순 연결 리스트(만들기·삽입) → 삭제·순회 → 이중 연결 원형 리스트. */
 const CH04 = {
-  meta: { id:"ch04", week:4, title:"리스트", sub:"흩어져도 이어진다", nextTeaser:"트리", nextHint:'교수님이 칠판에 <b>가계도</b>랑 <b>토너먼트 대진표</b>를 그리셨대요… 자료구조 수업 맞죠?' },
+  meta: { id:"ch04", week:3, title:"리스트", sub:"흩어져도 이어진다", nextTeaser:"트리", nextHint:'교수님이 칠판에 <b>가계도</b>랑 <b>토너먼트 대진표</b>를 그리셨대요… 자료구조 수업 맞죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:15, tutorPts:10, passLine:54 },   /* 4유닛 × 15 + 과외 30 = 90 만점 */
   apGen: "AP4",
@@ -15,12 +15,12 @@ const CH04 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","trial-C","il-C","study-D","trial-D","saturday","sunday"],
   cpl: {
-    "study-A":"4장 · 월 — 배열의 한계 자습","trial-A":"4장 · 월 — 이사 비용 시련","il-A":"4장 · 월요일 밤",
-    "study-B":"4장 · 화 — 연결 리스트 자습","trial-B":"4장 · 화 — 삽입 시련","il-B":"4장 · 화요일 밤",
-    "tutor":"4장 · 수 — 과외",
-    "study-C":"4장 · 목 — 삭제와 순회 자습","trial-C":"4장 · 목 — 삭제 시련","il-C":"4장 · 목요일 밤",
-    "study-D":"4장 · 금 — 이중 연결 자습","trial-D":"4장 · 금 — 이중 연결 시련",
-    "saturday":"4장 · 토 — 보충/A+","sunday":"4장 · 월 — 쪽지시험"
+    "study-A":"3장 · 월 — 배열의 한계 자습","trial-A":"3장 · 월 — 이사 비용 시련","il-A":"3장 · 월요일 밤",
+    "study-B":"3장 · 화 — 연결 리스트 자습","trial-B":"3장 · 화 — 삽입 시련","il-B":"3장 · 화요일 밤",
+    "tutor":"3장 · 수 — 과외",
+    "study-C":"3장 · 목 — 삭제와 순회 자습","trial-C":"3장 · 목 — 삭제 시련","il-C":"3장 · 목요일 밤",
+    "study-D":"3장 · 금 — 이중 연결 자습","trial-D":"3장 · 금 — 이중 연결 시련",
+    "saturday":"3장 · 토 — 보충/A+","sunday":"3장 · 월 — 쪽지시험"
   },
 
   trials: {

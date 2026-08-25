@@ -1243,7 +1243,7 @@ function genAP4ch(idx){
     {stem:"연결 리스트에서 <b>값으로 노드를 찾는(탐색)</b> 비용", ans:"O(n)",
      why:"첫 노드부터 링크를 타고 하나씩 — 최악이면 끝까지 간다.", w:"O(1)", wmc:"address-calc-myth", wfb:"리스트에는 a[k] 같은 주소 계산이 없다 — 타고 가야 한다."},
     {stem:"배열에서 <b>인덱스로 원소에 접근</b>(a[k])하는 비용", ans:"O(1)",
-     why:"시작 주소 + k×원소 크기 — 주소 계산 한 번(2장).", w:"O(n)", wmc:"traverse-mix", wfb:"배열은 세지 않고 계산한다 — 순차 사상의 힘이다."},
+     why:"시작 주소 + k×원소 크기 — 주소 계산 한 번(1장).", w:"O(n)", wmc:"traverse-mix", wfb:"배열은 세지 않고 계산한다 — 순차 사상의 힘이다."},
     {stem:"원소 n개짜리 <b>배열의 맨 앞에 삽입</b>하는 비용", ans:"O(n)",
      why:"기존 원소 n개가 전부 한 칸씩 밀린다.", w:"O(1)", wmc:"shift-blind", wfb:"자리를 비우는 이동이 원소 수만큼 든다."}];
   const c=pick(CASES);
@@ -1256,4 +1256,566 @@ function genAP4ch(idx){
       {text:c.w,correct:false,mc:c.wmc,fb:c.wfb},
       {text:others[0],correct:false,mc:"logn-lure",fb:"이진 탐색(1장)의 곡선이다 — 여기서는 등장할 이유가 없다."},
       {text:others[1],correct:false,mc:"square-lure",fb:"이중 반복의 곡선이다 — 한 번의 삽입/접근에는 과하다."}])};
+}
+
+/* ================= 4장(A) 트리 — G17~G20 + AP5 ================= */
+/* ---- 트리 유틸 ---- */
+function t5Build(spec,parent,depth){
+  const n={v:spec[0], c:[], parent:parent||null, depth:depth||1};
+  (spec[1]||[]).forEach(cs=>n.c.push(t5Build(cs,n,(depth||1)+1)));
+  return n;
+}
+function t5All(root){ const out=[]; (function w(n){ out.push(n); n.c.forEach(w); })(root); return out; }
+function t5Height(n){ return n.c.length? 1+Math.max.apply(null,n.c.map(t5Height)) : 1; }
+function t5Viz(n,hlv){
+  const o={v:n.v}; if(hlv!==undefined && n.v===hlv) o.hl=1;
+  if(n.c.length) o.c=n.c.map(ch=>t5Viz(ch,hlv));
+  return o;
+}
+const T5SHAPES=[
+  ["A",[["B",[["D"],["E"]]],["C",[["F"]]]]],
+  ["A",[["B",[["D"],["E"],["F"]]],["C"]]],
+  ["A",[["B",[["E"]]],["C",[["F"],["G"]]],["D"]]],
+  ["A",[["B",[["D",[["G"]]],["E"]]],["C",[["F"]]]]],
+  ["A",[["B"],["C",[["E"],["F",[["H"]]]]],["D",[["G"]]]]]
+];
+function t5Pick(){ return t5Build(pick(T5SHAPES)); }
+function t5NumFill(cands,ans,pool2){ /* 숫자 오답 보충 */
+  for(const v of shuffle(pool2)){ if(v!==ans && !cands.some(c=>c.text===String(v))) cands.push({text:String(v),correct:false,mc:"count-off",fb:"그림에서 하나씩 짚어 가며 다시 세어 보라."}); }
+  return cands;
+}
+
+/* --- G17. 트리 용어 (유닛 A) --- */
+function genG17(){
+  const qtype=pick(["deg","leafcnt","height","level","parent","sib","anc"]);
+  const root=t5Pick(), all=t5All(root);
+  if(qtype==="deg"){
+    const n=pick(all);
+    const ans=n.c.length;
+    const edges=n.c.length+(n.parent?1:0);
+    const cands=[];
+    if(edges!==ans) cands.push({text:String(edges),correct:false,mc:"edge-count",fb:"부모와 잇는 선까지 세지 않았나 — 차수는 '자식 수'만 센다."});
+    t5NumFill(cands,ans,[0,1,2,3,4]);
+    return {id:"G17",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'그림의 트리에서 노드 <b>'+n.v+'</b>의 <b>차수(degree)</b>는?',
+      okfb:n.v+'의 자식은 '+(ans? n.c.map(x=>x.v).join(", "):"없다")+' — 차수는 자식의 수, '+ans+'이다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="leafcnt"){
+    const leaves=all.filter(n=>!n.c.length);
+    const ans=leaves.length, inner=all.length-ans;
+    const cands=[{text:String(inner),correct:false,mc:"internal-swap",fb:"자식이 있는 노드를 세지 않았나 — 리프는 차수 0, 자식이 '없는' 노드다."}];
+    t5NumFill(cands,ans,[ans-1,ans+1,ans+2].filter(v=>v>0));
+    return {id:"G17",qtype,params:{ans},viz:{type:"tree",data:t5Viz(root)},
+      stem:'그림의 트리에서 <b>리프(단말) 노드</b>는 모두 몇 개인가?',
+      okfb:'자식이 없는 노드 — '+leaves.map(n=>n.v).join(", ")+' 의 '+ans+'개다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="height"){
+    const ans=t5Height(root);
+    const cands=[{text:String(ans-1),correct:false,mc:"zero-base",fb:"루트의 레벨이 1이다 — 0부터 세지 않는다."}];
+    t5NumFill(cands,ans,[ans+1,ans+2,ans-2].filter(v=>v>0));
+    return {id:"G17",qtype,params:{ans},viz:{type:"tree",data:t5Viz(root)},
+      stem:'그림의 트리의 <b>높이(깊이)</b>는? (루트의 레벨 = 1)',
+      okfb:'가장 아래 노드의 레벨이 '+ans+' — 높이는 최대 레벨이다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="level"){
+    const n=pick(all.filter(x=>x.parent));
+    const ans=n.depth;
+    const cands=[{text:String(ans-1),correct:false,mc:"zero-base",fb:"루트가 레벨 1이다 — 한 층 내려올 때마다 1씩 더한다."}];
+    t5NumFill(cands,ans,[ans+1,ans+2].filter(v=>v>0&&v<=6));
+    return {id:"G17",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'그림의 트리에서 노드 <b>'+n.v+'</b>의 <b>레벨</b>은? (루트의 레벨 = 1)',
+      okfb:'루트에서 '+n.v+'까지 층을 세면 '+ans+' — 루트가 1, 한 층에 +1.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="parent"){
+    const n=pick(all.filter(x=>x.parent&&x.parent.parent));
+    const ans=n.parent.v;
+    const cands=[{text:n.parent.parent.v,correct:false,mc:"anc-far",fb:"그 노드는 부모의 부모(조상)다 — 부모는 바로 위 한 층이다."}];
+    const sibs=n.parent.c.filter(x=>x!==n);
+    if(sibs.length) cands.push({text:sibs[0].v,correct:false,mc:"sib-confuse",fb:"같은 부모를 둔 형제다 — 부모가 아니다."});
+    if(n.c.length) cands.push({text:n.c[0].v,correct:false,mc:"child-confuse",fb:"그건 "+n.v+"의 자식 — 방향이 반대다."});
+    const others=all.filter(x=>x!==n&&x.v!==ans&&!cands.some(c=>c.text===x.v));
+    if(others.length) cands.push({text:others[0].v,correct:false,mc:"pick-any",fb:"간선을 따라 바로 위로 한 층 — 그 노드가 부모다."});
+    return {id:"G17",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'그림의 트리에서 노드 <b>'+n.v+'</b>의 <b>부모</b>는?',
+      okfb:n.v+' 바로 위에서 간선으로 이어진 노드 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="sib"){
+    const n=pick(all.filter(x=>x.parent&&x.parent.c.length>=2));
+    const sibs=n.parent.c.filter(x=>x!==n).map(x=>x.v);
+    const ans=sibs.join(", ");
+    const withSelf=n.parent.c.map(x=>x.v).join(", ");
+    const cands=[{text:withSelf,correct:false,mc:"self-include",fb:"자기 자신은 형제에 넣지 않는다."}];
+    if(n.c.length) cands.push({text:n.c.map(x=>x.v).join(", "),correct:false,mc:"child-confuse",fb:"그건 "+n.v+"의 자식들 — 형제는 '같은 부모'의 다른 자식이다."});
+    cands.push({text:n.parent.v,correct:false,mc:"parent-confuse",fb:"부모는 형제가 아니다 — 형제는 같은 층, 같은 부모다."});
+    return {id:"G17",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'그림의 트리에서 노드 <b>'+n.v+'</b>의 <b>형제(sibling)</b>를 모두 고르면?',
+      okfb:'부모 '+n.parent.v+'의 다른 자식 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* anc */
+  const n=pick(all.filter(x=>x.depth>=3));
+  const path=[]; let p=n.parent; while(p){ path.push(p.v); p=p.parent; }
+  const ans=path.join(", ");
+  const cands=[{text:path.slice(0,-1).join(", ")||path[0],correct:false,mc:"root-drop",fb:"루트도 조상이다 — 루트까지 끝까지 올라간다."},
+    {text:[n.v].concat(path).join(", "),correct:false,mc:"self-include",fb:"자기 자신은 조상에 넣지 않는다."}];
+  if(n.parent.c.length>=2) cands.push({text:n.parent.c.filter(x=>x!==n).map(x=>x.v).concat(path).join(", "),correct:false,mc:"sib-confuse",fb:"형제는 조상이 아니다 — 조상은 루트로 가는 길 위의 노드만이다."});
+  else if(n.c.length) cands.push({text:n.c.map(x=>x.v).join(", "),correct:false,mc:"child-confuse",fb:"그건 자손 쪽 — 조상은 위로 가는 길이다."});
+  if(path.length>=2) cands.push({text:path.slice().reverse().join(", "),correct:false,mc:"order-flip",fb:"조상은 '부모부터' 루트로 — 순서가 뒤집혔다."});
+  return {id:"G17",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+    stem:'그림의 트리에서 노드 <b>'+n.v+'</b>의 <b>조상(ancestors)</b>을 모두 나열하면?',
+    okfb:n.v+'에서 루트까지 올라가는 길 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G18. 왼쪽자식-오른쪽형제 표현 (유닛 B) --- */
+function genG18(){
+  const qtype=pick(["l","r","null2"]);
+  const root=t5Pick(), all=t5All(root);
+  const firstChild=n=>n.c.length?n.c[0]:null;
+  const nextSib=n=>{ if(!n.parent) return null; const k=n.parent.c.indexOf(n); return n.parent.c[k+1]||null; };
+  const NUL='NULL';
+  if(qtype==="l"||qtype==="r"){
+    const n=pick(all.filter(x=>x.parent||x.c.length));
+    const target=qtype==="l"?firstChild(n):nextSib(n);
+    const wrongN=qtype==="l"?nextSib(n):firstChild(n);
+    const ans=target?target.v:NUL;
+    const cands=[];
+    if(wrongN) cands.push({text:wrongN.v,correct:false,mc:"lr-swap",fb:"왼쪽 포인터=첫째 자식, 오른쪽 포인터=바로 다음 형제 — 둘을 바꿔 짚었다."});
+    else if(target) cands.push({text:NUL,correct:false,mc:"null-rush",fb:(qtype==="l"?"자식":"형제")+"가 있는지 그림에서 다시 확인하라."});
+    if(n.c.length>=2) cands.push({text:n.c[1].v,correct:false,mc:"second-child",fb:"왼쪽 포인터가 잡는 것은 '첫째' 자식 하나 — 둘째부터는 형제 사슬로 이어진다."});
+    if(n.parent&&n.parent.v!==ans) cands.push({text:n.parent.v,correct:false,mc:"parent-link",fb:"이 표현의 두 포인터는 아래(자식)와 옆(형제)뿐 — 위로 가는 포인터는 없다."});
+    const others=all.filter(x=>x.v!==ans&&x!==n&&!cands.some(c=>c.text===x.v));
+    for(const o of others){ if(cands.length>=3) break; cands.push({text:o.v,correct:false,mc:"pick-any",fb:"포인터의 규칙부터 — 왼쪽은 첫째 자식, 오른쪽은 다음 형제다."}); }
+    return {id:"G18",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'그림의 트리를 <b>왼쪽자식-오른쪽형제</b> 표현으로 만들 때, 노드 <b>'+n.v+'</b>의 <b>'+(qtype==="l"?"왼쪽(자식) 포인터":"오른쪽(형제) 포인터")+'</b>가 가리키는 것은?',
+      okfb:qtype==="l"?(target?n.v+'의 첫째 자식 — '+ans+'.':n.v+'는 자식이 없다 — 왼쪽 포인터는 NULL.'):(target?n.v+' 바로 다음 형제 — '+ans+'.':n.v+'는 마지막(또는 유일한) 형제다 — 오른쪽 포인터는 NULL.'),
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* null2 */
+  const n=pick(all.filter(x=>x.parent));
+  const hasC=!!firstChild(n), hasS=!!nextSib(n);
+  const ans=!hasC&&!hasS?"both":(!hasC?"l":(!hasS?"r":"none"));
+  const TXT={l:"왼쪽(자식) 포인터만 NULL이다", r:"오른쪽(형제) 포인터만 NULL이다", both:"두 포인터가 모두 NULL이다", none:"두 포인터 모두 NULL이 아니다"};
+  const FB={l:"자식이 없으니 왼쪽이 NULL — 다음 형제는 있다.", r:"다음 형제가 없으니 오른쪽이 NULL — 첫째 자식은 있다.", both:"자식도, 다음 형제도 없다 — 둘 다 NULL.", none:"첫째 자식도, 다음 형제도 있다 — 둘 다 채워진다."};
+  return {id:"G18",qtype,params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+    stem:'그림의 트리를 <b>왼쪽자식-오른쪽형제</b> 표현으로 만들 때, 노드 <b>'+n.v+'</b>의 두 포인터는? (왼쪽=첫째 자식, 오른쪽=바로 다음 형제)',
+    okfb:FB[ans],
+    choices:shuffle(["l","r","both","none"].map(k=>({text:TXT[k],correct:k===ans,mc:k===ans?undefined:"null-map",fb:k===ans?undefined:"그림에서 "+n.v+"의 첫째 자식과 다음 형제를 각각 짚어 보라."})))};
+}
+
+/* --- G19. 이진 트리 성질 (유닛 C) --- */
+function genG19(){
+  const qtype=pick(["lvlmax","depthmax","fullleaf","complete","skewcnt"]);
+  if(qtype==="lvlmax"){
+    const i=g2R(3,5), ans=Math.pow(2,i-1);
+    const cands=[{text:String(Math.pow(2,i)),correct:false,mc:"exp-off",fb:"레벨 1이 2⁰=1개에서 출발한다 — 레벨 i의 최대는 2^(i−1)이다."},
+      {text:String(2*i),correct:false,mc:"linear-myth",fb:"층마다 '2배'로 는다 — 2씩 더하는 게 아니다."},
+      {text:String(Math.pow(2,i-1)-1),correct:false,mc:"sum-confuse",fb:"2^i−1은 트리 '전체'의 최대 — 한 레벨의 최대와 헷갈리지 말 것."}];
+    return {id:"G19",qtype,params:{i,ans},
+      stem:'이진 트리의 <b>레벨 '+i+'</b>에 올 수 있는 노드의 <b>최대 개수</b>는? (루트의 레벨 = 1)',
+      okfb:'레벨 1부터 1, 2, 4, … — 레벨 '+i+'의 최대는 2^'+(i-1)+' = '+ans+'개다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="depthmax"){
+    const k=g2R(3,5), ans=Math.pow(2,k)-1;
+    const cands=[{text:String(Math.pow(2,k)),correct:false,mc:"minus-one-drop",fb:"1+2+4+…+2^(k−1) = 2^k−1 — 마지막 −1을 빠뜨렸다."},
+      {text:String(Math.pow(2,k-1)),correct:false,mc:"last-level-only",fb:"그것은 마지막 레벨 '한 층'의 최대 — 전체는 층들을 다 더한다."},
+      {text:String(2*k),correct:false,mc:"linear-myth",fb:"층마다 2배로 는다 — 합은 2^k−1이다."}];
+    return {id:"G19",qtype,params:{k,ans},
+      stem:'깊이(높이)가 <b>'+k+'</b>인 이진 트리가 가질 수 있는 노드의 <b>최대 개수</b>는?',
+      okfb:'각 층 최대 1+2+…+2^'+(k-1)+' — 전부 더하면 2^'+k+'−1 = '+ans+'개다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="fullleaf"){
+    const k=g2R(3,5), ans=Math.pow(2,k-1);
+    const cands=[{text:String(Math.pow(2,k)-1),correct:false,mc:"total-confuse",fb:"2^k−1은 트리 '전체' 노드 수 — 리프는 마지막 레벨만이다."},
+      {text:String(Math.pow(2,k)),correct:false,mc:"exp-off",fb:"마지막 레벨은 레벨 k — 최대 2^(k−1)개다."},
+      {text:String(k),correct:false,mc:"linear-myth",fb:"경사 트리와 헷갈리지 말 것 — 포화 트리의 마지막 층은 2^(k−1)개다."}];
+    return {id:"G19",qtype,params:{k,ans},
+      stem:'깊이가 <b>'+k+'</b>인 <b>포화(full) 이진 트리</b>의 <b>리프 노드 수</b>는?',
+      okfb:'포화 트리의 리프는 전부 마지막 레벨 '+k+'에 있다 — 2^'+(k-1)+' = '+ans+'개.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  if(qtype==="complete"){
+    const n=g2R(5,6);
+    const isC=Math.random()<0.5;
+    let idxs;
+    if(isC) idxs=Array.from({length:n},(_,x)=>x+1);
+    else {
+      const par=Math.floor((n+1)/2);   /* n+1번의 부모 — 지우면 안 되는 노드 */
+      const drop=pick(Array.from({length:n},(_,x)=>x+1).filter(x=>x>=3 && 2*x>n && x!==par));
+      idxs=Array.from({length:n},(_,x)=>x+1).filter(x=>x!==drop); idxs.push(n+1); idxs.sort((a,b)=>a-b);
+    }
+    /* idxs → 이진 트리(번호 태그) */
+    const has=x=>idxs.includes(x);
+    function bt(x){ const o={v:String(x),tag:x}; const kids=[]; if(has(2*x)||has(2*x+1)){ kids.push(has(2*x)?bt(2*x):null); kids.push(has(2*x+1)?bt(2*x+1):null); o.c=kids; } return o; }
+    const complete=idxs.every((x,k)=>x===k+1);
+    const missing=complete?0:Array.from({length:Math.max.apply(null,idxs)},(_,x)=>x+1).find(x=>!has(x));
+    const RIGHT={text:"완전 이진 트리다 — 1번부터 빈 번호 없이 채워져 있다",correct:true};
+    const WRONG1={text:"완전 이진 트리가 아니다 — 중간 번호 자리가 비어 있다",correct:true};
+    const c1={...RIGHT,correct:complete}; const c2={...WRONG1,correct:!complete};
+    if(complete) c2.mc="gap-miss", c2.fb="번호를 1부터 짚어 보라 — 건너뛴 번호가 없다.";
+    else c1.mc="gap-blind", c1.fb=missing+"번 자리가 비어 있다 — 번호가 이어져야 완전이다.";
+    return {id:"G19",qtype,params:{idxs,complete},viz:{type:"tree",data:bt(1),slots:true},
+      stem:'그림의 이진 트리(노드 옆 숫자 = 포화 트리 기준 번호)는 <b>완전(complete) 이진 트리</b>인가?',
+      okfb:complete?'번호 1~'+n+'이 빈틈없이 이어진다 — 완전 이진 트리다.':(missing+'번 자리가 빈 채 '+(n+1)+'번이 있다 — 완전이 아니다.'),
+      choices:shuffle([c1,c2,
+        {text:"포화 이진 트리다 — 마지막 레벨까지 전부 가득 찼다",correct:false,mc:"full-confuse",fb:"포화는 2^k−1개를 '다' 채운 경우다 — 마지막 레벨이 가득 찼는지 보라."},
+        {text:"이진 트리가 아니다 — 자식을 셋 가진 노드가 있다",correct:false,mc:"not-binary",fb:"모든 노드의 자식이 2개 이하다 — 이진 트리는 맞다."}])};
+  }
+  /* skewcnt */
+  const k=g2R(4,6), ans=k;
+  function skew(d){ return d===k?{v:String(d)}:{v:String(d),c:[skew(d+1),null]}; }
+  const cands=[{text:String(Math.pow(2,k)-1),correct:false,mc:"max-confuse",fb:"2^k−1은 '최대' — 경사 트리는 층마다 한 개뿐인 '최소'다."},
+    {text:String(Math.pow(2,k-1)),correct:false,mc:"exp-lure",fb:"지수는 필요 없다 — 층마다 딱 하나씩 k개다."},
+    {text:String(k-1),correct:false,mc:"zero-base",fb:"루트도 한 개로 센다 — 층 수만큼, k개다."}];
+  return {id:"G19",qtype,params:{k,ans},viz:{type:"tree",data:skew(1),slots:true,unit:40},
+    stem:'깊이가 <b>'+k+'</b>인 <b>왼쪽 경사(skewed) 이진 트리</b>의 노드 수는? (그림: 층마다 왼쪽으로만)',
+    okfb:'경사 트리는 층마다 노드가 하나 — 깊이 '+k+'이면 '+k+'개다.',
+    choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+}
+
+/* --- G20. 배열 표현 (유닛 D) --- */
+function genG20(){
+  const qtype=pick(["parent","left","right","waste"]);
+  function cbt(n){ const has=x=>x<=n; function bt(x){ const o={v:String(x)}; if(has(2*x)||has(2*x+1)){ o.c=[has(2*x)?bt(2*x):null, has(2*x+1)?bt(2*x+1):null]; } return o; } return bt(1); }
+  function hl(node,tv){ if(node.v===tv) node.hl=1; (node.c||[]).forEach(c=>c&&hl(c,tv)); return node; }
+  if(qtype==="waste"){
+    const k=g2R(3,5), need=Math.pow(2,k)-1, used=k, ans=need-used;
+    function skew(d){ return d===k?{v:String(Math.pow(2,d-1))}:{v:String(Math.pow(2,d-1)),c:[skew(d+1),null]}; }
+    const cands=[{text:String(need),correct:false,mc:"need-confuse",fb:"그것은 '필요한 전체 칸 수' — 낭비는 거기서 실제 사용 "+used+"칸을 뺀다."},
+      {text:String(Math.pow(2,k)-k),correct:false,mc:"minus-one-drop",fb:"전체는 2^k−1칸이다 — −1을 빠뜨리지 말 것."},
+      {text:String(used),correct:false,mc:"used-confuse",fb:"그것은 '쓰는 칸 수'다 — 낭비는 비는 칸 수다."}];
+    return {id:"G20",qtype,params:{k,ans},viz:{type:"tree",data:skew(1),slots:true,unit:40},
+      stem:'깊이 <b>'+k+'</b>의 <b>왼쪽 경사 트리</b>(그림)를 배열 표현으로 담으면, 확보해야 하는 칸은 2^'+k+'−1 = '+need+'칸이다. 이 중 <b>빈 채로 낭비되는 칸</b>은 몇 칸인가?',
+      okfb:'실제 노드는 '+used+'개뿐 — '+need+' − '+used+' = '+ans+'칸이 빈다.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  /* parent/left/right — 그림을 주면 답이 그대로 보이므로 공식 적용 문제로 낸다(그림 없음) */
+  const i= qtype==="parent"?g2R(4,10):g2R(2,5);
+  const ans= qtype==="parent"?Math.floor(i/2): qtype==="left"?2*i:2*i+1;
+  const OPQ={parent:"부모", left:"왼쪽 자식", right:"오른쪽 자식"};
+  const cands=[];
+  if(qtype==="parent"){
+    cands.push({text:String(Math.floor((i-1)/2)),correct:false,mc:"zero-base-mix",fb:"이 책의 번호는 1번부터다 — 부모는 i/2(소수점 버림)."});
+    cands.push({text:String(i-1),correct:false,mc:"minus-myth",fb:"한 칸 앞이 부모가 아니다 — 층이 다르다. i/2로 올라간다."});
+    cands.push({text:String(2*i),correct:false,mc:"lr-swap",fb:"2i는 왼쪽 '자식' — 방향이 반대다."});
+  } else {
+    cands.push({text:String(qtype==="left"?2*i+1:2*i),correct:false,mc:"lr-swap",fb:"왼쪽 자식이 2i, 오른쪽 자식이 2i+1 — 좌우를 바꿔 짚었다."});
+    cands.push({text:String(i+1),correct:false,mc:"next-slot",fb:"바로 옆 칸은 형제나 사촌 — 자식은 2i, 2i+1로 '뛴다'."});
+    cands.push({text:String(Math.floor(i/2)),correct:false,mc:"parent-swap",fb:"i/2는 '부모'로 올라가는 공식이다."});
+  }
+  return {id:"G20",qtype,params:{i,ans},
+    stem:'완전 이진 트리를 배열로 표현했다(노드 번호 = 배열 인덱스, 1번부터). 노드 <b>'+i+'</b>의 <b>'+OPQ[qtype]+'</b> 인덱스는?',
+    okfb: qtype==="parent"?('부모는 i/2 — '+i+'/2 = '+ans+' (소수점 버림).'):('왼쪽 자식 2i, 오른쪽 자식 2i+1 — '+(qtype==="left"?('2×'+i+' = '+ans):('2×'+i+'+1 = '+ans))+'.'),
+    choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+}
+
+/* --- AP5. 4장(A) 심화 (도발장) --- */
+function genAP5ch(idx){
+  if(idx===0){
+    const root=t5Build(pick([T5SHAPES[3],T5SHAPES[4],T5SHAPES[2]]));
+    const all=t5All(root);
+    const n=pick(all.filter(x=>x.c.length>=2));
+    const ans=n.c[1].v;   /* 왼자(첫자식)의 오른형제 = 둘째 자식 */
+    const cands=[{text:n.c[0].v,correct:false,mc:"first-stop",fb:"왼쪽 포인터가 첫째 자식까지 — 거기서 '오른쪽'을 한 번 더 가면 다음 형제다."}];
+    if(n.c.length>=3) cands.push({text:n.c[2].v,correct:false,mc:"two-far",fb:"오른쪽 한 번 = 형제 한 칸 — 셋째까지 가려면 두 번이다."});
+    if(n.parent) cands.push({text:n.parent.v,correct:false,mc:"parent-link",fb:"이 표현에 위로 가는 포인터는 없다."});
+    const others=all.filter(x=>x!==n&&x.v!==ans&&!cands.some(c=>c.text===x.v));
+    if(others.length) cands.push({text:others[0].v,correct:false,mc:"pick-any",fb:"왼쪽=첫째 자식, 오른쪽=다음 형제 — 두 걸음을 차례로 밟아라."});
+    return {id:"AP5",qtype:"lcrs2",params:{node:n.v,ans},viz:{type:"tree",data:t5Viz(root,n.v)},
+      stem:'[심화 — 표현 변환] 그림의 트리를 <b>왼쪽자식-오른쪽형제</b> 표현으로 바꾸어 이진 트리처럼 읽는다. <b>'+n.v+'의 왼쪽 자식의 오른쪽 자식</b>은 원래 트리의 어느 노드인가?',
+      okfb:'왼쪽(첫째 자식 '+n.c[0].v+') → 오른쪽(다음 형제) — 곧 '+n.v+'의 둘째 자식 '+ans+'다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){
+    const CASE=pick([[6,3],[9,4],[12,4],[20,5],[25,5]]);
+    const n=CASE[0], ans=CASE[1];
+    const cands=[{text:String(ans+1),correct:false,mc:"ceil-off",fb:"레벨 1부터 차곡차곡 — 2^h−1 ≥ n 이 되는 최소 h를 찾아라."},
+      {text:String(ans-1),correct:false,mc:"floor-off",fb:"2^"+(ans-1)+"−1 = "+(Math.pow(2,ans-1)-1)+"개까지만 담긴다 — "+n+"개는 한 층 더 필요하다."},
+      {text:String(n%2===0?n/2:(n-1)/2),correct:false,mc:"linear-myth",fb:"높이는 로그 곡선으로 자란다 — 절반이 아니다."}];
+    return {id:"AP5",qtype:"cbt-height",params:{n,ans},
+      stem:'[심화 — 성질] 노드가 <b>'+n+'개</b>인 <b>완전 이진 트리</b>의 높이는? (루트의 레벨 = 1)',
+      okfb:'깊이 h까지 최대 2^h−1개 — 2^'+(ans-1)+'−1 = '+(Math.pow(2,ans-1)-1)+' < '+n+' ≤ 2^'+ans+'−1 = '+(Math.pow(2,ans)-1)+' 이므로 높이는 '+ans+'.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  /* idx 2 — 배열 조상 사슬 */
+  const i=pick([9,10,11,12,13,14,15]);
+  const path=[]; let x=Math.floor(i/2); while(x>=1){ path.push(x); x=Math.floor(x/2); }
+  const ans=path.join(" → ");
+  const wrongCeil=[]; x=Math.ceil(i/2); const seen=new Set();
+  while(x>1&&!seen.has(x)){ seen.add(x); wrongCeil.push(x); x=Math.ceil(x/2); } wrongCeil.push(1);
+  const cands=[{text:path.slice(0,-1).join(" → ")||String(path[0]),correct:false,mc:"root-drop",fb:"1번(루트)까지가 조상이다 — 끝까지 올라가라."},
+    {text:[i].concat(path).join(" → "),correct:false,mc:"self-include",fb:"자기 자신은 조상이 아니다 — i/2부터 시작한다."}];
+  const wc=wrongCeil.join(" → ");
+  if(wc!==ans) cands.push({text:wc,correct:false,mc:"ceil-myth",fb:"소수점은 '버림'이다 — 홀수 번호도 i/2 내림으로 올라간다."});
+  return {id:"AP5",qtype:"anc-chain",params:{i,ans},
+    stem:'[심화 — 배열 표현] 완전 이진 트리의 배열 표현(1번부터)에서, 노드 <b>'+i+'</b>의 <b>조상 번호를 차례로</b>(부모부터 루트까지) 나열하면?',
+    okfb:'부모는 i/2(버림) — '+i+' → '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* ================= 4장(B) 트리 순회 — G21~G24 + AP6 ================= */
+/* ---- 이진 트리 유틸 ---- */
+function t6Shape(){
+  const S=[
+    {l:{l:{},r:{}}, r:{l:{},r:{}}},                    /* 포화 7 */
+    {l:{l:{},r:{}}, r:{r:{}}},                          /* 6 — C는 오른쪽만 */
+    {l:{r:{}}, r:{l:{}}},                               /* 5 — 지그재그 */
+    {l:{l:{l:{}},r:{}}, r:{}},                          /* 6 — 왼쪽 깊음 */
+    {l:{}, r:{l:{l:{}},r:{}}},                          /* 6 — 오른쪽 깊음 */
+    {l:{l:{},r:{r:{}}}, r:{l:{}}}                       /* 7 — 혼합 */
+  ];
+  return pick(S);
+}
+function t6Build(shape){ /* BFS 순서로 A,B,C… 라벨 */
+  const root={sh:shape||{}, l:null, r:null, v:null};
+  const q=[root]; const L=shuffle("ABCDEFG".split("")); let k=0;   /* BFS순 알파벳이면 레벨 순회 답이 노출 — 셔플 */
+  while(q.length){
+    const n=q.shift(); n.v=L[k++];
+    if(n.sh.l!==undefined){ n.l={sh:n.sh.l}; q.push(n.l); }
+    if(n.sh.r!==undefined){ n.r={sh:n.sh.r}; q.push(n.r); }
+  }
+  return root;
+}
+function t6Pre(n,out){ if(!n) return out; out.push(n.v); t6Pre(n.l,out); t6Pre(n.r,out); return out; }
+function t6In(n,out){ if(!n) return out; t6In(n.l,out); out.push(n.v); t6In(n.r,out); return out; }
+function t6Post(n,out){ if(!n) return out; t6Post(n.l,out); t6Post(n.r,out); out.push(n.v); return out; }
+function t6Lvl(root){ const out=[],q=[root]; while(q.length){ const n=q.shift(); out.push(n.v); if(n.l)q.push(n.l); if(n.r)q.push(n.r);} return out; }
+function t6All(n,out){ if(!n) return out; out.push(n); t6All(n.l,out); t6All(n.r,out); return out; }
+function t6Viz(n,hlv){
+  if(!n) return null;
+  const o={v:n.v}; if(hlv!==undefined&&n.v===hlv) o.hl=1;
+  if(n.l||n.r) o.c=[t6Viz(n.l,hlv), t6Viz(n.r,hlv)];
+  return o;
+}
+const t6Seq=a=>a.join(", ");
+const TRNAME={pre:"전위(VLR)", in:"중위(LVR)", post:"후위(LRV)", lvl:"레벨(층별)"};
+
+/* --- G21. 순회 3종 (유닛 A) --- */
+function genG21(){
+  const qtype=pick(["pre","in","post","kth","postlast"]);
+  const root=t6Build(t6Shape());
+  const seqs={pre:t6Pre(root,[]), in:t6In(root,[]), post:t6Post(root,[]), lvl:t6Lvl(root)};
+  const viz={type:"tree",data:t6Viz(root),slots:true};
+  if(qtype==="kth"){
+    const tr=pick(["pre","in","post"]);
+    const k=g2R(2,seqs[tr].length-1);
+    const ans=seqs[tr][k-1];
+    const cands=[
+      {text:seqs[tr][k-2],correct:false,mc:"off-by-one",fb:"방문 순서를 처음부터 다시 밟아 보라 — 한 걸음 어긋났다."},
+      {text:seqs[tr][k%seqs[tr].length],correct:false,mc:"off-by-one",fb:"k번째 — 손가락으로 하나씩 세며 다시."},
+      {text:seqs.lvl[k-1],correct:false,mc:"level-mix",fb:"층별로 세지 않았나 — "+TRNAME[tr]+" 순서로 세어야 한다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G21",qtype,params:{tr,k,ans},viz,
+      stem:'그림의 트리를 <b>'+TRNAME[tr]+' 순회</b>할 때, <b>'+k+'번째</b>로 방문(출력)되는 노드는?',
+      okfb:TRNAME[tr]+' 순서는 '+t6Seq(seqs[tr])+' — '+k+'번째는 '+ans+'다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="postlast"){
+    const ans=root.v;
+    const all=t6All(root,[]);
+    const lastIn=seqs.in[seqs.in.length-1], firstPost=seqs.post[0];
+    const cands=[
+      {text:firstPost,correct:false,mc:"first-last-swap",fb:"그 노드는 후위의 '첫' 방문 — 마지막이 아니다."},
+      {text:lastIn,correct:false,mc:"inorder-mix",fb:"중위의 마지막(가장 오른쪽 노드)과 헷갈리지 말 것."},
+      {text:pick(all.filter(n=>!n.l&&!n.r)).v,correct:false,mc:"leaf-pick",fb:"리프는 일찍 처리된다 — 후위는 자식을 다 마친 뒤 자신이므로, 마지막은 언제나 루트다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G21",qtype,params:{ans},viz,
+      stem:'그림의 트리를 <b>후위(LRV) 순회</b>할 때, <b>맨 마지막</b>에 방문되는 노드는?',
+      okfb:'후위는 왼쪽·오른쪽을 전부 마치고 자신 — 트리 전체를 마치는 마지막 방문은 언제나 루트 '+ans+'다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const ans=t6Seq(seqs[qtype]);
+  const others=["pre","in","post","lvl"].filter(t=>t!==qtype&&t6Seq(seqs[t])!==ans);
+  const MC={pre:"pre-mix",in:"in-mix",post:"post-mix",lvl:"level-mix"};
+  const cands=others.map(t=>({text:t6Seq(seqs[t]),correct:false,mc:MC[t],fb:"그 순서는 "+TRNAME[t]+" 순회의 결과다 — printf가 찍히는 시점을 다시 보라."}));
+  const rev=t6Seq(seqs[qtype].slice().reverse());
+  if(rev!==ans) cands.push({text:rev,correct:false,mc:"reverse-mix",fb:"통째로 뒤집힌 순서다 — L·V·R의 자리부터 다시."});
+  return {id:"G21",qtype,params:{ans},viz,
+    stem:'그림의 트리를 <b>'+TRNAME[qtype]+' 순회</b>한 출력 순서는?',
+    okfb:TRNAME[qtype]+' — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G22. 반복 중위·레벨 순회 (유닛 B) --- */
+function genG22(){
+  const qtype=pick(["lvl","lvlk","which"]);
+  const root=t6Build(t6Shape());
+  const seqs={pre:t6Pre(root,[]), in:t6In(root,[]), post:t6Post(root,[]), lvl:t6Lvl(root)};
+  const viz={type:"tree",data:t6Viz(root),slots:true};
+  if(qtype==="which"){
+    /* 네 순회의 출력이 전부 서로 다른 트리에서만 출제 */
+    const uniq=["pre","in","post","lvl"].every((t,i,arr)=>arr.every((u,j)=>i===j||t6Seq(seqs[t])!==t6Seq(seqs[u])));
+    if(!uniq) return genG22();
+    const tr=pick(["pre","in","post","lvl"]);
+    return {id:"G22",qtype,params:{ans:TRNAME[tr]},viz,
+      stem:'그림의 트리에서 어떤 순회를 돌렸더니 출력이 <span class="mono">'+t6Seq(seqs[tr])+'</span> 이었다. <b>어느 순회</b>인가?',
+      okfb:'네 순회를 각각 돌려 대조하면 '+TRNAME[tr]+'만 이 순서를 낸다.',
+      choices:shuffle(["pre","in","post","lvl"].map(t=>({text:TRNAME[t],correct:t===tr,mc:t===tr?undefined:"trace-mix",fb:t===tr?undefined:TRNAME[t]+"를 직접 돌려 보라 — 이 출력과 다른 지점이 나온다."})))};
+  }
+  if(qtype==="lvlk"){
+    const k=g2R(2,seqs.lvl.length-1);
+    const ans=seqs.lvl[k-1];
+    const cands=[
+      {text:seqs.pre[k-1],correct:false,mc:"pre-mix",fb:"전위(깊이 먼저)로 세지 않았나 — 레벨 순회는 층별, 왼쪽부터다."},
+      {text:seqs.lvl[k-2],correct:false,mc:"off-by-one",fb:"층별·왼쪽부터 — 한 칸 어긋났다."},
+      {text:seqs.lvl[k%seqs.lvl.length],correct:false,mc:"off-by-one",fb:"큐에서 나오는 순서 그대로 다시 세어 보라."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G22",qtype,params:{k,ans},viz,
+      stem:'그림의 트리를 <b>레벨 순회</b>(층별, 각 층은 왼쪽부터)할 때 <b>'+k+'번째</b> 출력은?',
+      okfb:'레벨 순서는 '+t6Seq(seqs.lvl)+' — '+k+'번째는 '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const ans=t6Seq(seqs.lvl);
+  const others=["pre","in","post"].filter(t=>t6Seq(seqs[t])!==ans);
+  const cands=others.map(t=>({text:t6Seq(seqs[t]),correct:false,mc:"depth-mix",fb:"그 순서는 "+TRNAME[t]+" — 큐는 층을 다 마치기 전엔 아래로 내려가지 않는다."}));
+  const rev=t6Seq(seqs.lvl.slice().reverse());
+  if(rev!==ans) cands.push({text:rev,correct:false,mc:"reverse-mix",fb:"아래층부터 뒤집힌 순서 — 큐는 루트부터 위층 먼저다."});
+  return {id:"G22",qtype,params:{ans},viz,
+    stem:'그림의 트리를 <b>레벨 순회</b>(큐 사용 — 층별, 왼쪽부터)한 출력 순서는?',
+    okfb:'루트부터 층별로, 각 층은 왼쪽부터 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G23. 구조 재귀 — 서브트리 계산 (유닛 C) --- */
+function genG23(){
+  const qtype=pick(["subcount","subheight","subleaf"]);
+  const root=t6Build(t6Shape());
+  const all=t6All(root,[]);
+  const X=pick(all.filter(n=>(n.l||n.r)&&n!==root));   /* 루트 아닌 내부 노드 */
+  const cnt=n=>!n?0:1+cnt(n.l)+cnt(n.r);
+  const hgt=n=>!n?0:1+Math.max(hgt(n.l),hgt(n.r));
+  const lf=n=>!n?0:(!n.l&&!n.r?1:lf(n.l)+lf(n.r));
+  const F={subcount:cnt, subheight:hgt, subleaf:lf}[qtype];
+  const ans=F(X);
+  const whole={subcount:cnt(root), subheight:hgt(root), subleaf:lf(root)}[qtype];
+  const NAME={subcount:"node_count", subheight:"height", subleaf:"leaf_count"};
+  const KO={subcount:"노드 수", subheight:"높이", subleaf:"리프 수"};
+  const cands=[];
+  if(whole!==ans) cands.push({text:String(whole),correct:false,mc:"whole-tree",fb:"트리 '전체'를 세지 않았나 — "+X.v+"를 루트로 한 서브트리만이다."});
+  t5NumFill(cands,ans,[ans-1,ans+1,ans+2].filter(v=>v>0));
+  return {id:"G23",qtype,params:{node:X.v,ans},viz:{type:"tree",data:t6Viz(root,X.v),slots:true},
+    stem:'<span class="mono">'+NAME[qtype]+'(p)</span> 는 p를 루트로 한 서브트리의 '+KO[qtype]+'를 재귀로 구한다. 그림에서 <span class="mono">'+NAME[qtype]+'('+X.v+')</span> 의 반환값은?',
+    okfb:X.v+' 아래 묶음만 본다 — '+KO[qtype]+' '+ans+'.',
+    choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+}
+
+/* --- G24. 수식 트리 (유닛 D) --- */
+function t6Expr(){
+  const op=()=>pick(["+","-","*"]);
+  const num=()=>g2R(1,9);
+  const T=pick([1,2,3,4]);
+  const L=v=>({v:String(v),leaf:1});
+  const N=(o,a,b)=>({v:o,l:a,r:b});
+  if(T===1) return N(op(),L(num()),L(num()));
+  if(T===2) return N(op(),N(op(),L(num()),L(num())),L(num()));
+  if(T===3) return N(op(),L(num()),N(op(),L(num()),L(num())));
+  return N(op(),N(op(),L(num()),L(num())),N(op(),L(num()),L(num())));
+}
+function exEval(n){ if(n.leaf) return +n.v; const a=exEval(n.l),b=exEval(n.r); return n.v==="+"?a+b:n.v==="-"?a-b:a*b; }
+function exPost(n){ return n.leaf?n.v:exPost(n.l)+" "+exPost(n.r)+" "+n.v; }
+function exPre(n){ return n.leaf?n.v:n.v+" "+exPre(n.l)+" "+exPre(n.r); }
+function exIn(n){ return n.leaf?n.v:"("+exIn(n.l)+" "+n.v+" "+exIn(n.r)+")"; }
+function exViz(n){ const o={v:n.v==="*"?"×":n.v}; if(!n.leaf) o.c=[exViz(n.l),exViz(n.r)]; return o; }
+function genG24(){
+  const qtype=pick(["val","post","rootop"]);
+  const t=t6Expr();
+  const val=exEval(t);
+  if(Math.abs(val)>99) return genG24();
+  const viz={type:"tree",data:exViz(t)};
+  if(qtype==="val"){
+    const ans=String(val);
+    const cands=[];
+    for(const d of shuffle([val-1,val+1,val-2,val+2,val+3,val-3])){
+      if(cands.length>=3) break;
+      if(String(d)!==ans) cands.push({text:String(d),correct:false,mc:"calc-off",fb:"리프부터 계산해 위로 올라가 보라 — 자식 결과가 먼저다."});
+    }
+    return {id:"G24",qtype,params:{ans},viz,
+      stem:'그림의 <b>수식 트리</b>를 평가(eval)한 결과는? (리프 = 숫자, 내부 노드 = 연산자)',
+      okfb:'자식(서브트리) 값부터 구하고 자기 연산을 마지막에 — 결과는 '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="rootop"){
+    const ans=(t.v==="*"?"×":t.v)+" — 루트의 연산이 맨 마지막에 계산된다";
+    const kids=[t.l,t.r].filter(n=>!n.leaf);
+    const cands=[];
+    kids.forEach(k=>cands.push({text:(k.v==="*"?"×":k.v)+" — 아래(서브트리) 연산이 맨 마지막에 계산된다",correct:false,mc:"order-flip",fb:"서브트리는 재료 — 재료가 먼저, 루트가 마지막이다."}));
+    cands.push({text:"왼쪽 리프의 숫자 — 처음 읽는 값이 마지막까지 계산된다",correct:false,mc:"leaf-pick",fb:"리프는 계산할 것 없이 값 그 자체 — 마지막 연산은 루트다."});
+    if(!kids.length) cands.push({text:(t.v==="*"?"+":"×")+" — 트리에 없는 연산이 끼어든다",correct:false,mc:"phantom-op",fb:"트리에 있는 연산자만 계산된다."});
+    return {id:"G24",qtype,params:{ans},viz,
+      stem:'그림의 수식 트리에서 <b>맨 마지막에 계산되는 것</b>은? (후위 순회로 평가한다)',
+      okfb:'후위 순회는 자식을 다 마친 뒤 자신 — 마지막 계산은 언제나 루트의 연산 '+(t.v==="*"?"×":t.v)+'다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const ans=exPost(t);
+  const cands=[
+    {text:exPre(t),correct:false,mc:"prefix-mix",fb:"연산자가 앞에 오는 것은 '전위' 표기 — 후위는 연산자가 뒤다."},
+    {text:exIn(t).replace(/[()]/g,""),correct:false,mc:"infix-mix",fb:"그냥 왼쪽부터 읽은 중위 나열 — 후위 순회는 자식 먼저, 자신은 나중이다."},
+    {text:exPost(t).split(" ").reverse().join(" "),correct:false,mc:"reverse-mix",fb:"통째로 뒤집은 것 — 후위는 '왼쪽, 오른쪽, 자신' 순서다."}
+  ].filter(c=>c.text!==ans);
+  return {id:"G24",qtype,params:{ans},viz, mono:true,
+    stem:'그림의 수식 트리를 <b>후위 순회</b>로 출력하면? — 2장(B) 계산기에 넣던 바로 그 표기가 나온다.',
+    okfb:'왼쪽 서브트리, 오른쪽 서브트리, 자신 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- AP6. 4장(B) 심화 (도발장 2) --- */
+function genAP6ch(idx){
+  if(idx===0){
+    /* 전위+중위 → 오른쪽 서브트리의 루트 역산 */
+    let root=t6Build(t6Shape());
+    while(!root.r||!root.l) root=t6Build(t6Shape());
+    const pre=t6Pre(root,[]), ino=t6In(root,[]);
+    const ans=root.r.v;
+    const cands=[
+      {text:root.l.v,correct:false,mc:"lr-swap",fb:"그 노드는 왼쪽 서브트리의 루트 — 전위에서 루트 '바로 다음'이다."},
+      {text:pre[pre.length-1],correct:false,mc:"last-pick",fb:"전위의 마지막은 가장 깊은 오른쪽 리프 쪽 — 서브트리의 루트가 아니다."},
+      {text:ino[ino.length-1],correct:false,mc:"inorder-mix",fb:"중위의 마지막(가장 오른쪽)이 곧 서브트리 루트인 것은 아니다."},
+      {text:root.v,correct:false,mc:"root-pick",fb:"그 노드가 루트 자신이다 — 묻는 것은 루트의 '오른쪽 자식'."}
+    ].filter(c=>c.text!==ans);
+    for(const v of pre){ if(cands.length>=3) break; if(v!==ans&&!cands.some(c=>c.text===v)) cands.push({text:v,correct:false,mc:"pick-any",fb:"중위에서 루트 왼쪽 묶음의 크기만큼 전위를 건너뛰어 보라."}); }
+    return {id:"AP6",qtype:"rebuild",params:{ans},mono:true,
+      stem:'[심화 — 순회 역산] 어떤 이진 트리의 <b>전위</b> 순회가 <span class="mono">'+t6Seq(pre)+'</span>, <b>중위</b> 순회가 <span class="mono">'+t6Seq(ino)+'</span> 이다. (그림 없음) 이 트리에서 <b>루트의 오른쪽 자식</b>은?',
+      okfb:'전위의 첫 노드 '+root.v+'가 루트. 중위에서 '+root.v+' 왼쪽이 왼쪽 서브트리('+t6In(root.l,[]).join(", ")+') — 전위에서 그만큼 건너뛴 다음 노드 '+ans+'가 오른쪽 서브트리의 루트다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){
+    /* iter_inorder 스택 최대 크기 — 시뮬 필요 */
+    const root=t6Build(t6Shape());
+    let node=root, max=0; const st=[];
+    for(;;){
+      for(; node; node=node.l){ st.push(node); if(st.length>max) max=st.length; }
+      node=st.pop();
+      if(!node) break;
+      node=node.r;
+    }
+    const ans=max;
+    const hgt=n=>!n?0:1+Math.max(hgt(n.l),hgt(n.r));
+    const cands=[];
+    if(hgt(root)!==ans) cands.push({text:String(hgt(root)),correct:false,mc:"height-guess",fb:"높이와 같아 보이지만 — 스택엔 '왼쪽으로 내려온 조상들'만 쌓인다. 직접 밟아 보라."});
+    t5NumFill(cands,ans,[ans-1,ans+1,ans+2].filter(v=>v>0));
+    return {id:"AP6",qtype:"stackmax",params:{ans},viz:{type:"tree",data:t6Viz(root),slots:true},
+      stem:'[심화 — 반복 중위] 그림의 트리에 iter_inorder(스택 사용)를 돌릴 때, 스택에 <b>동시에 쌓이는 노드 수의 최댓값</b>은? (push 루프는 왼쪽으로만 내려가며 쌓는다)',
+      okfb:'왼쪽 내리막마다 쌓고, pop 후 오른쪽으로 넘어가 다시 쌓는다 — 시뮬레이션하면 최대 '+ans+'개.',
+      choices:g2Fill(cands,{text:String(ans),correct:true},4)};
+  }
+  /* idx 2 — 전위(prefix) 표기 */
+  let t=t6Expr();
+  while(t.l.leaf&&t.r.leaf) t=t6Expr();   /* 2연산 이상 */
+  const ans=exPre(t);
+  const cands=[
+    {text:exPost(t),correct:false,mc:"postfix-mix",fb:"그것은 후위(3장 계산기용) — 전위는 연산자가 '먼저' 온다."},
+    {text:exIn(t).replace(/[()]/g,""),correct:false,mc:"infix-mix",fb:"중위 나열이다 — 전위 순회는 자신, 왼쪽, 오른쪽."},
+    {text:exPre(t).split(" ").reverse().join(" "),correct:false,mc:"reverse-mix",fb:"뒤집힌 순서 — 전위는 루트부터 시작한다."}
+  ].filter(c=>c.text!==ans);
+  return {id:"AP6",qtype:"prefix",params:{ans},viz:{type:"tree",data:exViz(t)},mono:true,
+    stem:'[심화 — 표기법 완성] 그림의 수식 트리를 <b>전위 순회</b>로 출력한 표기(전위 표기)는?',
+    okfb:'자신, 왼쪽, 오른쪽 — '+ans+'. (전위·중위·후위 순회가 곧 세 가지 수식 표기법이다.)',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
