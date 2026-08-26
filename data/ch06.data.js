@@ -86,6 +86,7 @@ const CH06 = {
       {who:"book", say:'"표준 7노드 트리로 셋을 나란히 — 눈에 익혀 두라. 시련과 시험의 기준 감각이 된다."',
        viz:{type:"tree",data:{v:"A",c:[{v:"B",c:[{v:"D"},{v:"E"}]},{v:"C",c:[{v:"F"},{v:"G"}]}]}},
        table:'<table class="trip"><tr><th>전위 (VLR)</th><td class="mono">A B D E C F G</td></tr><tr><th>중위 (LVR)</th><td class="mono">D B E A F C G</td></tr><tr><th>후위 (LRV)</th><td class="mono">D E B F G C A</td></tr></table>'},
+      {who:"book", say:'"표에서 알 수 있는 사실 하나 — <b>순회 결과 하나만으로는 원래 트리를 알 수 없다.</b> 서로 다른 트리가 같은 전위 결과를 낼 수 있기 때문이다. 그러나 <b>전위와 중위가 함께 주어지면 트리는 단 하나로 정해진다.</b> 전위의 첫 원소가 루트이고, 중위에서 그 루트보다 왼쪽에 적힌 것들이 왼쪽 서브트리의 전부다 — 두 서브트리에 같은 방법을 반복하면 트리가 복원된다."'},
       {say:'셋 다 재귀 구조는 같고 printf의 위치만 다르다 — 전위는 만나자마자, 중위는 왼쪽을 마친 뒤, 후위는 전부 마친 뒤 출력한다. 시련으로 손에 익히자.', mood:"proud"}
     ]},
 

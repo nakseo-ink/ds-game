@@ -121,7 +121,9 @@ const CH02 = {
           {text:"rear를 0으로 되돌려 앞의 빈 칸에 이어서 넣는다",correct:false,mc:"circular-preview",fb:"그 발상이 바로 내일 배울 '원형 큐'다 — 선형 큐의 queue_full은 다르게 움직인다."},
           {text:"더 넣을 수 없다는 오류만 내고 즉시 종료한다",correct:false,mc:"no-role",fb:"빈 칸이 있는데 끝내는 건 아깝다 — queue_full에는 역할이 있다."},
           {text:"배열을 두 배 크기로 늘려 뒤쪽에 이어 붙인다",correct:false,mc:"realloc-mix",fb:"크기는 MAX_QUEUE_SIZE로 고정이다 — 교재의 방법이 아니다."}]}},
-      {say:'줄 전체가 슬금슬금 오른쪽으로… 이사는 비싸다. 내일은 <b>회전</b>이다.'}
+      {say:'줄 전체가 슬금슬금 오른쪽으로… 이사는 비싸다. 내일은 <b>회전</b>이다.'},
+      {who:"book", say:'"큐를 덮기 전에, 변형 하나를 이름과 함께 알아 두라 — <b>덱(deque, double-ended queue)</b>. 이름 그대로 <b>양쪽 끝 모두에서 삽입과 삭제가 가능한</b> 큐다. 스택은 한쪽 끝만 쓰고, 큐는 넣는 끝과 빼는 끝이 하나씩 — 덱은 그 제한을 모두 푼 것이라, 한쪽 끝만 쓰면 스택처럼, 양 끝을 하나씩 쓰면 큐처럼 움직인다."'},
+      {say:'스택과 큐의 규칙을 다 품는 일반형이 덱이라는 거네. 이름만 보고 놀라지 말자 — <b>양쪽 끝, 그게 전부다.</b>'}
     ]},
 
     C: { day:"목요일", label:"유닛 C", title:"원형 큐 (circular queue)", doneLabel:"조작 미션 ▶", beats:[

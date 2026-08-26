@@ -22,6 +22,10 @@ const S = { balance:wallet.balance||0, tutorFirstTry:0, tutorPassed:false, aplus
 if(typeof wallet.trust!=="number") wallet.trust=5;          /* 어머니의 신뢰 0~10 (숨김) */
 if(typeof wallet.aplusStreak!=="number") wallet.aplusStreak=0;
 if(!Array.isArray(wallet.clues)) wallet.clues=[];            /* 역추적 단서 수첩 */
+if(!wallet.cleared) wallet.cleared={};                       /* 챕터 클리어 — 정산의 [이번 챕터 끝] 버튼으로 확정 */
+if(!wallet.examDone) wallet.examDone={};                     /* 시험 챕터 — 정산(보상·trust) 1회 지급 가드 */
+if(!wallet.examBest) wallet.examBest={};                     /* 시험 챕터 — 최고 점수 기록 */
+if(typeof wallet.e1Done!=="boolean") wallet.e1Done=false;    /* E1(어머니의 질문) — 최초 1회 발동 */
 function addClue(id,text){
   if(wallet.clues.some(c=>c.id===id)) return false;
   wallet.clues.push({id,text}); saveWallet(); log("clue_found",{id});
@@ -36,8 +40,8 @@ function evalCond(c){
   if(c.clue!==undefined && !wallet.clues.some(x=>x.id===c.clue)) return false;
   return true;
 }
-/* ---- 장 번호 표기 — "N장" + 파트(A/B/C). 한 주제가 여러 강이면 meta.part 로 구분 ---- */
-const chNum=C=>C.meta.week+"장"+(C.meta.part?"("+C.meta.part+")":"");
+/* ---- 장 번호 표기 — "N장" + 파트(A/B/C). 시험 챕터는 장 번호 없이 특수 기호(meta.special="※") ---- */
+const chNum=C=>C.meta.special?C.meta.special:(C.meta.week+"장"+(C.meta.part?"("+C.meta.part+")":""));
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
 const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1장으로 */
@@ -942,14 +946,16 @@ function sceneSettlement(noPay){
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV("doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>쌤, 다음 주는 <b>'+CH.meta.nextTeaser+'</b>래요. '+CH.meta.nextHint+'</div></div>'+
     '<div class="card" style="background:var(--panel2); margin-top:18px;"><b>'+chNum(CH)+' "'+CH.meta.title+'" '+(passed?"클리어 🎉":"재도전 대기")+'</b><br>'+
     '<span style="color:var(--ink-dim); font-size:14px; line-height:1.8;">누적 로그 '+Log.count()+'건'+(CONFIG.SUPABASE_URL?" (수집 서버 연결됨)":" (로컬 큐 — 수집 서버 미설정)")+'</span></div>'+
-    '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn" id="again">처음부터 다시</button></div>'+
+    '<div style="margin-top:16px; text-align:right;"><button class="btn ghost" id="dump">로그 JSON 보기</button> '+(passed?'<button class="btn ghost" id="shop">🛒 상점 들르기</button> ':"")+'<button class="btn ghost" id="again">처음부터 다시</button>'+(passed?' <button class="btn" id="chdone">이번 챕터 끝 — 클리어 ▶</button>':"")+'</div>'+
     '<pre id="dumpbox" class="mono" style="display:none; margin-top:12px; font-size:11.5px; color:var(--ink-dim); max-height:220px; overflow:auto; background:#12141a; padding:12px; border-radius:8px;"></pre></div>'));
   $("#dump").onclick=()=>{const d=$("#dumpbox"); d.style.display="block"; d.textContent=JSON.stringify(Log.all().slice(-50),null,1);};
   const db=$("#duelbtn"); if(db) db.onclick=()=>{ log("duel_choice",{accepted:true}); duelScene(()=>sceneSettlement(true)); };
   const ds=$("#duelskip"); if(ds) ds.onclick=()=>{ S.duelDone=true; log("duel_choice",{accepted:false}); sceneSettlement(true); };
   const sb=$("#shop"); if(sb) sb.onclick=()=>sceneShop(()=>sceneSettlement(true)); /* 재방문 시 재지급 금지 */
-  $("#again").onclick=()=>{ clearSave(); GW=null; S.momLine=null; S.duelDone=false; S.duelRewarded=false; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
+  const chReset=()=>{ clearSave(); GW=null; S.momLine=null; S.duelDone=false; S.duelRewarded=false; streakA=streakB=streakC=streakD=streakE=streak0=0; attemptsA=attemptsC=attemptsE=attempts0=0; tracesB=runsD=0; poolC=[];
     S.tutorFirstTry=0; S.tutorPassed=false; S.aplusAccepted=false; S.aplusSuccess=false; S.retake=false; sceneTitle(); };
+  $("#again").onclick=chReset;
+  const cd=$("#chdone"); if(cd) cd.onclick=()=>{ wallet.cleared[CURCH]=true; saveWallet(); log("chapter_clear",{}); chReset(); };
 }
 
 /* ---- 결투장 — 연속 A+ 특별 씬 (CH.duel: {tease, enterLabel, header, intro[], item(Parsons), win[], lose[], reward}) ---- */
@@ -980,6 +986,336 @@ function duelScene(back){
     }
     fb.appendChild(nextBtnRow("정산으로 돌아가기 ▶", back));
   }});
+}
+
+/* ================================================================
+   시험 러너 (chM 중간고사 — chF 기말 재사용 예정) — EXAMBANK + 챕터 데이터로 실행
+   프로세스(설계 문서 21): 진단 모의(피드백 봉인) → 성적표·해설(지연 피드백)
+   → 오답 클리닉(같은 오개념·다른 문제, 연속 정답 기준) → 최종 모의(비중복) → 정산 + E1
+   ================================================================ */
+let EX=null;
+(function(){ const st=document.createElement("style"); st.textContent=".choice.exsel{border-color:var(--accent);color:var(--accent);}"; document.head.appendChild(st); })();
+const exBankById=id=>EXAMBANK.items.find(it=>it.id===id);
+function exInit(){ EX={round:0, draws:{}, ans:{}, scores:{}, times:{}, rx:[], used:[], tStart:0}; }
+function exSaveCP(cp){
+  saveData={v:1, cp, ch:CURCH, ex:{round:EX.round, draws:EX.draws, ans:EX.ans, scores:EX.scores, times:EX.times, rx:EX.rx, used:EX.used}, ts:Date.now()};
+  localStorage.setItem(SAVEKEY,JSON.stringify(saveData));
+}
+function exResume(sv){
+  exInit();
+  const e=sv.ex||{};
+  EX.round=e.round||0; EX.draws=e.draws||{}; EX.ans=e.ans||{}; EX.scores=e.scores||{}; EX.times=e.times||{}; EX.rx=e.rx||[]; EX.used=e.used||[];
+  const cp=sv.cp;
+  if(cp==="M-test1"){ exTestStart(1); return; }                 /* 모의 도중 저장 없음 — 새 시험지로 라운드 재시작 */
+  if(cp==="M-report1"){ exReport(1); return; }
+  if(cp==="M-clinic"){ exClinic(); return; }
+  if(cp==="M-test2"){ exTestStart(Math.max(EX.round,2)); return; }
+  if(cp==="M-settle"){ exSettle(); return; }
+  exStart();
+}
+/* ---- 대사 시퀀서 (sceneIntro와 동일 문법 — 누적 표시) ---- */
+function exDlgSeq(beats,idx,label,next){
+  BookFab.hide(); stage.innerHTML="";
+  const bs=(beats||[]).filter(d=>evalCond(d.cond));
+  if(!bs.length){ next(); return; }
+  const box=el('<div class="fade"></div>');
+  for(let k=0;k<=idx;k++){ const d=bs[k];
+    box.appendChild(el('<div class="dlg"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
+  }
+  const last=idx>=bs.length-1;
+  const btn=el('<div style="margin-top:18px;text-align:right;"><button class="btn">▶ '+(last?label:"계속")+'</button></div>');
+  btn.querySelector("button").onclick=()=> last?next():exDlgSeq(beats,idx+1,label,next);
+  box.appendChild(btn); stage.appendChild(box);
+}
+function exStart(){
+  exInit();
+  setHUD("시험 전 주","특훈 준비");
+  exSaveCP("M-intro"); log("exam_start",{});
+  exDlgSeq(CH.intro,0,"특훈 개시",()=>exDlgSeq(CH.beforeTest1,0,"진단 모의 — "+CH.examCfg.total+"문 시작",()=>exTestStart(1)));
+}
+/* ---- 출제 추첨 — 장별 쿼터 + 코드형(diff 3) 최소 보장 + 부족분 보충 사슬 ---- */
+function exDraw(exclude){
+  const cfg=CH.examCfg, out=[];
+  for(const chid in cfg.quota){
+    let take=shuffle(EXAMBANK.items.filter(it=>it.ch===chid&&!exclude.includes(it.id)&&!out.includes(it.id))).slice(0,cfg.quota[chid]);
+    if(take.length<cfg.quota[chid]){  /* 해당 장 소진 — 다른 장 미사용분으로 보충 */
+      const extra=shuffle(EXAMBANK.items.filter(it=>!exclude.includes(it.id)&&it.ch!==chid&&!out.includes(it.id)&&!take.some(t=>t.id===it.id)));
+      log("exam_fill",{ch:chid, short:cfg.quota[chid]-take.length});
+      take=take.concat(extra.slice(0,cfg.quota[chid]-take.length));
+    }
+    take.forEach(t=>out.push(t.id));
+  }
+  while(out.length<cfg.total){  /* 최후 — 기출제분 재사용 (은행 전체 소진 시에만) */
+    const any=shuffle(EXAMBANK.items.filter(it=>!out.includes(it.id)));
+    if(!any.length) break; out.push(any[0].id);
+  }
+  let need=(cfg.minDiff3||0)-out.map(exBankById).filter(it=>it.diff===3).length;  /* 코드형 최소 보장 — 같은 장 안에서만 교체(쿼터 보존) */
+  if(need>0){
+    const add=shuffle(EXAMBANK.items.filter(it=>it.diff===3&&!out.includes(it.id)&&!exclude.includes(it.id)));
+    for(const a of add){
+      if(need<=0) break;
+      const vi=out.findIndex(id=>{const x=exBankById(id); return x.diff!==3&&x.ch===a.ch;});
+      if(vi>=0){ out[vi]=a.id; need--; }
+    }
+  }
+  return shuffle(out);
+}
+function exTestStart(round){
+  if(EX.draws[round]) EX.used=EX.used.filter(id=>!EX.draws[round].includes(id));  /* 같은 라운드 재시작 — 이전 추첨 반납 */
+  EX.round=round;
+  EX.draws[round]=exDraw(round===1?[]:EX.used.slice());
+  EX.draws[round].forEach(id=>{ if(!EX.used.includes(id)) EX.used.push(id); });
+  EX.ans[round]=[];
+  EX.tStart=Date.now();
+  exSaveCP(round===1?"M-test1":"M-test2");
+  log("exam_test_start",{round, ids:EX.draws[round].slice()});
+  exTestQ(round,0);
+}
+/* ---- 시험 문항 화면 — 피드백 봉인: 고르고 [다음]. 정오 표시 없음 ---- */
+function exTestQ(round,qi){
+  BookFab.hide();
+  const ids=EX.draws[round], total=ids.length;
+  if(qi>=total){ exGradeDone(round); return; }
+  const item=exBankById(ids[qi]);
+  const label=round===1?"진단 모의":"최종 모의";
+  setHUD(label,"문 "+(qi+1)+"/"+total);
+  stage.innerHTML="";
+  let strip='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:10px;">';
+  for(let k=0;k<total;k++) strip+='<span style="width:21px;height:21px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;'+
+    (k<qi?'background:var(--accent);color:#10131a;':k===qi?'border:1.6px solid var(--accent);color:var(--accent);':'border:1px solid var(--line);color:var(--ink-dim);')+'">'+(k+1)+'</span>';
+  strip+='</div>';
+  const card=el('<div class="card fade"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;"><b style="color:var(--accent);">※ '+CH.meta.title+' — '+label+'</b>'+
+    '<span style="color:var(--ink-dim);font-size:13px;">문 '+(qi+1)+' / '+total+' · 채점은 제출 후 일괄</span></div>'+strip+'</div>');
+  const vz=el('<div style="margin-top:12px;"></div>'); card.appendChild(vz); renderViz(vz,item);
+  card.appendChild(el('<div class="stem">'+item.stem+'</div>'));
+  const chBox=el('<div class="choices"></div>');
+  const sh=shuffle(item.choices.map((c,i)=>({...c,oi:i})));
+  let sel=-1;
+  sh.forEach((c,ci)=>{
+    const b=el('<button class="choice'+(item.mono?" mono":"")+'">'+["①","②","③","④"][ci]+" "+c.text+"</button>");
+    b.onclick=()=>{ sel=ci; [...chBox.children].forEach(x=>x.classList.remove("exsel")); b.classList.add("exsel"); $("#exnext").disabled=false; };
+    chBox.appendChild(b);
+  });
+  card.appendChild(chBox);
+  card.appendChild(el('<div style="margin-top:14px;text-align:right;"><button class="btn" id="exnext" disabled>'+(qi===total-1?"제출 — 채점 ▶":"다음 문제 ▶")+'</button></div>'));
+  stage.appendChild(card);
+  $("#exnext").onclick=()=>{
+    const c=sh[sel]; if(!c) return;
+    EX.ans[round].push({id:item.id, oi:c.oi, ok:!!c.correct});
+    log("exam_answer",{round, itemId:item.id, correct:!!c.correct, mc:c.correct?null:c.mc});
+    exTestQ(round,qi+1);
+  };
+}
+function exGradeDone(round){
+  EX.times[round]=Date.now()-EX.tStart;
+  const score=EX.ans[round].filter(x=>x.ok).length*CH.examCfg.pts;
+  EX.scores[round]=score;
+  log("exam_graded",{round, score, ms:EX.times[round]});
+  if(round===1&&score>=100){ exSaveCP("M-settle"); exDlgSeq(CH.perfectSkip,0,"정산 ▶",exSettle); return; }
+  if(round===1){ exSaveCP("M-report1"); exDlgSeq(CH.reportIntro,0,"성적표 ▶",()=>exReport(1)); return; }
+  exSaveCP("M-settle"); exSettle();
+}
+const exFmtMs=ms=>{ const s=Math.round(ms/1000); return Math.floor(s/60)+"분 "+(s%60)+"초"; };
+/* ---- 성적표 (1차 = 진단 리포트) ---- */
+function exReport(round){
+  BookFab.hide(); exSaveCP("M-report1");
+  setHUD("진단 결과","성적표");
+  const a=EX.ans[round], score=EX.scores[round];
+  const wrong=a.filter(x=>!x.ok);
+  stage.innerHTML="";
+  let rows='';
+  for(const chid in CH.examCfg.quota){
+    const C=CHBYID[chid]; if(!C) continue;
+    const mine=a.filter(x=>exBankById(x.id).ch===chid);
+    if(!mine.length) continue;
+    const marks=mine.map(x=>'<span style="display:inline-block;width:19px;text-align:center;color:'+(x.ok?'var(--accent2)':'var(--wrong)')+';">'+(x.ok?'○':'✗')+'</span>').join('');
+    rows+='<tr><td style="padding:4px 10px 4px 0;white-space:nowrap;color:var(--ink-dim);">'+chNum(C)+' '+C.meta.title+'</td><td style="padding:4px 8px;">'+marks+'</td><td style="padding:4px 0;text-align:right;"><b>'+mine.filter(x=>x.ok).length+'</b>/'+mine.length+'</td></tr>';
+  }
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">※ '+CH.meta.title+' — 진단 성적표</div>'+
+    '<div class="card" style="background:var(--panel2);margin-top:12px;text-align:center;">'+
+    '<div style="font-size:13px;color:var(--ink-dim);">진단 점수 <span style="font-size:11.5px;">(최종 점수가 아니다)</span></div>'+
+    '<div style="font-size:34px;color:var(--accent);margin:4px 0;"><b>'+score+'</b><span style="font-size:16px;color:var(--ink-dim);"> / 100</span></div>'+
+    '<div style="font-size:12.5px;color:var(--ink-dim);">풀이 시간 '+exFmtMs(EX.times[round])+' · 오답 '+wrong.length+'문</div></div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;">'+rows+'</table>'+
+    '<div class="caption" style="min-height:auto;margin-top:10px;">✗ 자리마다 처방전이 만들어진다 — 방금 그 문제가 아니라 <b>같은 것을 묻는 다른 문제</b>로.</div>'+
+    '<div style="margin-top:14px;text-align:right;">'+
+    '<button class="btn ghost" id="exrev">틀린 문제 다시 보기 ('+wrong.length+') ▶</button> '+
+    '<button class="btn" id="exclinic">오답 클리닉 ▶</button></div></div>');
+  stage.appendChild(card);
+  $("#exrev").onclick=()=>exReview(wrong,0,()=>exReport(round));
+  $("#exclinic").onclick=()=>{ exBuildRx(round); exDlgSeq(CH.clinicIntro,0,"클리닉 개시",exClinic); };
+}
+/* ---- 틀린 문제 해설 열람 (지연 피드백 — 내 답의 fb + 정답의 okfb) ---- */
+function exReview(list,i,back){
+  BookFab.hide();
+  if(i>=list.length){ back(); return; }
+  const x=list[i], item=exBankById(x.id);
+  setHUD("해설","오답 "+(i+1)+"/"+list.length);
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">오답 해설 — '+(i+1)+' / '+list.length+'</div></div>');
+  const vz=el('<div style="margin-top:10px;"></div>'); card.appendChild(vz); renderViz(vz,item);
+  card.appendChild(el('<div class="stem">'+item.stem+'</div>'));
+  const chBox=el('<div class="choices"></div>');
+  item.choices.forEach((c,ci)=>{
+    const mine=ci===x.oi, isOk=!!c.correct;
+    const b=el('<button class="choice'+(item.mono?" mono":"")+(isOk?" correct":mine?" wrong":"")+'" disabled>'+["①","②","③","④"][ci]+" "+c.text+(mine?' <span style="font-size:11.5px;">← 내 답</span>':'')+'</button>');
+    chBox.appendChild(b);
+  });
+  card.appendChild(chBox);
+  const myc=item.choices[x.oi];
+  if(myc&&!myc.correct&&myc.fb) card.appendChild(el('<div class="feedback fade">✗ <b>내가 고른 답</b> — '+myc.fb+'</div>'));
+  card.appendChild(el('<div class="feedback ok fade">✅ <b>정답</b> — '+(item.okfb||"")+'</div>'));
+  card.appendChild(el('<div style="margin-top:14px;text-align:right;"><button class="btn" id="exrevnext">'+(i===list.length-1?"해설 끝 ▶":"다음 오답 ▶")+'</button></div>'));
+  stage.appendChild(card);
+  $("#exrevnext").onclick=()=>exReview(list,i+1,back);
+}
+/* ---- 처방전 생성 — (장, 유닛, 오개념) 좌표로 묶음 ---- */
+function exBuildRx(round){
+  const map={};
+  EX.ans[round].filter(x=>!x.ok).forEach(x=>{
+    const it=exBankById(x.id), c=it.choices[x.oi]||{};
+    const key=it.ch+"|"+it.unit+"|"+(c.mc||"x");
+    if(!map[key]) map[key]={ch:it.ch, unit:it.unit, mc:c.mc||null, itemId:it.id, oi:x.oi, streak:0, done:false};
+  });
+  EX.rx=Object.values(map);
+}
+/* ---- 오답 클리닉 목록 ---- */
+function exClinic(){
+  BookFab.hide(); exSaveCP("M-clinic");
+  const cfg=CH.examCfg, doneN=EX.rx.filter(r=>r.done).length;
+  setHUD("특훈","클리닉 "+doneN+"/"+EX.rx.length);
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🩺 오답 클리닉 — 처방전 '+doneN+' / '+EX.rx.length+' 완료</div>'+
+    '<div class="caption" style="min-height:auto;margin-top:6px;">처방마다: 복습 → <b>같은 것을 묻는 다른 문제</b>를 힌트 없이 <b>연속 '+cfg.clinicStreak+'회</b> 정답이면 완료.</div></div>');
+  const listBox=el('<div style="margin-top:6px;"></div>'); card.appendChild(listBox);
+  EX.rx.forEach((r,k)=>{
+    const C=CHBYID[r.ch], src=exBankById(r.itemId), myc=src.choices[r.oi]||{};
+    const row=el('<div class="card" style="background:var(--panel2);margin-top:10px;'+(r.done?'opacity:.65;':'')+'">'+
+      '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;"><b>'+(r.done?'✓ ':'')+chNum(C)+' '+C.meta.title+'</b>'+
+      '<span style="color:var(--ink-dim);font-size:12.5px;">유닛 '+r.unit+(r.done?' — 처방 완료':' — 연속 '+r.streak+'/'+cfg.clinicStreak)+'</span></div>'+
+      '<div style="font-size:13px;color:var(--ink-dim);margin-top:6px;">실수의 정체 — '+(myc.fb||src.okfb||"")+'</div>'+
+      (r.done?'':'<div style="text-align:right;margin-top:8px;"><button class="btn" data-rx="'+k+'">처방 '+(r.streak>0?'계속':'시작')+' ▶</button></div>')+'</div>');
+    listBox.appendChild(row);
+  });
+  const allDone=EX.rx.every(r=>r.done);
+  card.appendChild(el('<div style="margin-top:16px;text-align:right;">'+
+    (allDone?'<button class="btn" id="exfinal">최종 모의 ▶</button>':'<span style="color:var(--ink-dim);font-size:12.5px;">모든 처방을 끝내면 최종 모의가 열린다.</span>')+'</div>'));
+  stage.appendChild(card);
+  [...card.querySelectorAll("button[data-rx]")].forEach(b=>b.onclick=()=>exRxIntro(+b.getAttribute("data-rx")));
+  const fb=$("#exfinal"); if(fb) fb.onclick=()=>exDlgSeq(CH.beforeTest2,0,"최종 모의 — "+CH.examCfg.total+"문 시작",()=>exTestStart(EX.round+1));
+}
+/* ---- 처방 1단계 — 원문항 복습 (틀린 그 자리 다시 읽기) ---- */
+function exRxIntro(k){
+  BookFab.hide();
+  const r=EX.rx[k], src=exBankById(r.itemId), myc=src.choices[r.oi]||{}, okc=src.choices.find(c=>c.correct);
+  setHUD("클리닉","복습");
+  stage.innerHTML="";
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">🩺 처방전 — 1단계 · 틀린 자리 복습</div></div>');
+  const vz=el('<div style="margin-top:10px;"></div>'); card.appendChild(vz); renderViz(vz,src);
+  card.appendChild(el('<div class="stem">'+src.stem+'</div>'));
+  if(myc.fb) card.appendChild(el('<div class="feedback fade">✗ <b>내가 고른 답</b> "'+myc.text+'" — '+myc.fb+'</div>'));
+  card.appendChild(el('<div class="feedback ok fade">✅ <b>정답</b> "'+(okc?okc.text:"")+'" — '+(src.okfb||"")+'</div>'));
+  card.appendChild(el('<div style="margin-top:14px;text-align:right;"><button class="btn" id="exdrill">2단계 — 같은 것을 묻는 다른 문제 ▶</button></div>'));
+  stage.appendChild(card);
+  $("#exdrill").onclick=()=>exRxDrill(k);
+}
+/* ---- 처방 2단계 — 대체 문항 반복 (즉시 피드백 · 연속 정답까지) ---- */
+function exPickDrill(r){
+  let cand=EXAMBANK.items.filter(it=>it.ch===r.ch&&it.unit===r.unit&&!EX.used.includes(it.id));
+  const best=cand.filter(it=>it.choices.some(c=>!c.correct&&c.mc===r.mc));
+  let p=(best.length?best:cand);
+  if(p.length){ const it=shuffle(p)[0]; EX.used.push(it.id); return {...it, choices:shuffle(it.choices.map(c=>({...c})))}; }
+  const C=CHBYID[r.ch];
+  if(C&&C.trials&&C.trials[r.unit]&&GEN2[C.trials[r.unit].gen]) return GEN2[C.trials[r.unit].gen]();  /* 생성기 — 새 파라미터 */
+  if(C&&C.pool){ const pl=shuffle(C.pool.filter(x=>x.unit===r.unit&&x.choices)); if(pl.length) return {...pl[0], choices:shuffle(pl[0].choices.map(c=>({...c})))}; }
+  const re=shuffle(EXAMBANK.items.filter(it=>it.ch===r.ch&&it.unit===r.unit&&it.id!==r.itemId));
+  const it=re[0]||exBankById(r.itemId);
+  return {...it, choices:shuffle(it.choices.map(c=>({...c})))};
+}
+function exRxDrill(k){
+  BookFab.hide();
+  const r=EX.rx[k], cfg=CH.examCfg;
+  const item=exPickDrill(r);
+  setHUD("클리닉","처방 훈련");
+  const okc=item.choices&&item.choices.find(c=>c.correct);  /* ans — 로그 일관성(구형 생성기 포함). 정답은 원래 데이터로 공개돼 있어 노출 증가 없음 */
+  log("item_shown",{unit:"clinic", itemId:item.id||"gen", params:item.params||{}, ans:okc?String(okc.text):"", rx:r.ch+"/"+r.unit+"/"+(r.mc||"-")});
+  stage.innerHTML="";
+  let dots=''; for(let d=0;d<cfg.clinicStreak;d++) dots+='<span class="dot '+(d<r.streak?"on":"")+'"></span>';
+  const card=el('<div class="card fade"><div class="streak">처방 완료까지 — 힌트 없이 연속 정답'+dots+'<span style="margin-left:auto;">'+CHBYID[r.ch].meta.title+' · 유닛 '+r.unit+'</span></div></div>');
+  const vz=el('<div style="margin-top:10px;"></div>'); card.appendChild(vz); renderViz(vz,item);
+  const qbox=el('<div style="margin-top:8px;"></div>'); card.appendChild(qbox); stage.appendChild(card);
+  renderItem(qbox,item,{unit:"clinic", fbPrefix:'🩺 ', hintUsed:()=>false, onDone:(correct,_,fb)=>{
+    if(correct) r.streak++; else r.streak=0;
+    if(r.streak>=cfg.clinicStreak){ r.done=true; log("clinic_rx_done",{rx:r.ch+"/"+r.unit+"/"+(r.mc||"-")}); }
+    exSaveCP("M-clinic");
+    if(r.done) fb.appendChild(nextBtnRow("처방 완료 — 목록으로 ▶",exClinic));
+    else fb.appendChild(nextBtnRow(correct?"다음 문제 ▶":"다시 — 연속 기록 처음부터 ↺",()=>exRxDrill(k)));
+  }});
+}
+/* ---- 정산 — 최종 점수(마지막 모의) · 보상·trust는 첫 완주 1회 ---- */
+function exSettle(){
+  BookFab.hide(); exSaveCP("M-settle");
+  const cfg=CH.examCfg;
+  const rounds=Object.keys(EX.scores).map(Number).sort((a,b)=>a-b);
+  const lastR=rounds[rounds.length-1], s1=EX.scores[1], final=EX.scores[lastR];
+  const band=CH.settle.bands.find(b=>final>=b.min);
+  /* 확정(보상·trust)은 1회 — 통과면 즉시, 미달이면 [특훈 한 번 더]를 접고 현관으로 나가는 순간 확정 */
+  const commit=()=>{
+    if(wallet.examDone[CURCH]) return 0;
+    wallet.examDone[CURCH]=true;
+    wallet.trust=Math.max(0,Math.min(10,wallet.trust+band.trust));
+    let p=0;
+    if(final>=cfg.passLine){ p=final*cfg.payPerPoint; S.balance+=p; }
+    saveWallet(); return p;
+  };
+  const first=!wallet.examDone[CURCH];
+  let pay=0;
+  if(final>=cfg.passLine) pay=commit();
+  if(wallet.examBest[CURCH]===undefined||final>wallet.examBest[CURCH]){ wallet.examBest[CURCH]=final; saveWallet(); }
+  if(!EX.momLine||EX.momBand!==band.name){ EX.momLine=pick(band.mom); EX.momBand=band.name; }  /* 재방문 시 한마디 고정 */
+  setHUD("시험 당일","정산");
+  $("#hud-money").textContent=money(S.balance);
+  $("#hud-grade").textContent=final+"점";
+  log("exam_settle",{final, s1, rounds:rounds.length, band:band.name, pay, first, trust:wallet.trust, aplusStreak:wallet.aplusStreak}); Log.flush();
+  const wrongLast=EX.ans[lastR].filter(x=>!x.ok);
+  stage.innerHTML="";
+  const imp=(lastR>1&&s1!==undefined)?('<div style="font-size:15px;color:var(--ink-dim);margin-top:6px;">진단 '+s1+'점 → 최종 <b style="color:var(--accent);">'+final+'점</b>'+(final>s1?' <b style="color:var(--accent2);">(+'+(final-s1)+' — 특훈의 값이다)</b>':final<s1?' (−'+(s1-final)+')':' (동점)')+'</div>'):'';
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">※ '+CH.meta.title+' — 결과</div>'+
+    '<div class="card" style="background:var(--panel2);margin-top:12px;text-align:center;">'+
+    '<div style="font-size:13px;color:var(--ink-dim);">도윤의 중간고사 점수</div>'+
+    '<div style="font-size:38px;color:var(--accent);margin:4px 0;"><b>'+final+'</b><span style="font-size:16px;color:var(--ink-dim);"> / 100 — '+band.name+'</span></div>'+imp+
+    '<div style="font-size:12.5px;color:var(--ink-dim);">최종 모의 풀이 시간 '+exFmtMs(EX.times[lastR]||0)+(wallet.examBest[CURCH]!==undefined?' · 기록 최고 '+wallet.examBest[CURCH]+'점':'')+'</div></div>'+
+    '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV(final>=cfg.passLine?"doyun-happy":"doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>'+band.doyun+'</div></div>'+
+    (first&&pay?('<div class="dlg" style="margin-top:10px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>중간고사예요. 과외비도 <b>중간고사만큼</b> — '+final+'점, 평소의 두 배로 계산했어요.</div></div>'+
+      '<div class="card" style="background:var(--panel2);margin-top:10px;">💰 중간고사 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+final+'점 × '+cfg.payPerPoint.toLocaleString()+'원)</span> → 잔고 <b>'+money(S.balance)+'</b></div>'):'')+
+    '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 한마디를 얹는다. '+EX.momLine+'</div>'+
+    (band.threat?('<div class="dlg" style="margin-top:10px;"><div class="portrait">📵</div><div class="bubble"><div class="who">발신 번호 없음 <span style="color:var(--ink-dim);font-size:11.5px;">— 밤 11시 정각</span></div>'+band.threat+'</div></div>'):'')+
+    '<div style="margin-top:16px;text-align:right;">'+
+    (wrongLast.length?'<button class="btn ghost" id="exrev2">틀린 문제 다시 보기 ('+wrongLast.length+') ▶</button> ':'')+
+    (final<cfg.passLine?'<button class="btn" id="exretry">특훈 한 번 더 ▶</button> ':'')+
+    '<button class="btn" id="exdoor">'+(wallet.e1Done?"챕터 종료 ▶":"현관으로 ▶")+'</button></div></div>');
+  stage.appendChild(card);
+  const rv=$("#exrev2"); if(rv) rv.onclick=()=>exReview(wrongLast,0,exSettle);
+  const rt=$("#exretry"); if(rt) rt.onclick=()=>{ exBuildRx(lastR); exDlgSeq(CH.clinicIntro,0,"클리닉 개시",exClinic); };
+  $("#exdoor").onclick=()=>{
+    commit();  /* 미달 상태로 나가는 경우 — 이 순간 확정(1회 가드) */
+    if(wallet.e1Done){ exOutro(); return; }
+    wallet.e1Done=true; saveWallet(); log("e1_fired",{trust:wallet.trust});
+    const beats=wallet.trust<=3?CH.e1.low:wallet.trust>=7?CH.e1.high:CH.e1.mid;
+    exDlgSeq(beats,0,"챕터 종료 ▶",exOutro);
+  };
+}
+function exOutro(){
+  BookFab.hide(); clearSave();
+  const cfg=CH.examCfg, final=wallet.examBest[CURCH];
+  if(final>=cfg.passLine && !wallet.cleared[CURCH]){ wallet.cleared[CURCH]=true; saveWallet(); log("chapter_clear",{}); }
+  stage.innerHTML="";
+  stage.appendChild(el('<div class="card fade" style="text-align:center;padding:40px 24px;">'+
+    '<div style="font-size:15px;">'+(final>=cfg.passLine?CH.outro.clear:CH.outro.retry)+'</div>'+
+    '<div style="margin-top:10px;font-size:12.5px;color:var(--ink-dim);">기록 — 최고 '+final+'점'+(final>=cfg.passLine?'':' · 통과선 '+cfg.passLine+'점')+'</div>'+
+    '<div style="margin-top:20px;"><button class="btn ghost" id="exagain">특훈 다시 열기 ↺</button> <button class="btn" id="extitle">타이틀로 ▶</button></div></div>'));
+  $("#exagain").onclick=()=>{ log("exam_again",{}); exStart(); };
+  $("#extitle").onclick=sceneTitle;
 }
 
 /* ================================================================
@@ -1748,6 +2084,7 @@ const CPLABEL={
 };
 const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null };
 function cpLabel(sv){
+  if(sv.ch==="chM"&&typeof CHM!=="undefined") return (CHM.cpl&&CHM.cpl[sv.cp])||"※ 중간고사 · 이어서";
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(chNum(fc)+" · 이어서");
   return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기";
@@ -1759,6 +2096,7 @@ function resumeFrom(sv){
   streakA=st.A||0; streakB=st.B||0; streakC=st.C||0; streakD=st.D||0; streakE=st.E||0; streak0=st.G5||0;
   tracesB=sv.tracesB||0; runsD=sv.runsD||0;
   if(sv.ch==="ch00"){ setChapter(CH00); (CPMAP0[sv.cp]||sceneTitle)(); return; }
+  if(sv.ch==="chM"&&typeof CHM!=="undefined"){ setChapter(CHM); exResume(sv); return; }
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc){
     setChapter(fc);
@@ -1793,7 +2131,8 @@ function sceneTitle(){
   const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
   /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
   const c0done=localStorage.getItem(CH0DONEKEY)==="1";
-  const chLabel=C=>chNum(C)+' · '+C.meta.title; /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
+  const clearTag=id=>wallet.cleared&&wallet.cleared[id]?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':'';
+  const chLabel=C=>chNum(C)+' · '+C.meta.title+clearTag(C.meta.id); /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
   const CH_MENU=[
     {id:"ch00", label:'0장 · 오리엔테이션'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
     {id:"ch01", label:chLabel(CH01), go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
@@ -1803,11 +2142,15 @@ function sceneTitle(){
   if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:chLabel(CH04), go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH05!=="undefined") CH_MENU.push({id:"ch05", label:chLabel(CH05), go:()=>{ setChapter(CH05); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH06!=="undefined") CH_MENU.push({id:"ch06", label:chLabel(CH06), go:()=>{ setChapter(CH06); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  /* 시험 챕터 — 장 번호 없음(※), 4장(B)와 4장(C) 사이. 스타일도 관문답게 구분 */
+  if(typeof CHM!=="undefined") CH_MENU.push({id:"chM", exam:true,
+    label:CHM.meta.special+' '+CHM.meta.title+(wallet.examBest&&wallet.examBest.chM!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chM?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chM+'점</span>':''),
+    go:()=>{ setChapter(CHM); log("chapter_start",{}); exStart(); }});
   if(typeof CH07!=="undefined") CH_MENU.push({id:"ch07", label:chLabel(CH07), go:()=>{ setChapter(CH07); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
-    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="width:min(470px,92vw);box-sizing:border-box;">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
+    const b=el('<button class="btn'+(c.id===rec?'':' ghost')+'" style="width:min(470px,92vw);box-sizing:border-box;'+(c.exam?'border-color:var(--accent);color:var(--accent);':'')+'">'+(c.id===rec?'▶ ':'')+c.label+'</button>');
     b.onclick=()=>{ clearSave(); c.go(); }; /* 새 챕터 시작 = 이어하기 진행은 초기화 (잔고·가방은 유지) */
     chl.appendChild(b);
   });
