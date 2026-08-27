@@ -2195,3 +2195,359 @@ function genAP7ch(idx){
     okfb:ans+'의 좌우 서브트리 높이차가 2 이상이다 — 이런 노드가 생기는 순간 AVL 트리는 회전으로 균형을 복구한다(구현은 다음 기회에).',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
+
+/* ================================================================
+   5장(A) 그래프와 표현 — G29 정의·집합 / G30 용어 / G31 인접 행렬 / G32 인접 리스트 / AP8 심화
+   params: edges="a-b,..."(무방향) 또는 dedges="a>b,..."(방향) + ans(표시 문자열) — 테스트 독립 재검산용
+   ================================================================ */
+const G8LAY={ 4:[[90,40],[26,124],[154,124],[90,206]],
+  5:[[90,36],[18,112],[162,112],[44,200],[136,200]],
+  6:[[54,36],[146,36],[18,124],[182,124],[54,208],[146,208]] };
+function g8Nodes(n,hlId){ return G8LAY[n].map((p,i)=>({id:i, x:p[0], y:p[1], hl:i===hlId})); }
+function g8Key(a,b){ return a<b?a+"-"+b:b+"-"+a; }
+/* 무방향 연결 그래프: 신장 트리 + extra개 추가 */
+function g8Build(n, extra){
+  const E=[], seen=new Set();
+  for(let v=1;v<n;v++){ const u=Math.floor(Math.random()*v); E.push([Math.min(u,v),Math.max(u,v)]); seen.add(g8Key(u,v)); }
+  let guard=40;
+  while(extra>0&&guard-->0){
+    const a=Math.floor(Math.random()*n), b=Math.floor(Math.random()*n);
+    if(a===b||seen.has(g8Key(a,b))) continue;
+    E.push([Math.min(a,b),Math.max(a,b)]); seen.add(g8Key(a,b)); extra--;
+  }
+  E.sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  return E;
+}
+/* 비연결(요소 2개) 무방향 그래프 */
+function g8BuildForest(n){
+  const cut=2+Math.floor(Math.random()*(n-3));        /* 앞 cut개 / 나머지 두 묶음 */
+  const E=[], seen=new Set();
+  const addTree=(ids)=>{ for(let k=1;k<ids.length;k++){ const u=ids[Math.floor(Math.random()*k)], v=ids[k];
+    E.push([Math.min(u,v),Math.max(u,v)]); seen.add(g8Key(u,v)); } };
+  const A=[],B=[]; for(let i=0;i<n;i++)(i<cut?A:B).push(i);
+  addTree(A); addTree(B);
+  E.sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  return E;
+}
+function g8EdgeStr(E){ return E.map(e=>e[0]+"-"+e[1]).join(","); }
+function g8Viz(n,E,hlId){ return {type:"graph", nodes:g8Nodes(n,hlId), edges:E.map(e=>({a:e[0],b:e[1]}))}; }
+function g8Deg(n,E){ const d=Array(n).fill(0); E.forEach(e=>{d[e[0]]++;d[e[1]]++;}); return d; }
+function g8SetStr(E){ return E.map(e=>"("+e[0]+","+e[1]+")").join(", "); }
+/* 방향 그래프: m개 간선(셀프 루프·중복 없음, 역방향 쌍 허용) */
+function g8BuildDir(n,m){
+  const E=[], seen=new Set(); let guard=80;
+  while(E.length<m&&guard-->0){
+    const a=Math.floor(Math.random()*n), b=Math.floor(Math.random()*n);
+    if(a===b||seen.has(a+">"+b)) continue;
+    E.push([a,b]); seen.add(a+">"+b);
+  }
+  E.sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  return E;
+}
+function g8VizDir(n,E,hlId){
+  const rev=new Set(E.map(e=>e[0]+">"+e[1]));
+  return {type:"graph", nodes:g8Nodes(n,hlId),
+    edges:E.map(e=>({a:e[0],b:e[1],dir:true,curve:rev.has(e[1]+">"+e[0])?(e[0]<e[1]?1:-1):0}))};
+}
+function g8InOut(n,E){ const din=Array(n).fill(0), dout=Array(n).fill(0);
+  E.forEach(e=>{dout[e[0]]++;din[e[1]]++;}); return {din,dout}; }
+function g8Mat(n,E,dir){ const m=Array.from({length:n},()=>Array(n).fill(0));
+  E.forEach(e=>{ m[e[0]][e[1]]=1; if(!dir) m[e[1]][e[0]]=1; }); return m; }
+function g8AdjList(n,E){ const L=Array.from({length:n},()=>[]);
+  E.forEach(e=>{ L[e[0]].push(e[1]); L[e[1]].push(e[0]); });
+  L.forEach(l=>l.sort((a,b)=>a-b)); return L; }
+function g8ListStr(l){ return l.length? l.join(" → ")+" → NULL" : "NULL"; }
+
+/* --- G29. 그래프 정의·집합 표현 (유닛 A) --- */
+function genG29(){
+  const qtype=pick(["ecount","eset","istree"]);
+  if(qtype==="ecount"){
+    const n=pick([4,5,5,6]), E=g8Build(n, pick([1,2,2,3]));
+    const ans=String(E.length);
+    const cands=[
+      {text:String(E.length-1),correct:false,mc:"count-slip",fb:"간선을 하나 빠뜨렸다 — 선을 하나씩 표시하며 세라."},
+      {text:String(E.length+1),correct:false,mc:"count-slip",fb:"하나를 두 번 셌다 — (0,1)과 (1,0)은 같은 간선이다."},
+      {text:String(n),correct:false,mc:"vertex-confuse",fb:String(n)+"은 정점의 수다 — 간선은 선의 수다."}
+    ];
+    return {id:"G29",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),
+      stem:'그림 그래프의 <b>간선(edge)의 수</b>는?',
+      okfb:'선을 하나씩 세면 '+ans+'개다. 무방향에서 (a,b)와 (b,a)는 같은 간선 — 한 번만 센다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="eset"){
+    const n=pick([4,4,5]), E=g8Build(n,pick([1,2]));
+    const ans=g8SetStr(E);
+    const drop=E.slice(); drop.splice(Math.floor(Math.random()*drop.length),1);
+    /* 없는 간선 하나 추가 */
+    const seen=new Set(E.map(e=>g8Key(e[0],e[1]))); let extraE=null;
+    for(let a=0;a<n&&!extraE;a++)for(let b=a+1;b<n&&!extraE;b++) if(!seen.has(a+"-"+b)) extraE=[a,b];
+    const plus=extraE? E.concat([extraE]).sort((p,q)=>p[0]-q[0]||p[1]-q[1]) : null;
+    const dirText=E.map(e=>"<"+e[0]+","+e[1]+">").join(", ");
+    const cands=[
+      {text:g8SetStr(drop),correct:false,mc:"missing-edge",fb:"그림에 있는 간선 하나가 빠졌다 — 개수부터 맞춰 보라."},
+      {text:dirText,correct:false,mc:"dir-notation",fb:"&lt; &gt;는 방향 간선의 표기다 — 이 그래프는 화살표가 없는 무방향이다."}
+    ];
+    if(plus) cands.push({text:g8SetStr(plus),correct:false,mc:"extra-edge",fb:"그림에 없는 간선이 끼어 있다."});
+    return {id:"G29",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),mono:true,
+      stem:'그림 무방향 그래프의 <b>간선 집합 E(G)</b>를 옳게 나열한 것은?',
+      okfb:'무방향 간선은 (작은 번호, 큰 번호) 괄호쌍 — 전부 '+E.length+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* istree — 트리 판정 */
+  const kind=pick(["tree","cycle","forest"]);
+  const n=pick([5,6]);
+  const E= kind==="tree"? g8Build(n,0) : kind==="cycle"? g8Build(n,1) : g8BuildForest(n);
+  const ans= kind==="tree"? "트리다 — 연결이며 사이클이 없다"
+    : kind==="cycle"? "트리가 아니다 — 사이클이 있다"
+    : "트리가 아니다 — 연결되어 있지 않다";
+  const all=["트리다 — 연결이며 사이클이 없다","트리가 아니다 — 사이클이 있다","트리가 아니다 — 연결되어 있지 않다"];
+  const cands=all.filter(t=>t!==ans).map(t=>({text:t,correct:false,mc:"tree-judge",
+    fb: t.indexOf("사이클")>=0? "간선 수를 보라 — 정점 "+n+"개의 트리는 간선이 정확히 "+(n-1)+"개다."
+      : t.indexOf("연결되어")>=0? "모든 정점이 간선을 따라 서로 닿는지 확인하라."
+      : "간선 수가 정점 수 − 1이고 전부 이어져 있는지 확인하라."}));
+  cands.push({text:"정점 수가 "+(n%2?"홀수라":"짝수라")+" 트리가 아니다",correct:false,mc:"parity-myth",fb:"트리 판정에 정점 수의 홀짝은 무관하다."});
+  return {id:"G29",qtype,params:{n,edges:g8EdgeStr(E),kind,ans},viz:g8Viz(n,E),
+    stem:'4장에서 "트리는 그래프의 특별한 경우"라 했다. 그림 그래프는 <b>트리인가?</b>',
+    okfb: kind==="tree"? "간선 "+E.length+"개 = 정점 − 1, 전부 연결 — 트리다."
+      : kind==="cycle"? "간선이 정점 − 1보다 많다 — 어딘가 되돌아오는 길(사이클)이 생겼다."
+      : "두 덩어리로 나뉘어 있다 — 연결이 아니면 트리가 아니다.",
+    choices:g2Fill(shuffle(cands),{text:ans,correct:true},4)};
+}
+
+/* --- G30. 용어 (유닛 B) --- */
+function genG30(){
+  const qtype=pick(["complete","deg","degsum","inout"]);
+  if(qtype==="complete"){
+    const n=pick([4,5,6,7]);
+    const ans=String(n*(n-1)/2);
+    const cands=[
+      {text:String(n*(n-1)),correct:false,mc:"dir-confuse",fb:"n(n−1)은 방향 완전 그래프다 — 무방향은 둘씩 겹쳐 절반."},
+      {text:String(n*n),correct:false,mc:"square-slip",fb:"자기 자신으로의 간선(셀프 루프)은 없다 — n²이 아니다."},
+      {text:String(n-1),correct:false,mc:"tree-confuse",fb:"n−1은 트리(최소 연결)의 간선 수 — 완전 그래프는 최대다."}
+    ];
+    return {id:"G30",qtype,params:{n,ans},
+      stem:'정점이 <b>'+n+'개</b>인 <b>무방향 완전 그래프</b>의 간선의 수는?',
+      okfb:'정점마다 나머지 '+(n-1)+'개와 이어지고, 간선 하나가 두 정점에서 겹쳐 세어진다 — '+n+'×'+(n-1)+'÷2 = '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="deg"){
+    const n=pick([5,5,6]), E=g8Build(n,pick([1,2,3]));
+    const d=g8Deg(n,E), k=Math.floor(Math.random()*n);
+    const ans=String(d[k]);
+    const cands=[
+      {text:String(d[k]+1),correct:false,mc:"count-slip",fb:"정점 "+k+"에 붙은 선만 세라."},
+      {text:String(Math.max(0,d[k]-1)),correct:false,mc:"count-slip",fb:"빠뜨린 간선이 있다 — 정점 "+k+"에서 나가는 선을 전부 짚어라."},
+      {text:String(E.length),correct:false,mc:"edge-confuse",fb:String(E.length)+"은 그래프 전체의 간선 수다."}
+    ];
+    return {id:"G30",qtype,params:{n,edges:g8EdgeStr(E),k,ans},viz:g8Viz(n,E,k),
+      stem:'그림 그래프에서 정점 <b>'+k+'</b>의 <b>차수(degree)</b>는?',
+      okfb:'정점 '+k+'에 부속한 간선의 수 — '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="degsum"){
+    const n=pick([4,5,5]), E=g8Build(n,pick([1,2]));
+    const ans=String(2*E.length);
+    const cands=[
+      {text:String(E.length),correct:false,mc:"half-slip",fb:"간선 하나가 양쪽 정점의 차수를 하나씩 — 합은 간선 수의 2배다."},
+      {text:String(2*E.length+2),correct:false,mc:"count-slip",fb:"간선 수 × 2를 다시 계산해 보라."},
+      {text:String(n),correct:false,mc:"vertex-confuse",fb:String(n)+"은 정점의 수다."}
+    ];
+    return {id:"G30",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),
+      stem:'그림 그래프에서 <b>모든 정점의 차수를 더한 값</b>은?',
+      okfb:'간선 하나가 두 정점의 차수를 하나씩 올린다 — 차수 합 = 2 × 간선 수 = 2×'+E.length+' = '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* inout — 방향 그래프 진입·진출 */
+  let n,E,io,k,guard=20;
+  do{ n=4; E=g8BuildDir(n,pick([5,6])); io=g8InOut(n,E); k=Math.floor(Math.random()*n); }
+  while(guard-->0 && io.din[k]===io.dout[k]);           /* 진입≠진출인 정점을 우선 */
+  const a=io.din[k], b=io.dout[k];
+  const ans="진입 "+a+" · 진출 "+b;
+  const cands=[
+    {text:"진입 "+b+" · 진출 "+a,correct:false,mc:"inout-swap",fb:"화살표가 '들어오면' 진입, '나가면' 진출 — 방향을 다시 보라."},
+    {text:"진입 "+(a+1)+" · 진출 "+b,correct:false,mc:"count-slip",fb:"정점 "+k+"로 들어오는 화살표만 세라."},
+    {text:"진입 "+a+" · 진출 "+(b+1),correct:false,mc:"count-slip",fb:"정점 "+k+"에서 나가는 화살표만 세라."}
+  ];
+  return {id:"G30",qtype,params:{n,dedges:E.map(e=>e[0]+">"+e[1]).join(","),k,ans},viz:g8VizDir(n,E,k),
+    stem:'그림 <b>방향 그래프</b>에서 정점 <b>'+k+'</b>의 <b>진입 차수와 진출 차수</b>는?',
+    okfb:'들어오는 화살표 '+a+'개(진입), 나가는 화살표 '+b+'개(진출)다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G31. 인접 행렬 (유닛 C) --- */
+function genG31(){
+  const qtype=pick(["row","degrow","matedges","dirout"]);
+  if(qtype==="row"){
+    const n=pick([4,4,5]), E=g8Build(n,pick([1,2])), m=g8Mat(n,E,false);
+    const i=Math.floor(Math.random()*n);
+    const ans=m[i].join(" ");
+    const flip=(r,c)=>{ const x=r.slice(); x[c]=1-x[c]; return x.join(" "); };
+    const c1=Math.floor(Math.random()*n);
+    let c2=(c1+1)%n; if(c2===i) c2=(c2+1)%n;
+    const cands=[
+      {text:flip(m[i],c1),correct:false,mc:"cell-slip",fb:"정점 "+i+"와 "+c1+" 사이 간선의 유무를 그림에서 다시 확인하라."},
+      {text:flip(m[i],c2),correct:false,mc:"cell-slip",fb:"정점 "+i+"와 "+c2+" 사이를 다시 보라."},
+      {text:m[(i+1)%n].join(" "),correct:false,mc:"row-confuse",fb:"그것은 정점 "+((i+1)%n)+"의 행이다."}
+    ];
+    return {id:"G31",qtype,params:{n,edges:g8EdgeStr(E),i,ans},viz:g8Viz(n,E,i),mono:true,
+      stem:'그림 그래프의 인접 행렬에서 <b>정점 '+i+'의 행</b>(adj_mat['+i+'][0..'+(n-1)+'])은?',
+      okfb:'정점 '+i+'와 간선으로 이어진 자리만 1 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="degrow"){
+    const n=pick([4,5]), E=g8Build(n,pick([1,2])), m=g8Mat(n,E,false);
+    const i=Math.floor(Math.random()*n);
+    const ans=String(m[i].reduce((s,x)=>s+x,0));
+    const cands=[
+      {text:String(+ans+1),correct:false,mc:"count-slip",fb:"행의 1만 세라 — 0은 세지 않는다."},
+      {text:String(Math.max(0,+ans-1)),correct:false,mc:"count-slip",fb:"행 '+i+'행의 1을 다시 세라.".replace("'+i+'",String(i))},
+      {text:String(E.length),correct:false,mc:"edge-confuse",fb:"그것은 전체 간선 수 — 한 행의 합이 아니다."}
+    ];
+    return {id:"G31",qtype,params:{n,edges:g8EdgeStr(E),i,ans},viz:{type:"adjmat",m,hiR:i},mono:true,
+      stem:'인접 행렬이 그림과 같다. <b>정점 '+i+'의 차수</b>는?',
+      okfb:'무방향 그래프에서 차수 = 그 정점 행의 합 — '+i+'행의 1은 '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="matedges"){
+    const n=pick([4,5]), E=g8Build(n,pick([1,2])), m=g8Mat(n,E,false);
+    const ones=2*E.length, ans=String(E.length);
+    const cands=[
+      {text:String(ones),correct:false,mc:"sym-double",fb:"무방향 행렬은 대칭 — 1이 간선마다 두 개씩(adj[i][j]와 adj[j][i]) 있다. 절반이 간선 수다."},
+      {text:String(E.length+1),correct:false,mc:"count-slip",fb:"1의 개수를 다시 세고 2로 나누라."},
+      {text:String(n),correct:false,mc:"vertex-confuse",fb:String(n)+"은 정점의 수(행렬의 한 변)다."}
+    ];
+    return {id:"G31",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:{type:"adjmat",m},mono:true,
+      stem:'인접 행렬이 그림과 같은 <b>무방향</b> 그래프의 <b>간선의 수</b>는?',
+      okfb:'1의 개수는 '+ones+'개 — 대칭으로 두 번씩 적혔으니 간선은 '+ones+'÷2 = '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* dirout — 방향 행렬에서 진출 차수(행 합) */
+  let n,E,m,i,out,inn,guard=20;
+  do{ n=4; E=g8BuildDir(n,pick([5,6])); m=g8Mat(n,E,true); i=Math.floor(Math.random()*n);
+    out=m[i].reduce((s,x)=>s+x,0); inn=m.reduce((s,r)=>s+r[i],0); }
+  while(guard-->0 && out===inn);
+  const ans=String(out);
+  const cands=[
+    {text:String(inn),correct:false,mc:"rowcol-swap",fb:"열의 합은 진입 차수다 — 진출은 '행'의 합."},
+    {text:String(out+1),correct:false,mc:"count-slip",fb:i+"행의 1을 다시 세라."},
+    {text:String(E.length),correct:false,mc:"edge-confuse",fb:"그것은 전체 간선 수다."}
+  ];
+  return {id:"G31",qtype,params:{n,dedges:E.map(e=>e[0]+">"+e[1]).join(","),i,ans},viz:{type:"adjmat",m,hiR:i},mono:true,
+    stem:'<b>방향 그래프</b>의 인접 행렬이 그림과 같다. 정점 <b>'+i+'</b>의 <b>진출 차수</b>는?',
+    okfb:'방향 행렬에서 행의 합 = 진출, 열의 합 = 진입 — '+i+'행의 1은 '+ans+'개다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G32. 인접 리스트 (유닛 D) --- */
+function genG32(){
+  const qtype=pick(["listof","deglist","listedges","pick"]);
+  if(qtype==="listof"){
+    let n,E,L,i,guard=20;
+    do{ n=pick([4,5]); E=g8Build(n,pick([1,2])); L=g8AdjList(n,E); i=Math.floor(Math.random()*n); }
+    while(guard-->0 && L[i].length<2);                   /* 순서가 의미 있으려면 2개 이상 */
+    const ans=g8ListStr(L[i]);
+    const desc=g8ListStr(L[i].slice().reverse());
+    const drop=g8ListStr(L[i].slice(0,-1));
+    const other=g8ListStr(L[(i+1)%n]);
+    const cands=[
+      {text:desc,correct:false,mc:"order-slip",fb:"오름차순(작은 번호부터) 연결 규약이다."},
+      {text:drop,correct:false,mc:"missing-edge",fb:"정점 "+i+"에 이어진 정점 하나가 빠졌다."},
+      {text:other,correct:false,mc:"row-confuse",fb:"그것은 정점 "+((i+1)%n)+"의 리스트다."}
+    ];
+    return {id:"G32",qtype,params:{n,edges:g8EdgeStr(E),i,ans},viz:g8Viz(n,E,i),mono:true,
+      stem:'그림 그래프를 인접 리스트로 저장한다(작은 번호부터 연결). <b>graph['+i+']</b>가 가리키는 리스트는?',
+      okfb:'정점 '+i+'에 인접한 정점들을 오름차순으로 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="deglist"){
+    let n=pick([5,6]), E=g8Build(n,pick([2,3])), L=g8AdjList(n,E), i=Math.floor(Math.random()*n);
+    const ans=String(L[i].length);
+    const cands=[
+      {text:String(L[i].length+1),correct:false,mc:"null-count",fb:"NULL은 노드가 아니다 — 정점 번호가 든 노드만 세라."},
+      {text:String(Math.max(0,L[i].length-1)),correct:false,mc:"count-slip",fb:"리스트의 노드를 처음부터 끝까지 세라."},
+      {text:String(E.length),correct:false,mc:"edge-confuse",fb:"그것은 그래프 전체의 간선 수다."}
+    ];
+    return {id:"G32",qtype,params:{n,edges:g8EdgeStr(E),i,ans},mono:true,
+      stem:'어떤 무방향 그래프의 정점 '+i+'의 인접 리스트가 다음과 같다.<br><span class="mono">graph['+i+'] → '+g8ListStr(L[i])+'</span><br>정점 '+i+'의 <b>차수</b>는?',
+      okfb:'무방향 그래프에서 차수 = 인접 리스트의 노드 수 — '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="listedges"){
+    const n=pick([4,5]), E=g8Build(n,pick([1,2])), L=g8AdjList(n,E);
+    const total=L.reduce((s,l)=>s+l.length,0), ans=String(E.length);
+    const rows=L.map((l,i)=>'graph['+i+'] → '+g8ListStr(l)).join('<br>');
+    const cands=[
+      {text:String(total),correct:false,mc:"sym-double",fb:"무방향 간선 (a,b)는 a의 리스트와 b의 리스트에 한 번씩, 두 번 적힌다 — 노드 총수 ÷ 2가 간선 수다."},
+      {text:String(E.length+1),correct:false,mc:"count-slip",fb:"노드 총수를 다시 세고 2로 나누라."},
+      {text:String(n),correct:false,mc:"vertex-confuse",fb:String(n)+"은 정점의 수(리스트의 개수)다."}
+    ];
+    return {id:"G32",qtype,params:{n,edges:g8EdgeStr(E),ans},mono:true,
+      stem:'무방향 그래프의 인접 리스트 전체가 다음과 같다.<br><span class="mono">'+rows+'</span><br>이 그래프의 <b>간선의 수</b>는?',
+      okfb:'노드 총수 '+total+'개 — 간선마다 양쪽에 한 번씩 적히므로 간선은 '+total+'÷2 = '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* pick — 표현 선택 */
+  const dense=Math.random()<0.5;
+  const nBig=pick([1000,2000]);
+  const eCnt=dense? "정점 쌍 대부분이 서로 연결" : "간선이 "+pick([1200,1500,3000]).toLocaleString()+"개뿐";
+  const ans=dense? "인접 행렬 — 간선이 많고 존재 확인이 O(1)이라" : "인접 리스트 — 간선이 드물어 빈칸 낭비가 없어서";
+  const cands= dense?
+    [{text:"인접 리스트 — 간선이 드물어 빈칸 낭비가 없어서",correct:false,mc:"density-swap",fb:"이 그래프는 간선이 많다(밀집) — 행렬의 칸이 놀지 않는다."},
+     {text:"인접 행렬 — 정점이 많으면 무조건 행렬이라서",correct:false,mc:"no-reason",fb:"기준은 정점 수가 아니라 간선의 밀도다."},
+     {text:"어느 쪽이든 성능이 완전히 같다",correct:false,mc:"same-myth",fb:"존재 확인·이웃 순회·메모리가 서로 다르다 — 1장 희소 행렬과 같은 선택 문제다."}]
+   :[{text:"인접 행렬 — 간선이 많고 존재 확인이 O(1)이라",correct:false,mc:"density-swap",fb:"이 그래프는 간선이 드물다(희소) — 행렬 "+nBig.toLocaleString()+"² 칸 대부분이 0으로 논다."},
+     {text:"인접 리스트 — 정점이 많으면 무조건 리스트라서",correct:false,mc:"no-reason",fb:"기준은 정점 수가 아니라 간선의 밀도다."},
+     {text:"어느 쪽이든 메모리가 완전히 같다",correct:false,mc:"same-myth",fb:"행렬은 n² 칸을 항상 확보한다 — 희소하면 낭비다."}];
+  return {id:"G32",qtype,params:{dense:dense?1:0,ans},
+    stem:'정점 '+nBig.toLocaleString()+'개의 무방향 그래프가 있다. <b>'+eCnt+'</b>이다. 저장 구조로 알맞은 것은?',
+    okfb: dense? '밀집 그래프 — 행렬의 칸이 대부분 쓰이고, 두 정점의 연결 확인이 즉시 된다.'
+      : '희소 그래프 — 1장 희소 행렬의 교훈 그대로, 있는 것만 저장하는 리스트가 이득이다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- AP8. 심화 (도발장 4) --- */
+function genAP8ch(idx){
+  if(idx===0){ /* 행렬 → 리스트 교차 표현 */
+    let n,E,L,i,guard=20;
+    do{ n=4; E=g8Build(n,2); L=g8AdjList(n,E); i=Math.floor(Math.random()*n); }
+    while(guard-->0 && L[i].length<2);
+    const m=g8Mat(n,E,false);
+    const ans=g8ListStr(L[i]);
+    const cands=[
+      {text:g8ListStr(L[i].slice().reverse()),correct:false,mc:"order-slip",fb:"오름차순 연결 규약이다."},
+      {text:g8ListStr(L[(i+1)%n]),correct:false,mc:"row-confuse",fb:"그것은 다른 행의 번역이다 — "+i+"행을 읽어라."},
+      {text:g8ListStr(L[i].concat([i]).sort((a,b)=>a-b)),correct:false,mc:"self-loop",fb:"대각선 adj["+i+"]["+i+"]은 0 — 자기 자신은 리스트에 없다."}
+    ];
+    return {id:"AP8",qtype:"m2l",params:{n,edges:g8EdgeStr(E),i,ans},viz:{type:"adjmat",m,hiR:i},mono:true,
+      stem:'[심화 — 표현의 번역] 무방향 그래프의 인접 행렬이 그림과 같다. 이를 인접 리스트(오름차순 연결)로 바꿀 때 <b>graph['+i+']</b>의 리스트는?',
+      okfb:i+'행에서 1인 열 번호를 순서대로 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){ /* 방향 완전 그래프 */
+    const n=pick([5,6,7,8]);
+    const ans=String(n*(n-1));
+    const cands=[
+      {text:String(n*(n-1)/2),correct:false,mc:"undir-confuse",fb:"절반은 무방향의 값 — 방향에서는 <a,b>와 <b,a>가 서로 다른 간선이다."},
+      {text:String(n*n),correct:false,mc:"square-slip",fb:"셀프 루프 <v,v>는 허용되지 않는다."},
+      {text:String(2*n),correct:false,mc:"linear-guess",fb:"정점마다 나머지 전부로 나가는 간선이 있다 — 곱으로 자란다."}
+    ];
+    return {id:"AP8",qtype:"dircomp",params:{n,ans},
+      stem:'[심화 — 방향 완전 그래프] 정점이 <b>'+n+'개</b>인 <b>방향 완전 그래프</b>(서로 다른 두 정점 사이에 양방향 간선이 모두 존재)의 간선의 수는?',
+      okfb:'정점마다 나머지 '+(n-1)+'개로 나가는 간선 — 방향은 겹쳐 세지 않으므로 '+n+'×'+(n-1)+' = '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* idx 2 — 홀수 차수 정점의 개수 (악수 정리 응용) */
+  const n=pick([5,6]), E=g8Build(n,pick([2,3]));
+  const d=g8Deg(n,E);
+  const odd=d.filter(x=>x%2===1).length;
+  const ans=String(odd);
+  const cands=[
+    {text:String(odd+1),correct:false,mc:"odd-count",fb:"차수 합은 항상 짝수(2×간선 수) — 홀수 차수 정점은 짝수 개만 존재할 수 있다. "+(odd+1)+"개(홀수 개)는 불가능하다."},
+    {text:String(Math.max(0,odd-1)===odd?odd+3:Math.max(0,odd-1)),correct:false,mc:"count-slip",fb:"정점별 차수를 전부 적고 홀수인 것만 세라."},
+    {text:String(n),correct:false,mc:"vertex-confuse",fb:"전체 정점 수가 아니라 '차수가 홀수인' 정점의 수다."}
+  ];
+  return {id:"AP8",qtype:"oddeg",params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),
+    stem:'[심화 — 차수 합의 성질] 그림 그래프에서 <b>차수가 홀수인 정점의 개수</b>는?',
+    okfb:'정점별 차수는 ['+d.join(", ")+'] — 홀수는 '+ans+'개다. 차수 합이 항상 2×간선 수(짝수)이므로, 홀수 차수 정점의 개수는 언제나 짝수다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
