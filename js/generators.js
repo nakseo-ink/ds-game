@@ -2007,6 +2007,12 @@ function genG27(){
       {text:order.join(", "),correct:false,mc:"insert-order",fb:"삽입한 순서는 트리 모양을 정할 뿐 — 중위 순회는 언제나 오름차순이다."},
       {text:ino.slice().reverse().join(", "),correct:false,mc:"reverse-mix",fb:"내림차순이 아니라 오름차순 — 왼쪽(작은 쪽)부터 방문한다."}
     ].filter(c=>c.text!==ans);
+    /* 편향 트리(정렬 순서 삽입)에서는 전위·삽입 순서가 중위와 겹쳐 후보가 모자랄 수 있다 — 형태 무관 보충 후보 */
+    const swp=ino.slice(); if(swp.length>=2){ const t=swp[1]; swp[1]=swp[2]; swp[2]=t; }
+    const swp2=ino.slice(); if(swp2.length>=2){ const t=swp2[swp2.length-1]; swp2[swp2.length-1]=swp2[swp2.length-2]; swp2[swp2.length-2]=t; }
+    for(const s2 of [swp.join(", "), swp2.join(", ")])
+      if(cands.length<3 && s2!==ans && !cands.find(c=>c.text===s2))
+        cands.push({text:s2,correct:false,mc:"near-sort",fb:"중위 순회는 빠짐없는 오름차순 — 이웃한 두 값이 뒤바뀌어 있다."});
     return {id:"G27",qtype,params:{ans},viz,
       stem:'그림의 이진 탐색 트리를 <b>중위 순회</b>한 출력은?',
       okfb:'BST의 중위 순회는 언제나 오름차순 — '+ans+'. (왼쪽<자신<오른쪽 규칙의 결과다.)',
@@ -2843,5 +2849,372 @@ function genAP9ch(idx){
   return {id:"AP9",qtype:"dist",params:{n,edges:g8EdgeStr(E),x,ans},viz:g8Viz(n,E,x),mono:true,
     stem:'[심화 — 가장 가까운 길] 그림 그래프에서 정점 0에서 정점 <b>'+x+'</b>까지 가는 경로 중 <b>가장 짧은 것의 길이(간선 수)</b>는? (BFS가 층을 넓히는 순서를 떠올려라)',
     okfb:'BFS는 가까운 층부터 넓힌다 — '+x+'는 0에서 '+ans+'번째 층에서 처음 만난다. 간선마다 비용이 다르면 어떻게 될까 — 다음 강의 이야기다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* ================================================================
+   5장(C) 가중치 그래프 — G37 MST 기초 / G38 Kruskal / G39 Prim / G40 Dijkstra / AP10 심화(union-find·Floyd·위상 정렬)
+   params: edges="a-b:w,..."(무방향 가중치) 또는 dedges="a>b:w,..."(방향 가중치) + ans — 테스트 독립 재검산용
+   ================================================================ */
+function gwDistinct(k){
+  const pool=[]; for(let w=5;w<=48;w++) pool.push(w);
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
+  return pool.slice(0,k);
+}
+function gwBuild(n, extra){
+  const E=g8Build(n, extra), ws=gwDistinct(E.length);
+  return E.map((e,i)=>[e[0],e[1],ws[i]]);
+}
+function gwEdgeStr(E){ return E.map(e=>e[0]+"-"+e[1]+":"+e[2]).join(","); }
+function gwPair(e){ return "("+e[0]+","+e[1]+") — "+e[2]; }
+function gwViz(n,E,opt){
+  const hl=(opt&&opt.hl)||new Set(), cut=(opt&&opt.cut)||new Set();
+  return {type:"graph", nodes:g8Nodes(n), edges:E.map(e=>{
+    const k=g8Key(e[0],e[1]), o={a:e[0],b:e[1],lab:e[2]};
+    if(hl.has(k)) o.hl=true; if(cut.has(k)) o.cut=true; return o; })};
+}
+function gwFind(p,x){ while(p[x]!==x) x=p[x]; return x; }
+function gwKruskal(n,E){
+  const S=E.slice().sort((a,b)=>a[2]-b[2]);
+  const p=Array.from({length:n},(_,i)=>i);
+  const order=[], acc=[], rej=[]; let total=0;
+  for(const e of S){
+    if(acc.length===n-1) break;
+    const ra=gwFind(p,e[0]), rb=gwFind(p,e[1]);
+    if(ra===rb){ order.push({e:e,ok:false}); rej.push(e); }
+    else { p[ra]=rb; order.push({e:e,ok:true}); acc.push(e); total+=e[2]; }
+  }
+  return {order:order, acc:acc, rej:rej, total:total};
+}
+function gwPrim(n,E,s){
+  const inT=Array(n).fill(false); inT[s]=true;
+  const acc=[], joins=[];
+  for(let k=0;k<n-1;k++){
+    let best=null;
+    for(const e of E){ const a=inT[e[0]], b=inT[e[1]];
+      if(a!==b && (!best||e[2]<best[2])) best=e; }
+    if(!best) break;
+    const nv=inT[best[0]]?best[1]:best[0];
+    inT[nv]=true; acc.push(best); joins.push(nv);
+  }
+  return {acc:acc, joins:joins, total:acc.reduce((s2,e)=>s2+e[2],0)};
+}
+function gwDedgeStr(DE){ return DE.map(e=>e[0]+">"+e[1]+":"+e[2]).join(","); }
+function gwVizDir(n,DE,hlId){
+  const rev=new Set(DE.map(e=>e[0]+">"+e[1]));
+  /* 라벨은 소스 쪽(0.35) — 교차 간선의 중앙 라벨 겹침 완화 (감수 2026-08-27) */
+  return {type:"graph", nodes:g8Nodes(n,hlId),
+    edges:DE.map(e=>({a:e[0],b:e[1],dir:true,lab:e[2],lpos:0.35,curve:rev.has(e[1]+">"+e[0])?(e[0]<e[1]?1:-1):0}))};
+}
+function gwDijkstra(n,DE,s){
+  const INF=Infinity;
+  const cost=Array.from({length:n},()=>Array(n).fill(INF));
+  DE.forEach(e=>{ cost[e[0]][e[1]]=e[2]; });
+  const dist=cost[s].slice(); dist[s]=0;
+  const found=Array(n).fill(false); found[s]=true;
+  const settle=[]; let tie=false;
+  for(let i=0;i<n-1;i++){
+    let u=-1, m=INF;
+    for(let w=0;w<n;w++) if(!found[w]&&dist[w]<m){ m=dist[w]; u=w; }
+    for(let w=0;w<n;w++) if(!found[w]&&w!==u&&dist[w]===m) tie=true;
+    if(u<0) break;
+    found[u]=true; settle.push(u);
+    for(let w=0;w<n;w++) if(!found[w]&&dist[u]+cost[u][w]<dist[w]) dist[w]=dist[u]+cost[u][w];
+  }
+  return {dist:dist, settle:settle, tie:tie};
+}
+function gwBuildDir(n){
+  let DE, res, guard=300;
+  while(guard-->0){
+    DE=[]; const seen=new Set();
+    for(let v=1;v<n;v++){ const u=Math.floor(Math.random()*v); DE.push([u,v]); seen.add(u+">"+v); }
+    let extra=3, g2=60;
+    while(extra>0&&g2-->0){ const a=Math.floor(Math.random()*n), b=Math.floor(Math.random()*n);
+      if(a===b||seen.has(a+">"+b)) continue; DE.push([a,b]); seen.add(a+">"+b); extra--; }
+    const ws=gwDistinct(DE.length);
+    DE=DE.map((e,i)=>[e[0],e[1],ws[i]]).sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+    res=gwDijkstra(n,DE,0);
+    const direct={}; DE.forEach(e=>{ if(e[0]===0) direct[e[1]]=e[2]; });
+    let indirect=false;
+    for(let w=1;w<n;w++) if(res.dist[w]<Infinity && res.dist[w]!==(direct[w]!==undefined?direct[w]:Infinity)) indirect=true;
+    if(!res.tie && res.settle.length===n-1 && indirect) break;
+  }
+  return DE;
+}
+/* --- G37. 가중치와 MST 기초 (유닛 A) --- */
+function genG37(){
+  const qtype=pick(["cost","ecount","minimize","greedy"]);
+  if(qtype==="minimize"){
+    const ans="간선 가중치의 합";
+    return {id:"G37",qtype:qtype,params:{ans:ans},
+      stem:'<b>최소 비용 신장 트리</b>가 "최소"로 만드는 것은?',
+      okfb:'간선 수는 어떤 신장 트리든 n−1개로 같다 — 겨루는 것은 가중치의 합이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"간선의 개수",correct:false,mc:"count-myth",fb:"간선 수는 어느 신장 트리나 n−1개 — 차이가 없다."},
+        {text:"정점의 개수",correct:false,mc:"vertex-myth",fb:"신장 트리는 정의상 모든 정점을 포함한다."},
+        {text:"트리의 깊이",correct:false,mc:"depth-myth",fb:"깊이는 조건에 없다 — 비용의 합만 본다."}]};
+  }
+  if(qtype==="greedy"){
+    const ans="한 번 내린 결정을 번복하지 않는다";
+    return {id:"G37",qtype:qtype,params:{ans:ans},
+      stem:'Kruskal과 Prim이 쓰는 <b>greedy method</b>의 특징으로 옳은 것은?',
+      okfb:'단계마다 그 시점의 최선을 고르고, 한 번 내린 결정은 번복하지 않는다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"모든 경우를 전부 나열해 비교한다",correct:false,mc:"brute-myth",fb:"전수 조사가 아니다 — 단계별 최선 선택이다."},
+        {text:"결과가 나쁘면 되돌아가 다시 고른다",correct:false,mc:"backtrack-myth",fb:"백트래킹이 아니다 — 번복 불가가 greedy의 특징이다."},
+        {text:"무작위로 골라 평균을 낸다",correct:false,mc:"random-myth",fb:"무작위가 아니라 판단 기준에 따른 최선이다."}]};
+  }
+  if(qtype==="ecount"){
+    const n=pick([5,6]), extra=pick([2,3]), E=gwBuild(n,extra);
+    const ans=String(n-1);
+    return {id:"G37",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),ans:ans},viz:gwViz(n,E),mono:true,
+      stem:'그림의 가중치 그래프(정점 '+n+'개, 간선 '+E.length+'개)에서 <b>최소 비용 신장 트리</b>가 갖는 간선 수는?',
+      okfb:'신장 트리라면 비용과 무관하게 정점 수 − 1 = '+ans+'개다.',
+      choices:g2Fill([
+        {text:String(E.length),correct:false,mc:"all-edges",fb:"간선 전부가 아니라 트리를 이루는 최소한이다."},
+        {text:String(n),correct:false,mc:"vertex-confuse",fb:"정점 수만큼 이으면 사이클이 생긴다."},
+        {text:String(E.length-1),correct:false,mc:"count-slip",fb:"그래프 간선 수가 아니라 정점 수에서 1을 뺀다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* cost — 표시된 신장 트리의 비용 합산 */
+  const n=6, E=gwBuild(n,pick([2,3]));
+  const K=gwKruskal(n,E);
+  const hl=new Set(K.acc.map(e=>g8Key(e[0],e[1])));
+  const total=K.total, ans=String(total);
+  const wmin=Math.min.apply(null,K.acc.map(e=>e[2]));
+  const allSum=E.reduce((s,e)=>s+e[2],0);
+  const cands=[
+    {text:String(total+wmin),correct:false,mc:"count-slip",fb:"굵은 간선만 골라 다시 더해 보라."},
+    {text:String(total-wmin),correct:false,mc:"count-slip2",fb:"하나를 빠뜨렸다 — 굵은 간선은 "+(n-1)+"개다."}
+  ];
+  if(allSum!==total+wmin) cands.push({text:String(allSum),correct:false,mc:"all-edges",fb:"그래프 전체가 아니라 표시된 트리 간선만 더한다."});
+  return {id:"G37",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),ans:ans},viz:gwViz(n,E,{hl:hl}),mono:true,
+    stem:'그림에서 <b>굵게 표시된 간선들</b>이 신장 트리를 이룬다. 이 신장 트리의 <b>비용</b>은?',
+    okfb:'트리 간선 '+K.acc.map(e=>e[2]).sort((a,b)=>a-b).join("+")+' = '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G38. Kruskal (유닛 B) --- */
+function gwBuildRej(n){
+  let E, K, guard=200;
+  while(guard-->0){ E=gwBuild(n,3); K=gwKruskal(n,E);
+    if(K.rej.length>=1) break; }
+  return {E:E,K:K};
+}
+function genG38(){
+  const qtype=pick(["kth","firstrej","total","whyrej"]);
+  if(qtype==="whyrej"){
+    const ans="두 끝점이 이미 같은 트리라 사이클이 생길 때";
+    return {id:"G38",qtype:qtype,params:{ans:ans},
+      stem:'Kruskal 알고리즘이 검토 중인 간선을 <b>거부</b>하는 경우는?',
+      okfb:'싼 순서로 보되, 두 끝점이 이미 같은 팀(트리)이면 사이클 — 거부한다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"가중치가 지금까지 채택분의 평균보다 클 때",correct:false,mc:"avg-myth",fb:"가중치의 절대 크기가 아니라 사이클 여부로 판정한다."},
+        {text:"간선이 정점 번호가 큰 쪽 끝에 닿아 있을 때",correct:false,mc:"index-myth",fb:"번호는 판정과 무관하다."},
+        {text:"이미 n−1개를 넘겨 더 채택할 수 없게 될 때",correct:false,mc:"count-myth",fb:"n−1개가 되는 순간 알고리즘 자체가 끝난다 — 도중 거부의 이유는 사이클이다."}]};
+  }
+  const n=6, bk=gwBuildRej(n), E=bk.E, K=bk.K;
+  if(qtype==="firstrej"){
+    const r=K.rej[0], ans=gwPair(r);
+    const cands=K.acc.slice(1,4).map(e=>({text:gwPair(e),correct:false,mc:"acc-confuse",fb:"그 간선은 채택된다 — 두 끝점이 아직 다른 팀이다."}));
+    return {id:"G38",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),ans:ans},viz:gwViz(n,E),mono:true,
+      stem:'그림의 가중치 그래프에 Kruskal을 적용할 때, <b>처음으로 거부되는</b> 간선은? (간선을 싼 순서로 검토한다)',
+      okfb:'싼 순서로 채택해 가다 '+ans+'에서 처음으로 두 끝점이 같은 팀이 된다 — 거부.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="total"){
+    const ans=String(K.total), wr=K.rej[0][2];
+    const cands=[
+      {text:String(K.total+wr),correct:false,mc:"rej-add",fb:"거부된 간선은 비용에 들어가지 않는다."},
+      {text:String(E.reduce((s,e)=>s+e[2],0)),correct:false,mc:"all-edges",fb:"전체 간선이 아니라 채택된 n−1개만 더한다."},
+      {text:String(K.total-Math.min.apply(null,K.acc.map(e=>e[2]))),correct:false,mc:"count-slip",fb:"채택 간선 "+(n-1)+"개를 빠짐없이 더하라."}
+    ];
+    return {id:"G38",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),ans:ans},viz:gwViz(n,E),mono:true,
+      stem:'그림의 가중치 그래프에서 Kruskal이 완성하는 <b>최소 비용 신장 트리의 총비용</b>은?',
+      okfb:K.acc.map(e=>e[2]).sort((a,b)=>a-b).join("+")+' = '+ans+' — 거부된 간선은 계산에 없다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* kth — k번째 채택 */
+  const k=pick([2,3,4]), e=K.acc[k-1], ans=gwPair(e);
+  const S=E.slice().sort((a,b)=>a[2]-b[2]);
+  const cands=[];
+  if(S[k-1] && g8Key(S[k-1][0],S[k-1][1])!==g8Key(e[0],e[1]))
+    cands.push({text:gwPair(S[k-1]),correct:false,mc:"rej-blind",fb:"정렬 순서 k번째와 채택 k번째는 다르다 — 도중의 거부를 세지 않았는가."});
+  if(K.acc[k]) cands.push({text:gwPair(K.acc[k]),correct:false,mc:"off-by-one",fb:"그건 "+(k+1)+"번째 채택이다."});
+  if(K.acc[k-2]) cands.push({text:gwPair(K.acc[k-2]),correct:false,mc:"off-by-one2",fb:"그건 "+(k-1)+"번째 채택이다."});
+  cands.push({text:gwPair(E.reduce((m,x)=>x[2]>m[2]?x:m)),correct:false,mc:"max-guess",fb:"가장 비싼 간선은 마지막까지 검토조차 안 될 수 있다."});
+  return {id:"G38",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),k:k,ans:ans},viz:gwViz(n,E),mono:true,
+    stem:'그림의 가중치 그래프에 Kruskal을 적용할 때, <b>'+k+'번째로 채택되는</b> 간선은?',
+    okfb:'채택 순서: '+K.acc.slice(0,k).map(gwPair).join(" → ")+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G39. Prim (유닛 C) --- */
+function genG39(){
+  const qtype=pick(["kth","join","same","center"]);
+  if(qtype==="center"){
+    const ans="언제나 하나의 트리를 정점 단위로 키운다";
+    return {id:"G39",qtype:qtype,params:{ans:ans},
+      stem:'<b>Prim</b>이 Kruskal과 다른 점으로 옳은 것은?',
+      okfb:'Kruskal은 간선을 전역에서 싼 순으로(숲이 여럿), Prim은 한 정점에서 시작해 트리 하나를 키운다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"간선을 전부 정렬해 놓고 시작한다",correct:false,mc:"kruskal-confuse",fb:"그것은 Kruskal — Prim은 트리에 닿은 간선만 비교한다."},
+        {text:"사이클을 허용한다",correct:false,mc:"cycle-myth",fb:"어느 방법이든 트리를 만든다 — 사이클은 없다."},
+        {text:"결과 비용이 Kruskal보다 항상 작다",correct:false,mc:"better-myth",fb:"둘 다 최소 비용 — 결과 비용은 같다."}]};
+  }
+  const n=6, E=gwBuild(n,3), P=gwPrim(n,E,0);
+  if(qtype==="same"){
+    const K=gwKruskal(n,E), ans="같다 — "+K.total;
+    return {id:"G39",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),ans:ans},viz:gwViz(n,E),mono:true,
+      stem:'그림의 그래프에서 Kruskal이 만든 최소 비용 신장 트리의 총비용이 <b>'+K.total+'</b>이었다. <b>Prim(정점 0에서 시작)</b>이 만드는 트리의 총비용은?',
+      okfb:'가중치가 전부 다르면 최소 비용 신장 트리는 유일 — 어느 방법이든 같은 트리, 같은 비용('+K.total+')이다.',
+      choices:g2Fill([
+        {text:"더 크다 — "+(K.total+P.acc[0][2]),correct:false,mc:"diff-myth",fb:"둘 다 '최소' 비용을 찾는다 — 최소가 둘일 수는 없다."},
+        {text:"더 작다 — "+(K.total-P.acc[P.acc.length-1][2]),correct:false,mc:"diff-myth2",fb:"Kruskal의 결과도 이미 최소다."},
+        {text:"시작 정점에 따라 달라진다",correct:false,mc:"start-myth",fb:"가중치가 전부 다르면 어느 시작점이든 같은 트리에 도달한다."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(qtype==="join"){
+    const k=pick([2,3,4]), ans=String(P.joins[k-1]);
+    const cands=[];
+    if(P.joins[k]!==undefined) cands.push({text:String(P.joins[k]),correct:false,mc:"off-by-one",fb:"그 정점은 "+(k+1)+"번째로 붙는다."});
+    if(P.joins[k-2]!==undefined&&String(P.joins[k-2])!==ans) cands.push({text:String(P.joins[k-2]),correct:false,mc:"off-by-one2",fb:"그 정점은 "+(k-1)+"번째로 붙는다."});
+    for(let v=1;v<n&&cands.length<3;v++) if(String(v)!==ans&&!cands.find(c=>c.text===String(v))) cands.push({text:String(v),correct:false,mc:"trace-slip",fb:"트리에 닿은 간선 중 최저 비용부터 다시 짚어 보라."});
+    return {id:"G39",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),k:k,ans:ans},viz:gwViz(n,E,{hl:new Set()}),mono:true,
+      stem:'그림의 그래프에서 <b>Prim(정점 0에서 시작)</b>을 실행할 때, 트리에 <b>'+k+'번째로 합류하는 정점</b>은? (0은 세지 않는다)',
+      okfb:'합류 순서: 0 → '+P.joins.slice(0,k).join(" → ")+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* kth — k번째 채택 간선 */
+  const k=pick([2,3]), e=P.acc[k-1], ans=gwPair(e);
+  const K=gwKruskal(n,E);
+  const cands=[];
+  if(K.acc[k-1]&&g8Key(K.acc[k-1][0],K.acc[k-1][1])!==g8Key(e[0],e[1]))
+    cands.push({text:gwPair(K.acc[k-1]),correct:false,mc:"kruskal-confuse",fb:"그건 Kruskal의 순서 — Prim은 트리에 닿은 간선만 고른다."});
+  if(P.acc[k]) cands.push({text:gwPair(P.acc[k]),correct:false,mc:"off-by-one",fb:"그건 "+(k+1)+"번째 채택이다."});
+  if(P.acc[k-2]) cands.push({text:gwPair(P.acc[k-2]),correct:false,mc:"off-by-one2",fb:"그건 "+(k-1)+"번째 채택이다."});
+  cands.push({text:gwPair(E.reduce((m,x)=>x[2]<m[2]?x:m)),correct:false,mc:"min-guess",fb:"전체 최저 간선이라도 트리에 닿아 있지 않으면 아직 못 고른다."});
+  return {id:"G39",qtype:qtype,params:{n:n,edges:gwEdgeStr(E),k:k,ans:ans},viz:gwViz(n,E),mono:true,
+    stem:'그림의 그래프에서 <b>Prim(정점 0에서 시작)</b>이 <b>'+k+'번째로 채택하는</b> 간선은?',
+    okfb:'채택 순서: '+P.acc.slice(0,k).map(gwPair).join(" → ")+' — 매번 트리에 닿은 최저 비용 간선이다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G40. Dijkstra (유닛 D) --- */
+function genG40(){
+  const qtype=pick(["first","dist","init","inf"]);
+  if(qtype==="init"){
+    const ans="출발점에서 각 정점으로 가는 직행 간선의 비용";
+    return {id:"G40",qtype:qtype,params:{ans:ans},
+      stem:'Dijkstra에서 <span class="mono">distance</span> 배열의 <b>초깃값</b>은?',
+      okfb:'distance[i] = cost[v0][i] — 아직 아무 정점도 거치지 않은 직행 비용에서 시작한다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"모든 정점이 일괄적으로 0에서 시작한다",correct:false,mc:"zero-myth",fb:"0이면 갱신이 일어나지 않는다 — 직행 비용(없으면 무한대)으로 시작한다."},
+        {text:"모든 정점이 똑같이 무한대에서 시작한다",correct:false,mc:"inf-slip",fb:"직행 간선이 있는 정점은 그 비용으로 시작한다(출발점 자신은 0)."},
+        {text:"각 정점의 번호를 그대로 초깃값으로 쓴다",correct:false,mc:"index-myth",fb:"번호는 비용과 무관하다."}]};
+  }
+  if(qtype==="inf"){
+    const ans="간선이 없다는 뜻 — 실제 비용보다 큰 값";
+    return {id:"G40",qtype:qtype,params:{ans:ans},
+      stem:'교재의 비용 인접 행렬에서 <b>1000</b> 같은 큰 수가 하는 역할은?',
+      okfb:'간선이 없는 자리를 "무한대"로 표시한 것 — 다만 덧셈이 overflow하지 않을 만큼으로 잡는다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"그래프에서 가장 비싼 간선의 실제 비용",correct:false,mc:"real-myth",fb:"실제 비용이 아니라 '길이 없음'의 표시다."},
+        {text:"정점 수를 제곱해 얻는 행렬 크기 상한",correct:false,mc:"formula-myth",fb:"크기에 특별한 공식은 없다 — 충분히 크되 overflow만 피하면 된다."},
+        {text:"확정된 정점을 표시하는 값의 다른 이름",correct:false,mc:"visited-confuse",fb:"확정 표시는 found 배열의 몫이다."}]};
+  }
+  const n=5, DE=gwBuildDir(n), R=gwDijkstra(n,DE,0);
+  if(qtype==="first"){
+    const ans=String(R.settle[0]);
+    const cands=[];
+    if(R.settle[1]!==undefined) cands.push({text:String(R.settle[1]),correct:false,mc:"off-by-one",fb:"그 정점은 두 번째로 확정된다."});
+    for(let v=1;v<n&&cands.length<3;v++) if(String(v)!==ans&&!cands.find(c=>c.text===String(v))) cands.push({text:String(v),correct:false,mc:"trace-slip",fb:"미확정 정점 중 distance가 가장 작은 것을 고른다 — 직행 비용을 다시 보라."});
+    return {id:"G40",qtype:qtype,params:{n:n,dedges:gwDedgeStr(DE),ans:ans},viz:gwVizDir(n,DE,0),mono:true,
+      stem:'그림의 방향 가중치 그래프에서 <b>Dijkstra(출발 0)</b>가 출발점 다음으로 <b>가장 먼저 확정하는 정점</b>은?',
+      okfb:'미확정 중 distance 최소 — 직행 비용이 가장 싼 정점 '+ans+'이(가) 먼저 확정된다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* dist — 최종 distance[x] */
+  const cand=[]; for(let v=1;v<n;v++) if(R.dist[v]<Infinity) cand.push(v);
+  const x=pick(cand), ans=String(R.dist[x]);
+  const direct={}; DE.forEach(e=>{ if(e[0]===0) direct[e[1]]=e[2]; });
+  const cands=[];
+  if(direct[x]!==undefined&&direct[x]!==R.dist[x]) cands.push({text:String(direct[x]),correct:false,mc:"direct-only",fb:"직행보다 싼 경유 길이 있다 — 갱신을 놓쳤다."});
+  cands.push({text:String(R.dist[x]+Math.min.apply(null,DE.map(e=>e[2]))),correct:false,mc:"count-slip",fb:"경로 위 간선 가중치만 정확히 더하라."});
+  cands.push({text:"∞ (도달 불가)",correct:false,mc:"inf-myth",fb:"0에서 닿는 길이 있다 — 그림의 화살표를 따라가 보라."});
+  return {id:"G40",qtype:qtype,params:{n:n,dedges:gwDedgeStr(DE),x:x,ans:ans},viz:gwVizDir(n,DE,x),mono:true,
+    stem:'그림의 방향 가중치 그래프에서 <b>Dijkstra(출발 0)</b>가 끝난 뒤 <span class="mono">distance['+x+']</span>의 값은?',
+    okfb:'0에서 '+x+'까지의 최단 경로 길이(가중치 합) = '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- AP10. 심화 — union-find / Floyd 개념 / 위상 정렬 (도발장 6) --- */
+function genAP10ch(idx){
+  if(idx===0){
+    /* union-find 판정: Kruskal 진행 중 다음 간선 채택/거부 */
+    const n=6, bk=gwBuildRej(n), E=bk.E, K=bk.K;
+    const ks=pick([2,3,4]);                       /* 앞 ks개 처리 후 다음 검토 간선 */
+    const done=K.order.slice(0,ks), next=K.order[ks];
+    const accSoFar=done.filter(o=>o.ok).map(o=>o.e);
+    const hl=new Set(accSoFar.map(e=>g8Key(e[0],e[1])));
+    const ans=next.ok?"채택 — 두 끝점이 서로 다른 트리(팀)에 있다":"거부 — 두 끝점이 이미 같은 트리(팀)라 사이클이 생긴다";
+    return {id:"AP10",qtype:"uf",params:{n:n,edges:gwEdgeStr(E),k:ks,ans:ans},viz:gwViz(n,E,{hl:hl}),mono:true,
+      stem:'[심화 — 팀 표시] Kruskal 진행 중이다. 지금까지 채택된 간선은 굵게 표시했다. 다음으로 검토하는 간선 <b>'+gwPair(next.e)+'</b>은 어떻게 되는가?',
+      okfb:(next.ok?'끝점이 서로 다른 팀 — 채택하고 두 팀을 합친다.':'끝점 '+next.e[0]+'과 '+next.e[1]+'은 굵은 간선으로 이미 이어져 있다(같은 팀) — 거부.')+' 이 "팀 표시"를 배열로 구현한 것이 union-find다.',
+      choices:g2Fill([
+        {text:next.ok?"거부 — 두 끝점이 이미 같은 트리(팀)라 사이클이 생긴다":"채택 — 두 끝점이 서로 다른 트리(팀)에 있다",correct:false,mc:"team-flip",fb:"굵은 간선만 따라가며 두 끝점이 이어져 있는지 확인하라."},
+        {text:"채택 — 남은 간선 중 가장 싸므로 무조건 채택된다",correct:false,mc:"cheap-myth",fb:"싼 순서로 '검토'할 뿐 — 채택은 팀 판정이 결정한다."},
+        {text:"거부 — 가중치가 지금까지의 평균보다 크다",correct:false,mc:"avg-myth",fb:"가중치 크기가 아니라 사이클 여부로 판정한다."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(idx===1){
+    /* Floyd 개념: 경유 정점 허용 시 갱신 */
+    let a,b,via,dab,davia,dviab,guard=100;
+    do{ dab=pick([40,45,50,60,999]); davia=5+Math.floor(Math.random()*20); dviab=5+Math.floor(Math.random()*20); }
+    while(guard-->0 && davia+dviab>=dab);
+    a=0; via=1; b=2;
+    const ans=String(davia+dviab);
+    const mat=[[0,davia,dab],[999,0,dviab],[999,999,0]];
+    return {id:"AP10",qtype:"floyd",params:{dab:dab,davia:davia,dviab:dviab,ans:ans},mono:true,
+      viz:{type:"adjmat", m:mat.map(r=>r.map(v=>v===999?"∞":v)), labels:["0","1","2"], hi:{r:0,c:2}},
+      stem:'[심화 — 모든 쌍의 최단 경로(Floyd)] Dijkstra는 <b>한 출발점</b> 기준이다. 「<b>모든 쌍</b>의 최단 거리」가 필요하면 Floyd 알고리즘을 쓴다 — 발상은 하나: 거리 표를 놓고 <b>경유지를 한 정점씩 허용</b>하며, 칸마다 min(기존 거리, 경유지까지 + 경유지에서부터)로 갱신한다. 직행 비용이 표와 같을 때(∞=길 없음, 0→2 직행 '+(dab===999?"없음":dab)+'), 정점 <b>1을 경유지로 허용</b>하면 0→2의 최단 비용은?',
+      okfb:'min(직행'+(dab===999?" ∞":" "+dab)+', 0→1→2 = '+davia+'+'+dviab+') = '+ans+'. 모든 쌍에 대해 경유지를 하나씩 늘려 가는 것이 Floyd 알고리즘이다 — Dijkstra를 정점마다 돌리는 것과 견주어 보라.',
+      choices:g2Fill([
+        {text:dab===999?"∞ (불가능)":String(dab),correct:false,mc:"direct-only",fb:"경유를 허용했다 — 0→1→2를 계산해 보라."},
+        {text:String(davia),correct:false,mc:"half-path",fb:"그건 0→1까지 — 1→2 구간을 마저 더한다."},
+        {text:String(Math.abs(dviab-davia)+1),correct:false,mc:"op-slip",fb:"경로 길이는 구간 비용의 합이다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* idx 2 — 위상 정렬 */
+  const n=5;
+  let DE, perm;
+  perm=[0,1,2,3,4];
+  for(let i=perm.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=perm[i]; perm[i]=perm[j]; perm[j]=t; }
+  DE=[]; const seen=new Set();
+  for(let k=1;k<n;k++){ const pi=Math.floor(Math.random()*k); DE.push([perm[pi],perm[k]]); seen.add(perm[pi]+">"+perm[k]); }
+  let extra=2, g3=40;
+  while(extra>0&&g3-->0){ const i=Math.floor(Math.random()*(n-1)), j2=i+1+Math.floor(Math.random()*(n-1-i));
+    if(seen.has(perm[i]+">"+perm[j2])) continue; DE.push([perm[i],perm[j2]]); seen.add(perm[i]+">"+perm[j2]); extra--; }
+  DE.sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  /* Kahn(번호 작은 것 우선)으로 유효 순서 */
+  const indeg=Array(n).fill(0); DE.forEach(e=>indeg[e[1]]++);
+  const order=[], used=Array(n).fill(false);
+  for(let step=0;step<n;step++){
+    for(let v=0;v<n;v++){ if(!used[v]&&indeg[v]===0){ used[v]=true; order.push(v); DE.forEach(e=>{ if(e[0]===v) indeg[e[1]]--; }); break; } }
+  }
+  const ans=order.join(" → ");
+  const bad=()=>{ /* 유효 순서를 하나 골라 제약 쌍을 뒤집어 위반 배열 생성 */
+    const o=order.slice(); const e=DE[Math.floor(Math.random()*DE.length)];
+    const ia=o.indexOf(e[0]), ib=o.indexOf(e[1]); const t=o[ia]; o[ia]=o[ib]; o[ib]=t;
+    return o.join(" → ");
+  };
+  const cands=[]; let g4=30;
+  while(cands.length<3&&g4-->0){ const s=bad(); if(s!==ans&&!cands.find(c=>c.text===s)) cands.push({text:s,correct:false,mc:"edge-violate",fb:"화살표를 하나하나 확인하라 — 앞서야 할 작업이 뒤에 있다."}); }
+  return {id:"AP10",qtype:"topo",params:{n:n,dedges:DE.map(e=>e[0]+">"+e[1]).join(","),ans:ans},viz:{type:"graph", nodes:g8Nodes(n),
+      edges:DE.map(e=>({a:e[0],b:e[1],dir:true}))},mono:true,
+    stem:'[심화 — 위상 정렬] 새 개념 하나를 소개한다. 방향 그래프의 화살표 a → b가 「a를 마쳐야 b를 할 수 있다」는 <b>선후 관계</b>일 때(선수 과목, 작업 공정), 모든 화살표를 지키도록 작업을 한 줄로 세운 것을 <b>위상 정렬(topological sort)</b>이라 한다. 구하는 법: 남은 작업 중 <b>「나를 가리키는 화살표의 출발점이 전부 끝난」 작업</b>(선행이 다 끝난 작업)을 하나 꺼내 적고, 그 작업에서 나가는 화살표는 지운 셈 치고 — 반복한다(사이클이 있으면 이런 순서는 없다). 그림의 그래프에서 <b>모든 화살표를 지키는 순서</b>는? (선행이 다 끝난 작업이 여럿이면 번호가 작은 작업부터)',
+    okfb:'규칙대로 — 선행이 전부 끝난 작업을 번호 순으로 하나씩 꺼내면 '+ans+' — 이것이 위상 정렬이다. 사이클이 있으면 이런 순서는 존재하지 않는다.',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }

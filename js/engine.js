@@ -19,6 +19,7 @@ const wallet=JSON.parse(localStorage.getItem(WALLETKEY)||'{"balance":0,"inventor
 function saveWallet(){ wallet.balance=S.balance; localStorage.setItem(WALLETKEY,JSON.stringify(wallet)); }
 const S = { balance:wallet.balance||0, tutorFirstTry:0, tutorPassed:false, aplusAccepted:false, aplusSuccess:false, retake:false };
 /* ---- 서사 상태 (지갑에 영속 — 챕터를 넘어 유지) ---- */
+if(!Array.isArray(wallet.inventory)) wallet.inventory=[];    /* 외부 저장 복원 등 필드 누락 방어 */
 if(typeof wallet.trust!=="number") wallet.trust=5;          /* 어머니의 신뢰 0~10 (숨김) */
 if(typeof wallet.aplusStreak!=="number") wallet.aplusStreak=0;
 if(!Array.isArray(wallet.clues)) wallet.clues=[];            /* 역추적 단서 수첩 */
@@ -1321,8 +1322,8 @@ function exOutro(){
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36(), G37:()=>genG37(), G38:()=>genG38(), G39:()=>genG39(), G40:()=>genG40() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i), AP10:(i)=>genAP10ch(i) };
 let GW=null;
 function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; S.momLine=null; S.duelDone=false; S.duelRewarded=false; }
 function gwStart(){ gwInit(); gwGo(0); }
@@ -1542,24 +1543,32 @@ function graphVizEl(v){
   const x0=Math.min(...xs)-PAD-R, y0=Math.min(...ys)-PAD-R;
   const W=Math.max(...xs)-Math.min(...xs)+2*(PAD+R), H=Math.max(...ys)-Math.min(...ys)+2*(PAD+R);
   const P={}; v.nodes.forEach(n=>P[n.id]=n);
-  let defs='<defs><marker id="garrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" style="fill:var(--ink-dim);"/></marker>'+
-    '<marker id="garrowhl" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" style="fill:var(--accent);"/></marker></defs>';
+  /* 화살표 헤드는 작게 — 여러 화살표가 한 정점에 몰릴 때의 가독성 (감수 2026-08-27) */
+  let defs='<defs><marker id="garrow" markerWidth="6.5" markerHeight="6.5" refX="5.8" refY="3.25" orient="auto"><path d="M0,0 L6.5,3.25 L0,6.5 z" style="fill:var(--ink-dim);"/></marker>'+
+    '<marker id="garrowhl" markerWidth="6.5" markerHeight="6.5" refX="5.8" refY="3.25" orient="auto"><path d="M0,0 L6.5,3.25 L0,6.5 z" style="fill:var(--accent);"/></marker></defs>';
   let edges='', labels='';
   (v.edges||[]).forEach(e=>{
     const A=P[e.a], B=P[e.b]; if(!A||!B) return;
     const dx=B.x-A.x, dy=B.y-A.y, L=Math.sqrt(dx*dx+dy*dy)||1;
     const ux=dx/L, uy=dy/L;
     const sx=A.x+ux*R, sy=A.y+uy*R;                      /* 원 둘레에서 출발 */
-    const tx=B.x-ux*(R+(e.dir?4:0)), ty=B.y-uy*(R+(e.dir?4:0)); /* 화살표 여유 */
+    const tx=B.x-ux*(R+(e.dir?3:0)), ty=B.y-uy*(R+(e.dir?3:0)); /* 화살표 여유 */
     const st=e.hl?'stroke:var(--accent);stroke-width:2.2;':e.cut?'stroke:var(--line);stroke-width:1.6;stroke-dasharray:4 4;opacity:.45;':(e.dim?'stroke:var(--line);stroke-width:1.6;opacity:.35;':'stroke:var(--line);stroke-width:1.7;');
     const mk=e.dir?(' marker-end="url(#'+(e.hl?'garrowhl':'garrow')+')"'):'';
+    /* 라벨: halo(배경 테두리)로 선과 분리 + lpos(간선 위 위치 0~1)·loff(수직 오프셋 px, 음수로 반대편) 지원 (감수 2026-08-27) */
+    const LSTY='fill:var(--accent2);font-size:11.5px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3px;stroke-linejoin:round;';
+    const lt=(e.lpos!==undefined)?e.lpos:0.5, lo=(e.loff!==undefined)?e.loff:11;
     if(e.curve){ const mx=(sx+tx)/2-uy*18*e.curve, my=(sy+ty)/2+ux*18*e.curve;
       edges+='<path d="M'+sx+','+sy+' Q'+mx+','+my+' '+tx+','+ty+'" style="fill:none;'+st+'"'+mk+'/>';
-      if(e.lab!==undefined) labels+='<text x="'+(mx-uy*8*e.curve)+'" y="'+(my+ux*8*e.curve+4)+'" text-anchor="middle" style="fill:var(--accent2);font-size:11.5px;font-weight:700;">'+e.lab+'</text>';
+      if(e.lab!==undefined){
+        const t2=lt, omt=1-t2;                                    /* 2차 베지에 위의 lpos 지점 */
+        const bx=omt*omt*sx+2*omt*t2*mx+t2*t2*tx, by=omt*omt*sy+2*omt*t2*my+t2*t2*ty;
+        labels+='<text x="'+(bx-uy*8*e.curve)+'" y="'+(by+ux*8*e.curve+4)+'" text-anchor="middle" style="'+LSTY+'">'+e.lab+'</text>';
+      }
     } else {
       edges+='<line x1="'+sx+'" y1="'+sy+'" x2="'+tx+'" y2="'+ty+'" style="'+st+'"'+mk+'/>';
-      if(e.lab!==undefined){ const px2=(sx+tx)/2-uy*11, py2=(sy+ty)/2+ux*11;
-        labels+='<text x="'+px2+'" y="'+(py2+4)+'" text-anchor="middle" style="fill:var(--accent2);font-size:11.5px;font-weight:700;">'+e.lab+'</text>'; }
+      if(e.lab!==undefined){ const px2=sx+(tx-sx)*lt-uy*lo, py2=sy+(ty-sy)*lt+ux*lo;
+        labels+='<text x="'+px2+'" y="'+(py2+4)+'" text-anchor="middle" style="'+LSTY+'">'+e.lab+'</text>'; }
     }
   });
   let nodes='';
@@ -2141,7 +2150,7 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null };
 function cpLabel(sv){
   if(sv.ch==="chM"&&typeof CHM!=="undefined") return (CHM.cpl&&CHM.cpl[sv.cp])||"※ 중간고사 · 이어서";
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
@@ -2208,6 +2217,7 @@ function sceneTitle(){
   if(typeof CH07!=="undefined") CH_MENU.push({id:"ch07", label:chLabel(CH07), go:()=>{ setChapter(CH07); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH08!=="undefined") CH_MENU.push({id:"ch08", label:chLabel(CH08), go:()=>{ setChapter(CH08); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH09!=="undefined") CH_MENU.push({id:"ch09", label:chLabel(CH09), go:()=>{ setChapter(CH09); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH10!=="undefined") CH_MENU.push({id:"ch10", label:chLabel(CH10), go:()=>{ setChapter(CH10); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
