@@ -2551,3 +2551,297 @@ function genAP8ch(idx){
     okfb:'정점별 차수는 ['+d.join(", ")+'] — 홀수는 '+ans+'개다. 차수 합이 항상 2×간선 수(짝수)이므로, 홀수 차수 정점의 개수는 언제나 짝수다.',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
+
+/* ================================================================
+   5장(B) 그래프 탐색 — G33 DFS 절차 / G34 DFS 코드 / G35 BFS / G36 응용 / AP9 심화
+   규약: 인접 리스트 오름차순(작은 번호부터). params: edges + ans — 독립 재검산용
+   ================================================================ */
+function g9Adj(n,E){ const L=Array.from({length:n},()=>[]);
+  E.forEach(e=>{ L[e[0]].push(e[1]); L[e[1]].push(e[0]); });
+  L.forEach(l=>l.sort((a,b)=>a-b)); return L; }
+function g9Dfs(n,E,s){ const L=g9Adj(n,E), seen=Array(n).fill(false), out=[];
+  (function go(v){ seen[v]=true; out.push(v); for(const w of L[v]) if(!seen[w]) go(w); })(s); return out; }
+function g9Bfs(n,E,s){ const L=g9Adj(n,E), seen=Array(n).fill(false), out=[], q=[s]; seen[s]=true;
+  while(q.length){ const v=q.shift(); out.push(v); for(const w of L[v]) if(!seen[w]){ seen[w]=true; q.push(w); } } return out; }
+/* bfs에서 정점 x를 '꺼내 출력한 직후'의 큐 내용 */
+function g9BfsQueueAfter(n,E,s,x){ const L=g9Adj(n,E), seen=Array(n).fill(false), q=[s]; seen[s]=true;
+  while(q.length){ const v=q.shift();
+    for(const w of L[v]) if(!seen[w]){ seen[w]=true; q.push(w); }
+    if(v===x) return q.slice(); }
+  return []; }
+function g9Comps(n,E){ const L=g9Adj(n,E), seen=Array(n).fill(false), comps=[];
+  for(let s=0;s<n;s++){ if(seen[s]) continue; const c=[], st=[s]; seen[s]=true;
+    while(st.length){ const v=st.pop(); c.push(v); for(const w of L[v]) if(!seen[w]){ seen[w]=true; st.push(w); } }
+    c.sort((a,b)=>a-b); comps.push(c); }
+  return comps; }
+function g9Seq(a){ return a.join(", "); }
+
+/* --- G33. DFS 절차 (유닛 A) --- */
+function genG33(){
+  const qtype=pick(["order","kth","deadend"]);
+  if(qtype==="deadend"){
+    const ans="스택에서 정점을 꺼내 직전 갈림길로 되돌아간다";
+    const cands=[
+      {text:"큐에서 가장 오래된 정점을 꺼내 이어 간다",correct:false,mc:"bfs-confuse",fb:"오래된 것부터 꺼내는 것은 너비 우선(큐) 쪽 방식이다."},
+      {text:"탐색을 종료하고 결과를 출력한다",correct:false,mc:"early-stop",fb:"스택이 빌 때까지는 끝이 아니다 — 아직 안 가 본 갈림길이 남아 있을 수 있다."},
+      {text:"방문 표시를 지우고 처음부터 다시 시작한다",correct:false,mc:"reset-myth",fb:"발자국(visited)은 지우지 않는다 — 지우면 같은 곳을 영원히 맴돈다."}
+    ];
+    return {id:"G33",qtype,params:{ans},
+      stem:'깊이 우선 탐색 도중, 현재 정점의 인접 정점이 <b>모두 방문된 상태</b>(막다른 곳)가 되었다. 다음에 하는 일은?',
+      okfb:'2장(B) 미로의 백트래킹 그대로 — 스택에 기억해 둔 직전 갈림길로 되돌아가 남은 길을 잇는다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  let n,E,d,b,guard=30;
+  do{ n=pick([5,6,6]); E=g8Build(n,pick([1,2,2])); d=g9Dfs(n,E,0); b=g9Bfs(n,E,0); }
+  while(guard-->0 && g9Seq(d)===g9Seq(b));   /* DFS·BFS가 갈라지는 그래프만 */
+  if(qtype==="order"){
+    const ans=g9Seq(d);
+    const big=(function(){ const L=g9Adj(n,E).map(l=>l.slice().reverse()), seen=Array(n).fill(false), out=[];
+      (function go(v){ seen[v]=true; out.push(v); for(const w of L[v]) if(!seen[w]) go(w); })(0); return out; })();
+    const cands=[
+      {text:g9Seq(b),correct:false,mc:"bfs-confuse",fb:"가까운 정점부터 층층이 — 그것은 너비 우선의 순서다."},
+      {text:g9Seq(big),correct:false,mc:"order-rule",fb:"인접 리스트는 작은 번호부터 잇는 규약 — 큰 번호를 먼저 가면 안 된다."},
+      {text:g9Seq(Array.from({length:n},(_,i)=>i)),correct:false,mc:"index-order",fb:"정점 번호 순서가 아니라 간선을 따라가는 순서다."}
+    ];
+    return {id:"G33",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E,0),mono:true,
+      stem:'그림 그래프를 정점 <b>0</b>에서 <b>깊이 우선 탐색(DFS)</b> 한 방문 순서는? (인접 리스트는 작은 번호부터)',
+      okfb:'한 길을 끝까지, 막히면 되돌아서 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* kth */
+  const k=pick([3,4]);
+  const ans=String(d[k-1]);
+  const cands=[
+    {text:String(b[k-1]),correct:false,mc:"bfs-confuse",fb:"그것은 너비 우선이 "+k+"번째로 방문하는 정점이다."},
+    {text:String(d[k%d.length]),correct:false,mc:"off-by-one",fb:"방문 순서를 1번째부터 다시 세라 — 출발 정점 0이 1번째다."},
+    {text:String(d[k-2]),correct:false,mc:"off-by-one",fb:"한 정점 이르다 — "+k+"번째까지 세라."}
+  ];
+  return {id:"G33",qtype,params:{n,edges:g8EdgeStr(E),k,ans},viz:g8Viz(n,E,0),mono:true,
+    stem:'그림 그래프를 정점 <b>0</b>에서 깊이 우선 탐색할 때 <b>'+k+'번째</b>로 방문하는 정점은? (인접 리스트는 작은 번호부터)',
+    okfb:'방문 순서는 '+g9Seq(d)+' — '+k+'번째는 '+ans+'이다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G34. DFS 코드 (유닛 B) --- */
+function genG34(){
+  const qtype=pick(["callcnt","printorder","novisit"]);
+  if(qtype==="novisit"){
+    const ans="같은 정점을 다시 방문해 재귀가 끝나지 않을 수 있다";
+    const cands=[
+      {text:"결과는 같고 실행 속도만 조금 느려질 뿐이다",correct:false,mc:"harmless-myth",fb:"사이클이 있는 그래프에서는 같은 정점 사이를 영원히 오간다 — 속도 문제가 아니다."},
+      {text:"컴파일 오류가 발생한다",correct:false,mc:"compile-myth",fb:"문법은 멀쩡하다 — 실행이 끝나지 않는 것이 문제다."},
+      {text:"방문 순서가 정점 번호 순서로 바뀌어 출력된다",correct:false,mc:"order-myth",fb:"순서가 바뀌는 것이 아니라 탐색 자체가 끝나지 못한다."}
+    ];
+    return {id:"G34",qtype,params:{ans},
+      code:["void dfs(int v) {","    node_pointer w;","    printf(\"%5d\", v);   /* visited[v] = TRUE 를 지웠다 */","    for (w = graph[v]; w; w = w->link)","        if (!visited[w->vertex])","            dfs(w->vertex);","}"],
+      stem:'dfs 코드에서 <span class="mono">visited[v] = TRUE;</span> 를 지우면 어떻게 되는가?',
+      okfb:'발자국이 없으면 사이클을 도는 순간 같은 정점을 다시, 또다시 방문한다 — 재귀가 끝나지 않는다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  let n,E,d,b,guard=30;
+  do{ n=pick([5,6]); E=g8Build(n,pick([1,2])); d=g9Dfs(n,E,0); b=g9Bfs(n,E,0); }
+  while(guard-->0 && g9Seq(d)===g9Seq(b));
+  if(qtype==="callcnt"){
+    const ans=String(n);
+    const cands=[
+      {text:String(E.length),correct:false,mc:"edge-confuse",fb:"간선 수가 아니다 — dfs는 '정점'마다 한 번 호출된다."},
+      {text:String(2*E.length),correct:false,mc:"double-count",fb:"간선을 두 번 살피는 것은 for 루프의 일 — 호출은 방문 표시가 막는다."},
+      {text:String(n-1),correct:false,mc:"root-miss",fb:"출발 정점의 첫 호출도 센다 — 정점 수만큼이다."}
+    ];
+    return {id:"G34",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E,0),mono:true,
+      stem:'그림의 <b>연결</b> 그래프에서 <span class="mono">dfs(0)</span> 실행이 끝날 때까지 dfs 함수가 호출되는 <b>총 횟수</b>는?',
+      okfb:'visited 검사 덕에 각 정점은 정확히 한 번만 호출된다 — 정점 수 '+ans+'회.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* printorder — 코드 프레임으로 방문 순서 */
+  const ans=g9Seq(d);
+  const cands=[
+    {text:g9Seq(b),correct:false,mc:"bfs-confuse",fb:"이 코드는 스택(재귀)으로 파고든다 — 층층이 도는 것은 큐 쪽이다."},
+    {text:g9Seq(Array.from({length:n},(_,i)=>i)),correct:false,mc:"index-order",fb:"번호 순서가 아니라 재귀가 파고드는 순서다."},
+    {text:g9Seq(d.slice().reverse()),correct:false,mc:"reverse-slip",fb:"printf는 방문 표시 직후 — 파고드는 순서 그대로 찍힌다."}
+  ];
+  return {id:"G34",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E,0),mono:true,
+    code:["void dfs(int v) {","    node_pointer w;","    visited[v] = TRUE;  printf(\"%5d\", v);","    for (w = graph[v]; w; w = w->link)","        if (!visited[w->vertex])","            dfs(w->vertex);","}"],
+    stem:'그림 그래프에서 <span class="mono">dfs(0)</span> 의 <b>출력 순서</b>는? (인접 리스트는 작은 번호부터)',
+    okfb:'출력은 방문과 동시 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G35. BFS (유닛 C) --- */
+function genG35(){
+  const qtype=pick(["order","kth","queue","maze"]);
+  if(qtype==="maze"){
+    const ans="가까운 칸부터 골고루 넓혀 가며 탐색한다";
+    const cands=[
+      {text:"한 길을 끝까지 파고들었다가 막히면 되돌아온다",correct:false,mc:"dfs-confuse",fb:"그것은 스택을 쓰던 원래 방식(깊이 우선)이다."},
+      {text:"탐색 순서는 스택일 때와 완전히 같다",correct:false,mc:"same-myth",fb:"꺼내는 순서가 다르면 가 보는 순서도 달라진다."},
+      {text:"출구를 더 이상 찾을 수 없게 된다",correct:false,mc:"fail-myth",fb:"큐로도 출구는 찾는다 — 오히려 가까운 출구를 먼저 만난다."}
+    ];
+    return {id:"G35",qtype,params:{ans},
+      stem:'2장(B)의 미로 탐색에서 「가 볼 곳」의 저장 구조를 <b>스택 대신 큐</b>로 바꾸면 탐색은 어떻게 달라지는가?',
+      okfb:'큐는 먼저 넣은 곳부터 꺼낸다 — 출발 주변을 골고루 넓혀 가는 너비 우선이 된다. 미로의 칸을 정점으로 보면 지금 배우는 BFS 그대로다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  let n,E,d,b,guard=30;
+  do{ n=pick([5,6,6]); E=g8Build(n,pick([1,2,2])); d=g9Dfs(n,E,0); b=g9Bfs(n,E,0); }
+  while(guard-->0 && g9Seq(d)===g9Seq(b));
+  if(qtype==="order"){
+    const ans=g9Seq(b);
+    const cands=[
+      {text:g9Seq(d),correct:false,mc:"dfs-confuse",fb:"한 길을 끝까지 파고드는 것은 깊이 우선의 순서다."},
+      {text:g9Seq(Array.from({length:n},(_,i)=>i)),correct:false,mc:"index-order",fb:"번호 순서가 아니라 큐에서 꺼내는 순서다."},
+      {text:g9Seq(b.slice(0,1).concat(b.slice(1).reverse())),correct:false,mc:"order-rule",fb:"같은 정점의 이웃은 작은 번호부터 큐에 들어간다."}
+    ];
+    return {id:"G35",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E,0),mono:true,
+      stem:'그림 그래프를 정점 <b>0</b>에서 <b>너비 우선 탐색(BFS)</b> 한 방문 순서는? (인접 리스트는 작은 번호부터)',
+      okfb:'가까운 층부터 골고루 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="kth"){
+    const k=pick([3,4]);
+    const ans=String(b[k-1]);
+    const cands=[
+      {text:String(d[k-1]),correct:false,mc:"dfs-confuse",fb:"그것은 깊이 우선이 "+k+"번째로 방문하는 정점이다."},
+      {text:String(b[k%b.length]),correct:false,mc:"off-by-one",fb:"출발 정점 0이 1번째다 — 다시 세라."},
+      {text:String(b[k-2]),correct:false,mc:"off-by-one",fb:"한 정점 이르다."}
+    ];
+    return {id:"G35",qtype,params:{n,edges:g8EdgeStr(E),k,ans},viz:g8Viz(n,E,0),mono:true,
+      stem:'그림 그래프를 정점 <b>0</b>에서 너비 우선 탐색할 때 <b>'+k+'번째</b>로 방문하는 정점은? (인접 리스트는 작은 번호부터)',
+      okfb:'방문 순서는 '+g9Seq(b)+' — '+k+'번째는 '+ans+'이다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* queue — x 방문 직후 큐 내용 (비어 있지 않은 시점 선택) */
+  let x=-1;
+  for(const v of b){ const q=g9BfsQueueAfter(n,E,0,v); if(q.length>=2){ x=v; break; } }
+  if(x<0) x=b[0];
+  const q=g9BfsQueueAfter(n,E,0,x);
+  const ans=q.length?g9Seq(q):"(비어 있음)";
+  const wrongA=q.length>1?g9Seq(q.slice().reverse()):g9Seq([x]);
+  const wrongB=g9Seq(q.concat([x]));
+  const wrongC=q.length?g9Seq(q.slice(1)):g9Seq([x]);
+  const cands=[
+    {text:wrongA,correct:false,mc:"order-slip",fb:"큐는 넣은 순서 그대로다 — 뒤집히지 않는다."},
+    {text:wrongB,correct:false,mc:"self-in-queue",fb:x+"는 방금 꺼내 출력했다 — 큐에 남아 있지 않다."},
+    {text:wrongC,correct:false,mc:"drop-slip",fb:"아직 꺼내지 않은 정점을 지우면 안 된다."}
+  ];
+  return {id:"G35",qtype,params:{n,edges:g8EdgeStr(E),x,ans},viz:g8Viz(n,E,x),mono:true,
+    stem:'그림 그래프에서 <span class="mono">bfs(0)</span> 진행 중, 정점 <b>'+x+'</b>를 큐에서 꺼내 출력하고 그 이웃들까지 넣은 <b>직후의 큐 내용</b>은? (앞 → 뒤)',
+    okfb:'꺼낸 '+x+'는 빠지고, 새로 방문 표시된 이웃들이 뒤에 붙는다 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- G36. 연결 요소·신장 트리 (유닛 D) --- */
+function genG36(){
+  const qtype=pick(["comp","compof","spanedge","nontree"]);
+  if(qtype==="comp"||qtype==="compof"){
+    const n=6, E=g8BuildForest(n);
+    const comps=g9Comps(n,E);
+    if(qtype==="comp"){
+      const ans=String(comps.length);
+      const cands=[
+        {text:String(comps.length+1),correct:false,mc:"count-slip",fb:"간선으로 이어진 정점들은 한 덩어리로 센다."},
+        {text:String(n),correct:false,mc:"vertex-confuse",fb:String(n)+"은 정점의 수 — 요소는 덩어리의 수다."},
+        {text:String(E.length),correct:false,mc:"edge-confuse",fb:"간선의 수가 아니라 서로 닿지 않는 덩어리의 수다."}
+      ];
+      return {id:"G36",qtype,params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),
+        stem:'그림 그래프의 <b>연결 요소(connected component)</b>는 몇 개인가?',
+        okfb:'간선을 따라 서로 닿는 덩어리를 세면 '+ans+'개다.',
+        choices:g2Fill(cands,{text:ans,correct:true},4)};
+    }
+    const big=comps.slice().sort((a,b)=>b.length-a.length)[0];
+    const x=pick(big);
+    const ans=g9Seq(big);
+    const others=comps.filter(c=>c!==big);
+    const wrongUnion=g9Seq(big.concat(others.length?others[0]:[]).sort((a,b)=>a-b));
+    const cands=[
+      {text:g9Seq(big.filter(v=>v!==x)),correct:false,mc:"self-miss",fb:"자기 자신도 요소의 일원이다 — "+x+"를 포함해야 한다."},
+      {text:g9Seq(Array.from({length:n},(_,i)=>i)),correct:false,mc:"all-myth",fb:"이 그래프는 연결이 아니다 — 닿지 않는 정점은 다른 요소다."}
+    ];
+    if(wrongUnion!==ans) cands.push({text:wrongUnion,correct:false,mc:"merge-slip",fb:"간선으로 닿는 정점만 같은 요소다."});
+    return {id:"G36",qtype,params:{n,edges:g8EdgeStr(E),x,ans},viz:g8Viz(n,E,x),mono:true,
+      stem:'그림 그래프에서 정점 <b>'+x+'</b>와 <b>같은 연결 요소</b>에 속한 정점을 모두 나열하면? (자신 포함, 오름차순)',
+      okfb:x+'에서 간선을 따라 닿을 수 있는 정점 전부 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  const n=pick([5,6,7]), extra=pick([2,3]), E=g8Build(Math.min(n,6),extra);
+  const nn=Math.min(n,6);
+  if(qtype==="spanedge"){
+    const ans=String(nn-1);
+    const cands=[
+      {text:String(E.length),correct:false,mc:"all-edges",fb:"신장 트리는 탐색이 실제로 '사용한' 간선만 남긴다 — 전부가 아니다."},
+      {text:String(nn),correct:false,mc:"vertex-confuse",fb:"트리의 간선은 정점 수보다 하나 적다(4장)."},
+      {text:String(nn-2),correct:false,mc:"count-slip",fb:"정점 "+nn+"개를 모두 이으려면 최소 "+(nn-1)+"개가 필요하다."}
+    ];
+    return {id:"G36",qtype,params:{n:nn,edges:g8EdgeStr(E),ans},viz:g8Viz(nn,E),
+      stem:'그림의 <b>연결</b> 그래프를 dfs(0)로 탐색해 만든 <b>신장 트리의 간선 수</b>는?',
+      okfb:'신장 트리는 모든 정점을 포함하는 트리 — 간선은 언제나 정점 수 − 1 = '+ans+'개다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* nontree */
+  const ans=String(E.length-(nn-1));
+  const cands=[
+    {text:String(nn-1),correct:false,mc:"tree-confuse",fb:"그것은 트리 간선의 수 — 비트리 간선은 나머지다."},
+    {text:String(E.length),correct:false,mc:"all-edges",fb:"전체에서 트리 간선("+(nn-1)+"개)을 빼야 한다."},
+    {text:String(Math.max(0,E.length-nn)),correct:false,mc:"count-slip",fb:"트리 간선은 "+nn+"개가 아니라 "+(nn-1)+"개다."}
+  ];
+  return {id:"G36",qtype,params:{n:nn,edges:g8EdgeStr(E),ans},viz:g8Viz(nn,E),
+    stem:'그림의 연결 그래프(간선 '+E.length+'개)에서 신장 트리를 만들면, 트리에 <b>포함되지 않는(비트리) 간선</b>은 몇 개인가?',
+    okfb:'전체 '+E.length+'개 − 트리 간선 '+(nn-1)+'개 = '+ans+'개. 비트리 간선 하나를 트리에 더하면 반드시 사이클이 생긴다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+
+/* --- AP9. 심화 (도발장 5) --- */
+function genAP9ch(idx){
+  if(idx===0){ /* dfs·bfs가 처음 갈라지는 위치 */
+    let n,E,d,b,pos,guard=40;
+    do{ n=6; E=g8Build(n,2); d=g9Dfs(n,E,0); b=g9Bfs(n,E,0);
+      pos=-1; for(let i=0;i<n;i++) if(d[i]!==b[i]){ pos=i+1; break; } }
+    while(guard-->0 && pos<0);
+    if(pos<0) pos=1;
+    const ans=String(pos);
+    const cands=[
+      {text:String(pos+1),correct:false,mc:"off-by-one",fb:"두 순서를 1번째부터 나란히 비교하라."},
+      {text:String(Math.max(1,pos-1)),correct:false,mc:"off-by-one",fb:"거기까지는 두 순서가 같다."},
+      {text:"끝까지 같다",correct:false,mc:"same-myth",fb:"이 그래프에서는 갈라진다 — 직접 두 순서를 적어 비교하라."}
+    ];
+    return {id:"AP9",qtype:"diverge",params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E,0),mono:true,
+      stem:'[심화 — 두 탐색의 갈림] 그림 그래프를 정점 0에서 DFS와 BFS로 각각 탐색하면(작은 번호부터), 두 방문 순서가 <b>처음으로 달라지는 위치</b>는 몇 번째인가?',
+      okfb:'DFS: '+g9Seq(d)+' / BFS: '+g9Seq(b)+' — '+ans+'번째에서 갈라진다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){ /* 연결 요소별 크기 */
+    const n=6, E=g8BuildForest(n);
+    const comps=g9Comps(n,E);
+    const sizes=comps.map(c=>c.length).sort((a,b)=>b-a);
+    const ans=sizes.join(" / ");
+    const w1=sizes.slice().reverse().join(" / ");
+    const cands=[
+      {text:String(n)+" / 0",correct:false,mc:"all-myth",fb:"이 그래프는 한 덩어리가 아니다."},
+      {text:sizes.map(s=>s+1).join(" / "),correct:false,mc:"count-slip",fb:"각 덩어리의 정점을 하나씩 짚어 세라."}
+    ];
+    if(w1!==ans) cands.push({text:w1,correct:false,mc:"order-slip",fb:"큰 것부터 나열하는 규약이다."});
+    return {id:"AP9",qtype:"compsize",params:{n,edges:g8EdgeStr(E),ans},viz:g8Viz(n,E),mono:true,
+      stem:'[심화 — 요소의 크기] 그림 그래프의 연결 요소별 <b>정점 수</b>를 큰 것부터 나열하면?',
+      okfb:'요소는 '+comps.length+'개 — 크기는 '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* idx 2 — BFS 거리(간선 수) */
+  let n,E,dist,x,guard=40;
+  do{ n=6; E=g8Build(n,pick([1,2]));
+    const L=g9Adj(n,E); dist=Array(n).fill(-1); dist[0]=0; const q=[0];
+    while(q.length){ const v=q.shift(); for(const w of L[v]) if(dist[w]<0){ dist[w]=dist[v]+1; q.push(w); } }
+    const far=dist.map((d2,i)=>[d2,i]).filter(p=>p[0]>=2);
+    x=far.length?pick(far)[1]:-1; }
+  while(guard-->0 && x<0);
+  if(x<0) x=1;
+  const ans=String(dist[x]);
+  const cands=[
+    {text:String(dist[x]+1),correct:false,mc:"vertex-count",fb:"경로 위 정점 수가 아니라 간선 수다."},
+    {text:String(Math.max(1,dist[x]-1)),correct:false,mc:"count-slip",fb:"가장 짧은 길을 놓쳤는지 확인하라 — 층을 다시 세라."},
+    {text:String(n-1),correct:false,mc:"worst-guess",fb:"가장 먼 경우가 아니라 이 정점까지의 최단 층수다."}
+  ];
+  return {id:"AP9",qtype:"dist",params:{n,edges:g8EdgeStr(E),x,ans},viz:g8Viz(n,E,x),mono:true,
+    stem:'[심화 — 가장 가까운 길] 그림 그래프에서 정점 0에서 정점 <b>'+x+'</b>까지 가는 경로 중 <b>가장 짧은 것의 길이(간선 수)</b>는? (BFS가 층을 넓히는 순서를 떠올려라)',
+    okfb:'BFS는 가까운 층부터 넓힌다 — '+x+'는 0에서 '+ans+'번째 층에서 처음 만난다. 간선마다 비용이 다르면 어떻게 될까 — 다음 강의 이야기다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
