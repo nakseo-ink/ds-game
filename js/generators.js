@@ -3923,3 +3923,319 @@ function genAP12ch(idx){
       {text:others[1],correct:false,mc:"table-slip2",fb:"조건 중 하나가 어긋난다 — 어느 칸인가."},
       {text:others[2],correct:false,mc:"table-slip3",fb:"요구 조건을 표의 행과 정확히 맞춰 보라."}]};
 }
+
+/* ================= 7장 해시 — G49~G52 + AP13 ================= */
+/* --- 시뮬 유틸: 선형 조사 --- */
+function hsInsertAll(keys,M){
+  /* 선형 조사 삽입 시뮬 — table(빈칸 null)과 각 키의 {home,pos,visits(방문 칸 수)} */
+  const t=new Array(M).fill(null), info=[];
+  for(const k of keys){
+    let i=k%M, v=1;
+    while(t[i]!==null){ i=(i+1)%M; v++; }
+    t[i]=k; info.push({k:k,home:k%M,pos:i,visits:v});
+  }
+  return {t:t,info:info};
+}
+function hsTableViz(t,hi,tags){
+  return {type:"arr", a:t.map(x=>x===null?"·":x), hi:hi||[], done:[], tags:tags};
+}
+/* --- G49. 해시의 어휘·적재율 (유닛 A) --- */
+function genG49(){
+  const qtype=pick(["alpha","synonym","overflow","why"]);
+  if(qtype==="alpha"){
+    const s=pick([1,2]), b=pick([10,20,25,50]);
+    const cand=[0.2,0.4,0.5,0.6,0.8].map(a=>Math.round(a*s*b)).filter(n=>n>0);
+    const n=pick(cand);
+    const a=n/(s*b);
+    const rd=x=>String(Math.round(x*100)/100);
+    const ans=rd(a);
+    const cands=[];
+    const push=(v,mc,fb)=>{ const t=rd(v); if(t!==ans && !cands.find(c=>c.text===t)) cands.push({text:t,correct:false,mc:mc,fb:fb}); };
+    push(n/b,"slot-ignore","버킷 수로만 나눴다 — 자리의 총수는 슬롯×버킷이다.");
+    push(s*b/n,"inverse-slip","거꾸로 나눴다 — 찬 정도는 (든 것)/(자리 전체)다.");
+    push(n/(s+b),"add-slip","슬롯과 버킷은 더하는 게 아니라 곱해야 자리의 총수다.");
+    push(a*2,"near-double","계산을 다시 — n을 자리의 총수(s×b)로 나눈다.");
+    push(a/2,"near-half","계산을 다시 — n을 자리의 총수(s×b)로 나눈다.");
+    push(a+0.1,"near-slip","α = n/(s·b)를 정확히 계산해 보라.");
+    return {id:"G49",qtype:qtype,params:{s:s,b:b,n:n,ans:ans},mono:true,
+      stem:'버킷 '+b+'개, 버킷당 슬롯 '+s+'개인 해시 테이블에 레코드 '+n+'개가 들어 있다. <b>적재 밀도(적재율) α</b>는?',
+      okfb:'α = n / (s·b) = '+n+' / ('+s+'×'+b+') = '+ans+' — 테이블이 얼마나 채워졌는지를 나타내는, 해시 성능의 핵심 지표다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="synonym"){
+    const ans="서로 다른 키들이 같은 주소로 해싱된 것 — 그 키들을 동거자(synonym)라 한다";
+    return {id:"G49",qtype:qtype,params:{ans:ans},
+      stem:'해싱에서 <b>충돌(collision)</b>이란 무엇이고, 그때 같은 주소를 갖게 된 키들을 무엇이라 부르는가?',
+      okfb:'키는 달라도 h(k)가 같을 수 있다 — 그것이 충돌, 그 키들이 동거자(synonym)다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"같은 키가 실수로 두 번 삽입된 것 — 그 키들을 중복 키(duplicate)라 한다",correct:false,mc:"dup-confuse",fb:"키가 같은 게 아니라 다르다 — 주소만 같아진 것이 충돌이다."},
+        {text:"버킷의 슬롯이 남김없이 차 버린 것 — 그 포화 상태를 동거자라 한다",correct:false,mc:"overflow-confuse",fb:"슬롯까지 다 찬 것은 오버플로 — 충돌과 구분하라."},
+        {text:"해시 함수가 표 범위 밖의 주소를 낸 것 — 그 주소를 오류 주소라 한다",correct:false,mc:"range-myth",fb:"mod M이 범위를 보장한다 — 문제는 범위가 아니라 겹침이다."}]};
+  }
+  if(qtype==="overflow"){
+    const ans="버킷의 슬롯이 모두 차서 새 레코드를 그 버킷에 넣을 수 없는 상황";
+    return {id:"G49",qtype:qtype,params:{ans:ans},
+      stem:'충돌과 구분되는 <b>오버플로(overflow)</b>의 정확한 뜻은? (버킷당 슬롯 s개)',
+      okfb:'충돌해도 슬롯이 남으면 넣을 수 있다 — 슬롯까지 다 차야 오버플로. 슬롯이 1개면 충돌 = 즉시 오버플로다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"서로 다른 키가 같은 주소로 해싱되어 겹치는 사건 그 자체",correct:false,mc:"collision-confuse",fb:"그건 충돌 — 슬롯이 남아 있으면 아직 넣을 수 있다."},
+        {text:"들어 있는 레코드 수가 표 전체의 절반을 넘어서는 순간",correct:false,mc:"half-myth",fb:"절반은 성능 경고선일 수는 있어도 오버플로의 정의가 아니다."},
+        {text:"해시 값의 계산 결과가 정수의 표현 범위를 넘어 넘쳐 버리는 것",correct:false,mc:"int-myth",fb:"산술 오버플로가 아니라 저장 공간의 이야기다."}]};
+  }
+  const ans="키를 비교하는 대신, 키에서 저장 주소를 계산해 바로 가기 때문";
+  return {id:"G49",qtype:"why",params:{ans:ans},
+    stem:'해싱의 탐색이 (이상적일 때) <b>O(1)</b>일 수 있는 근본 이유는?',
+    okfb:'순차·이진·트리 탐색은 전부 "비교"를 반복한다 — 해싱은 비교 없이 h(k) 계산 한 번으로 주소에 직행한다.',
+    choices:[
+      {text:ans,correct:true},
+      {text:"표를 언제나 정렬된 상태로 유지해 이진 탐색이 가능하기 때문",correct:false,mc:"sorted-myth",fb:"해시 표는 정렬돼 있지 않다 — 오히려 순서를 포기한 대가가 O(1)이다."},
+      {text:"모든 레코드를 CPU 캐시에 올려 두고 쓰기 때문",correct:false,mc:"hw-myth",fb:"하드웨어가 아니라 '주소를 계산한다'는 알고리즘의 성질이다."},
+      {text:"키가 언제나 0부터 시작하는 연속 정수이기 때문",correct:false,mc:"seq-myth",fb:"임의의 키를 주소로 바꾸는 것이 해시 함수의 일이다."}]};
+}
+/* --- G50. 해시 함수 (유닛 B) --- */
+function genG50(){
+  const qtype=pick(["div","fold","prime","good"]);
+  if(qtype==="div"){
+    const M=pick([7,11,13]);
+    const k=10+Math.floor(Math.random()*880);
+    const ans=String(k%M);
+    const cands=[];
+    const push=(v,mc,fb)=>{ const t=String(v); if(t!==ans && !cands.find(c=>c.text===t)) cands.push({text:t,correct:false,mc:mc,fb:fb}); };
+    push((k%M+1)%M,"off-by-one","나머지를 다시 계산해 보라 — "+k+" = "+Math.floor(k/M)+"×"+M+" + "+(k%M)+".");
+    push(Math.floor(k/M)%M,"quot-confuse","몫이 아니라 나머지가 주소다.");
+    push(k%10,"lastdigit-slip","10이 아니라 표 크기 "+M+"으로 나눈 나머지다.");
+    push((k%M+M-1)%M,"off-by-one2","나머지 계산을 한 번 더 — "+M+"으로 나눈 '나머지'다.");
+    push((k%M+2)%M,"near-slip",""+M+"으로 나눈 나머지를 정확히 구해 보라.");
+    return {id:"G50",qtype:qtype,params:{k:k,M:M,ans:ans},mono:true,
+      stem:'표 크기 M = '+M+'인 해시 테이블에서 <b>제산법</b> h(k) = k mod M 으로 키 <b>'+k+'</b>의 홈 주소를 구하면?',
+      okfb:k+' = '+Math.floor(k/M)+'×'+M+' + '+(k%M)+' — 홈 주소는 '+ans+'. 제산법은 가장 널리 쓰이는 해시 함수다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="fold"){
+    const parts=[]; for(let i=0;i<3;i++) parts.push(10+Math.floor(Math.random()*90));
+    const key=parts.map(String).join("");
+    const ans=String(parts[0]+parts[1]+parts[2]);
+    const rev=n=>Number(String(n).split("").reverse().join(""));
+    const bnd=String(parts[0]+rev(parts[1])+parts[2]);
+    const dsum=String(key.split("").reduce((s,c)=>s+Number(c),0));
+    const cands=[];
+    if(bnd!==ans) cands.push({text:bnd,correct:false,mc:"boundary-confuse",fb:"가운데 조각을 뒤집어 더하는 것은 경계 폴딩 — 이동 폴딩은 그대로 더한다."});
+    if(dsum!==ans && dsum!==bnd) cands.push({text:dsum,correct:false,mc:"digitsum-slip",fb:"자릿수 하나하나의 합이 아니라 두 자리 조각들의 합이다."});
+    cands.push({text:String(parts[0]+parts[1]),correct:false,mc:"drop-slip",fb:"마지막 조각 "+parts[2]+"를 빠뜨렸다 — 조각 전부를 더한다."});
+    return {id:"G50",qtype:qtype,params:{key:key,ans:ans},mono:true,
+      stem:'키 <b>'+key+'</b>을 두 자리씩 세 조각('+parts.join(" | ")+')으로 나눠 <b>이동 폴딩(shift folding)</b>으로 접으면, 더해서 얻는 주소 값은?',
+      okfb:parts.join(" + ")+' = '+ans+' — 긴 키의 모든 조각이 주소에 참여하게 만드는 방법이다. (실전은 이 값에 다시 mod M을 적용한다)',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(qtype==="prime"){
+    const ans="키들이 공통 패턴(짝수·등간격)을 가져도 버킷이 고르게 쓰이게 하려고";
+    return {id:"G50",qtype:qtype,params:{ans:ans},
+      stem:'제산법에서 표 크기 M을 <b>소수(prime)</b>로 잡는 이유는?',
+      okfb:'짝수 키들 + M=10이면 짝수 버킷만 쓰인다 — 키들의 패턴과 M이 공약수를 가지면 쏠림이 생긴다. 소수 M은 이런 쏠림을 방지한다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"소수로 나누는 나머지 연산이 합성수보다 빠르게 계산되기 때문",correct:false,mc:"speed-myth",fb:"속도는 같다 — 문제는 분포의 고름이다."},
+        {text:"소수가 아니면 나머지 값이 표의 범위 밖으로 벗어날 수 있기 때문",correct:false,mc:"range-myth",fb:"mod M은 언제나 0~M−1 — 범위는 항상 안전하다."},
+        {text:"충돌이 수학적으로 완전히 사라지기 때문",correct:false,mc:"nocollision-myth",fb:"소수도 충돌을 없애지는 못한다 — 줄일 뿐이다."}]};
+  }
+  const ans="계산이 쉬우면서, 주소를 고르게 흩어 충돌을 줄이는 함수";
+  return {id:"G50",qtype:"good",params:{ans:ans},
+    stem:'<b>좋은 해시 함수</b>의 조건을 가장 정확히 말한 것은?',
+    okfb:'두 조건 — 계산이 쉬울 것(주소 계산이 지나치게 오래 걸리면 해싱의 이점이 사라진다), 고르게 흩을 것(특정 버킷에 몰리면 충돌이 집중된다).',
+    choices:[
+      {text:ans,correct:true},
+      {text:"어떤 두 키도 절대 같은 주소가 되지 않게 하는 함수",correct:false,mc:"perfect-myth",fb:"키 공간이 표보다 크면 충돌은 피할 수 없다 — 줄이는 것이 목표다."},
+      {text:"키의 크기 순서를 주소에서도 그대로 보존하는 함수",correct:false,mc:"order-myth",fb:"순서 보존은 해시의 목표가 아니다 — 오히려 순서를 버려 속도를 얻는다."},
+      {text:"주소가 겹치면 자동으로 표를 두 배로 늘리는 함수",correct:false,mc:"resize-confuse",fb:"확장은 테이블 운영의 문제 — 함수의 조건이 아니다."}]};
+}
+/* --- G51. 선형 조사 (유닛 C) --- */
+function genG51(){
+  const qtype=pick(["pos","visits","stop","cluster"]);
+  if(qtype==="stop"){
+    const ans="빈 칸을 만났을 때 — 있었다면 그 전에 나왔어야 하므로";
+    return {id:"G51",qtype:qtype,params:{ans:ans},
+      stem:'선형 조사 해시 표에서 <b>탐색</b>이 "이 키는 없다"고 결론 내려도 되는 순간은?',
+      okfb:'삽입은 조사 경로의 첫 빈 칸에 저장된다 — 홈 주소부터 조사하다 빈 칸을 만나면, 찾는 키가 있었다면 이미 나타났어야 한다. 빈 칸 = 부재의 증명.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"홈 주소 한 칸만 보고 다르면 — 키는 홈에만 저장되므로",correct:false,mc:"home-only",fb:"충돌한 키는 밀려나 있다 — 홈 하나로는 결론 낼 수 없다."},
+        {text:"표의 모든 칸을 확인한 뒤에만 — 어디든 있을 수 있으므로",correct:false,mc:"full-scan",fb:"전수 조사라면 해시를 쓸 이유가 없다 — 빈 칸이 조기 증명을 준다."},
+        {text:"찾는 키보다 큰 값을 만났을 때 — 표가 정렬돼 있으므로",correct:false,mc:"sorted-myth",fb:"해시 표는 정렬돼 있지 않다 — 크기 비교는 아무 증거가 아니다."}]};
+  }
+  if(qtype==="cluster"){
+    const ans="채워진 칸들이 연속 구간을 이루고, 구간이 클수록 조사 거리가 길어지기 때문";
+    return {id:"G51",qtype:qtype,params:{ans:ans},
+      stem:'선형 조사에서 <b>군집(clustering)</b>이 성능을 저하시키는 이유는?',
+      okfb:'군집 내부의 주소로 해싱된 키는 군집의 끝까지 조사를 이어가야 한다 — 군집이 넓을수록 그 위로 해싱될 확률도 커져, 커질수록 더 빠르게 확장된다. 평균 조사 횟수가 α와 함께 급격히 늘어난다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"군집 안에 들어 있는 키들이 조사 과정에서 서로 같은 값으로 덮어써지기 때문",correct:false,mc:"overwrite-myth",fb:"저장된 값은 안전하다 — 문제는 조사해야 하는 거리다."},
+        {text:"군집이 생기면 해시 함수의 주소 계산 자체가 함께 느려지기 때문",correct:false,mc:"fn-myth",fb:"h(k)의 계산은 그대로다 — 늘어나는 것은 그 뒤의 조사 횟수다."},
+        {text:"군집이 자리한 위치의 메모리가 단편화되어 접근이 느려지기 때문",correct:false,mc:"hw-myth",fb:"하드웨어가 아니라 조사 횟수의 문제다."}]};
+  }
+  /* 배열형 — 표 상태를 만들고 새 키의 삽입을 묻는다 */
+  const M=7;
+  let pre,k,R,last,guard=200;
+  do{
+    const homes=[]; pre=[];
+    while(pre.length<3){ const v=10+Math.floor(Math.random()*89); if(!pre.includes(v)) pre.push(v); }
+    k=10+Math.floor(Math.random()*89);
+    while(pre.includes(k)) k=10+Math.floor(Math.random()*89);
+    R=hsInsertAll(pre.concat([k]),M);
+    last=R.info[R.info.length-1];
+  } while(guard-->0 && !(last.visits>=2 && last.visits<=4 && R.info.slice(0,3).every(x=>x.visits===1)));
+  const table=hsInsertAll(pre,M).t;   /* 삽입 전 상태 그림 (답 비노출) */
+  if(qtype==="pos"){
+    const ans=String(last.pos);
+    const cands=[
+      {text:String(last.home),correct:false,mc:"home-slip",fb:"홈 주소 "+last.home+"은 이미 차 있다 — 빈 칸까지 조사를 이어가야 한다."},
+      {text:String((last.pos+1)%M),correct:false,mc:"over-walk",fb:"첫 빈 칸에서 조사가 끝난다 — 한 칸 더 갈 이유가 없다."},
+      {text:String((last.home+M-1)%M),correct:false,mc:"back-walk",fb:"조사는 +1 방향으로만 진행된다 — 역방향으로 가지 않는다."}
+    ].filter(c=>c.text!==ans);
+    return {id:"G51",qtype:qtype,params:{pre:pre.join(","),k:k,M:M,ans:ans},mono:true,
+      viz:hsTableViz(table),
+      stem:'그림은 M = 7, h(k) = k mod 7 선형 조사 해시 표의 현재 상태다(· = 빈 칸). 키 <b>'+k+'</b>을 삽입하면 최종적으로 저장되는 <b>인덱스</b>는? (h('+k+') = '+last.home+')',
+      okfb:'홈 ['+last.home+']'+(last.visits>1?'이 차 있어 +1씩 '+(last.visits-1)+'칸을 더 조사해':'') +' ['+ans+']의 빈 칸에 저장 — 끝을 넘으면 % M에 의해 처음으로 되돌아온다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* visits — 방문 칸 수 */
+  const ans=String(last.visits);
+  return {id:"G51",qtype:"visits",params:{pre:pre.join(","),k:k,M:M,ans:ans},mono:true,
+    viz:hsTableViz(table),
+    stem:'그림의 선형 조사 해시 표(M = 7, h(k) = k mod 7, · = 빈 칸)에 키 <b>'+k+'</b>을 삽입할 때, <b>조사하는 칸의 수</b>(저장되는 빈 칸 포함)는? (h('+k+') = '+last.home+')',
+    okfb:'홈 ['+last.home+']부터 +1씩 — 찬 칸 '+(last.visits-1)+'개를 지나 빈 칸에서 끝난다: 총 '+ans+'칸. 이 조사 횟수가 α와 함께 늘어나는 것이 선형 조사의 비용이다.',
+    choices:g2Fill([
+      {text:String(last.visits-1),correct:false,mc:"off-by-one",fb:"저장되는 빈 칸도 조사한 칸이다 — 하나 더 센다."},
+      {text:"1",correct:false,mc:"nocollision-myth",fb:"홈 주소가 차 있다 — 한 번의 조사로 끝나지 않는다."},
+      {text:String(last.visits+1),correct:false,mc:"over-count",fb:"빈 칸에서 조사가 끝난다 — 그 뒤는 세지 않는다."}
+    ],{text:ans,correct:true},4)};
+}
+/* --- G52. 체이닝·종합 (유닛 D) --- */
+function genG52(){
+  const qtype=pick(["syn","vs","worsthash","hashvsbst"]);
+  if(qtype==="syn"){
+    const M=pick([5,7]);
+    let keys,k,guard=100,syns;
+    do{
+      keys=[]; while(keys.length<5){ const v=10+Math.floor(Math.random()*89); if(!keys.includes(v)) keys.push(v); }
+      k=keys[Math.floor(Math.random()*keys.length)];
+      syns=keys.filter(x=>x!==k && x%M===k%M);
+    } while(guard-->0 && syns.length!==1);
+    const ans=syns.length?syns.join(", "):"없음";
+    const others=keys.filter(x=>x!==k && x%M!==k%M);
+    return {id:"G52",qtype:qtype,params:{keys:keys.join(","),k:k,M:M,ans:ans},mono:true,
+      stem:'체이닝 해시 테이블(M = '+M+', h(k) = k mod '+M+')에 키 <span class="mono">'+keys.join(", ")+'</span> 를 넣었다. 키 <b>'+k+'</b>과 <b>같은 체인에 연결되는 동거자</b>는? (h('+k+') = '+(k%M)+')',
+      okfb:'k mod '+M+' = '+(k%M)+'이 같은 키가 동거자 — '+ans+'. 체이닝은 동거자들을 그 버킷의 연결 리스트에 차례로 연결한다.',
+      choices:g2Fill([
+        {text:others.slice(0,1).join(", "),correct:false,mc:"wrong-bucket",fb:"그 키의 홈 주소를 다시 계산해 보라 — 연결되는 체인이 다르다."},
+        {text:others.slice(0,2).join(", "),correct:false,mc:"wrong-bucket2",fb:"mod "+M+" 값이 같은 키만 같은 체인에 연결된다."},
+        {text:"없음 — 체이닝에서는 충돌이 일어나지 않는다",correct:false,mc:"nocollision-myth",fb:"충돌은 일어난다 — 체이닝은 충돌을 없애는 것이 아니라 체인으로 처리한다."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(qtype==="vs"){
+    const cases=[
+      {q:"적재율 α가 1을 넘어도(레코드가 버킷 수보다 많아도) 동작할 수 있는 쪽은?", ans:"체이닝 — 체인이 길어질 뿐 저장할 곳은 항상 있다",
+       w:["개방 주소법 — 조사를 계속하면 언젠가 빈 칸이 나온다","둘 다 — 해시 테이블은 원리상 가득 차지 않는다","둘 다 아니다 — α는 1을 넘을 수 없게 정의된다"],
+       wf:["테이블 안의 빈 칸이 전부다 — α=1이면 개방 주소법은 더 저장할 곳이 없다","개방 주소법은 테이블이 차면 끝이다 — 체인만이 테이블 외부에 저장된다","α = n/(s·b)는 체이닝에서 1을 넘을 수 있다 — 외부 체인 덕분이다"],
+       why:'개방 주소법은 레코드를 테이블 안에만 저장하는 방식 — α<1이 강제된다. 체이닝은 테이블 외부의 체인에 저장하므로 α>1에서도 동작한다.'},
+      {q:"군집(clustering) 문제가 아예 생기지 않는 쪽은?", ans:"체이닝 — 버킷들 사이에 칸을 침범하는 일이 없다",
+       w:["개방 주소법 — 조사 간격을 넓히면 군집이 사라진다","둘 다 — 좋은 해시 함수면 군집은 생기지 않는다","둘 다 아니다 — 군집은 해싱의 피할 수 없는 숙명이다"],
+       wf:["선형 조사의 칸 차지가 군집의 원인 — 완화는 되어도 개방 주소법 안의 문제다","함수가 좋아도 개방 주소법의 조사 방식은 인접 칸을 차지한다","체이닝은 버킷 사이의 침범이 없어 군집이 생기지 않는다"],
+       why:'군집은 충돌한 키가 다른 홈 주소의 칸을 차지해서 생긴다 — 체이닝은 자기 버킷의 체인에 저장되므로 군집이 없다.'},
+      {q:"레코드마다 추가 포인터 공간이 필요한 쪽은?", ans:"체이닝 — 체인을 잇는 링크 포인터가 레코드마다 필요하다",
+       w:["개방 주소법 — 다음 조사 위치를 저장해야 한다","둘 다 — 해시 테이블은 링크 없이는 동작하지 않는다","둘 다 아니다 — 포인터는 트리 구조에만 필요하다"],
+       wf:["조사 위치는 (i+1)%M 계산으로 얻는다 — 저장할 것이 없다","개방 주소법은 배열 하나로 충분하다 — 그것이 장점이다","체이닝의 체인이 곧 연결 리스트 — 링크가 필요하다"],
+       why:'개방 주소법은 배열 하나로 충분하다 — 체이닝은 연결 리스트이므로 링크 포인터의 공간이 대가다.'}
+    ];
+    const c=pick(cases);
+    return {id:"G52",qtype:qtype,params:{q:c.q,ans:c.ans},
+      stem:'개방 주소법(선형 조사) vs 체이닝 — "'+c.q+'"',
+      okfb:c.why,
+      choices:[
+        {text:c.ans,correct:true},
+        {text:c.w[0],correct:false,mc:"vs-slip1",fb:c.wf[0]},
+        {text:c.w[1],correct:false,mc:"vs-slip2",fb:c.wf[1]},
+        {text:c.w[2],correct:false,mc:"vs-slip3",fb:c.wf[2]}]};
+  }
+  if(qtype==="worsthash"){
+    const ans="O(n) — 모든 키가 한 버킷의 체인에 연결되어 연결 리스트 탐색이 된다";
+    return {id:"G52",qtype:qtype,params:{ans:ans},
+      stem:'해시 함수가 최악이어서 <b>모든 키가 같은 주소</b>로 해싱된다면, 체이닝 해시 테이블의 탐색 시간은?',
+      okfb:'체인 하나에 n개 — 해시의 O(1)은 "고르게 흩는 함수"가 전제된 조건부 성능이다. 함수가 분포에 실패하면 연결 리스트 O(n)으로 돌아간다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"O(1) — 해시 테이블인 이상 버킷 접근은 언제나 단 한 번이다",correct:false,mc:"always-o1-myth",fb:"버킷 도착은 한 번이지만 — 체인을 끝까지 확인해야 한다."},
+        {text:"O(log n) — 길어진 체인은 자동으로 트리로 재구성되므로",correct:false,mc:"tree-myth",fb:"체이닝의 체인은 연결 리스트다 — 저절로 트리가 되지 않는다."},
+        {text:"동작이 멈춘다 — 같은 주소는 두 번 쓸 수 없으므로",correct:false,mc:"halt-myth",fb:"체이닝은 같은 주소의 키들을 체인으로 처리한다 — 느려질 뿐 멈추지 않는다."}]};
+  }
+  const ans="이진 탐색 트리 — 해시는 순서를 버려서 빠른 것이라 범위·순서 작업을 못 한다";
+  return {id:"G52",qtype:"hashvsbst",params:{ans:ans},
+    stem:'"70점 이상 90점 이하 학생을 <b>점수 순서대로</b> 뽑아라" — 이 작업이 잦다면 해시 테이블과 이진 탐색 트리 중 어느 쪽을 골라야 하나?',
+    okfb:'해시의 O(1)은 순서를 포기한 대가 — 범위 탐색·정렬 순회는 못 한다. 순서가 필요하면 중위 순회가 되는 트리 계열이다. 여기서도 만능은 없다.',
+    choices:[
+      {text:ans,correct:true},
+      {text:"해시 테이블 — 범위 안의 점수 하나하나를 각각 O(1)에 바로 찾아내면 되므로",correct:false,mc:"hash-slip",fb:"범위의 모든 값을 하나하나 두드려야 하고, 순서대로 나오지도 않는다."},
+      {text:"어느 쪽이든 좋다 — 일단 저장만 되어 있으면 꺼내는 비용은 동일하다",correct:false,mc:"same-myth",fb:"자료구조의 선택이 곧 가능한 질문의 종류를 정한다."},
+      {text:"해시 테이블 — 트리 계열 구조는 범위 탐색을 원리적으로 지원하지 않으므로",correct:false,mc:"flip-myth",fb:"반대다 — 순서를 아는 쪽은 트리다(중위 순회)."}]};
+}
+/* --- AP13. 심화 — 이중 해싱 / 표시 삭제 / 최악의 해시 --- */
+function genAP13ch(idx){
+  if(idx===0){
+    /* 이중 해싱 — 미니 강의 + 실제 값 */
+    const M=11;
+    let k,step,home,pos,guard=100;
+    do{
+      k=10+Math.floor(Math.random()*89);
+      home=k%M; step=1+(k%(M-2));
+      pos=(home+step)%M;
+    } while(guard-->0 && (pos===home||step===1));
+    const ans=String(pos);
+    return {id:"AP13",qtype:"double",params:{k:k,M:M,step:step,ans:ans},mono:true,
+      stem:'[심화 — 이중 해싱] 선형 조사의 군집은 <b>모든 키가 같은 간격(+1)으로 조사하기 때문</b>에 생긴다. <b>이중 해싱(double hashing)</b>은 조사 간격을 두 번째 해시 함수로 키마다 다르게 정한다: 간격 step = 1 + (k mod (M−2)), 조사 순서는 (h(k) + i·step) mod M. 같은 홈 주소에서 충돌한 동거자라도 간격이 달라 서로 다른 경로로 분산된다.<br><br>M = '+M+'인 테이블에서 키 <b>'+k+'</b>의 홈 h('+k+') = '+home+'이 이미 차 있다. 간격 step = 1 + ('+k+' mod '+(M-2)+') = '+step+'으로 <b>한 번</b> 이동한 다음 조사 위치는?',
+      okfb:'('+home+' + '+step+') mod '+M+' = '+ans+' — +1이 아니라 키 고유의 간격으로 이동한다. 이것이 군집을 분산시키는 원리다.',
+      choices:(function(){
+        const cands=[];
+        const push=(v,mc,fb)=>{ const t=String(v); if(t!==ans && !cands.find(c=>c.text===t)) cands.push({text:t,correct:false,mc:mc,fb:fb}); };
+        push((home+1)%M,"linear-slip","+1은 선형 조사 — 이중 해싱은 키 고유의 간격 "+step+"으로 이동한다.");
+        push((home+2*step)%M,"two-steps","한 번의 이동만 물었다 — i=1의 위치다.");
+        push(step,"step-confuse",String(step)+"은 간격이지 위치가 아니다 — 홈 주소에 간격을 더한다.");
+        push(home,"home-confuse","홈 주소는 이미 차 있다 — 간격만큼 이동해야 한다.");
+        push((home+step+1)%M,"near-slip","(홈 주소 + 간격) mod "+M+"을 정확히 계산해 보라.");
+        return g2Fill(cands,{text:ans,correct:true},4);
+      })()};
+  }
+  if(idx===1){
+    /* 표시 삭제 — 실제 표로 */
+    const M=7;
+    let a,b,guard=100;
+    do{
+      a=10+Math.floor(Math.random()*80);
+      b=a+M*(1+Math.floor(Math.random()*3));
+    } while(guard-->0 && b>99);
+    const home=a%M, next=(home+1)%M;
+    const t=new Array(M).fill("·"); t[home]=a; t[next]=b;
+    const ans="없다고 잘못 결론 낸다 — ["+home+"]의 빈 칸이 탐색을 끊기 때문";
+    return {id:"AP13",qtype:"tombstone",params:{a:a,b:b,M:M,ans:ans},mono:true,
+      viz:{type:"arr", a:t, hi:[home,next], done:[]},
+      stem:'[심화 — 삭제의 함정] 그림의 선형 조사 테이블(M = 7): '+a+'가 홈 ['+home+']에, 동거자 '+b+'(h('+b+') = '+home+')는 조사에 의해 ['+next+']에 저장되어 있다. 이제 <b>'+a+'를 그냥 빈 칸으로 지운 뒤</b>, '+b+'를 탐색하면 어떻게 되는가?',
+      okfb:'탐색은 홈 ['+home+']에서 시작하는데 그 자리가 빈 칸 — "빈 칸 = 없다"는 증명 규칙에 따라 '+b+'가 있는데도 없다고 답한다. 그래서 개방 주소의 삭제는 빈 칸이 아니라 <b>DELETED 표시</b>(탐색은 통과, 삽입은 재사용)를 남겨야 한다.',
+      choices:g2Fill([
+        {text:"정상적으로 ["+next+"]에서 찾는다 — 탐색은 표 전체를 훑기 때문",correct:false,mc:"full-scan-myth",fb:"전체를 조사하지 않는다 — 빈 칸에서 끝내는 것이 해시 탐색의 속도다."},
+        {text:b+"가 자동으로 홈 ["+home+"]로 당겨져 온다",correct:false,mc:"auto-shift-myth",fb:"테이블은 저절로 재배치되지 않는다 — 재배치는 별도의 비용이 큰 작업이다."},
+        {text:"오류가 발생해 프로그램이 중단된다",correct:false,mc:"crash-myth",fb:"조용히 틀린 답을 낸다 — 그래서 더 위험한 버그다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* idx 2 — 최악의 해시 */
+  const n=pick([100,1000,10000]);
+  const ans="평균 n/2회 비교 — 연결 리스트 순차 탐색과 같아진다 (O(n))";
+  return {id:"AP13",qtype:"worst",params:{n:n,ans:ans},
+    stem:'[심화 — 성능의 출처] 체이닝 해시 테이블에 레코드 '+n.toLocaleString()+'개를 넣었는데, 해시 함수가 <b>모든 키를 버킷 0 하나로</b> 보낸다. 임의의 키를 탐색할 때 기대되는 비용은?',
+    okfb:'체인 하나에 '+n.toLocaleString()+'개 — 평균적으로 절반을 확인해야 한다. 해시의 O(1)은 테이블이 아니라 <b>함수가 만들어 내는 성능</b>이다: 고르게 흩는 함수 + 낮은 α가 조건이다.',
+    choices:[
+      {text:ans,correct:true},
+      {text:"단 1회의 비교 — 버킷의 주소 계산은 변함없이 한 번이면 되므로",correct:false,mc:"always-o1-myth",fb:"버킷까지는 한 번 — 그 안의 체인에 연결된 "+n.toLocaleString()+"개가 문제다."},
+      {text:"약 log₂"+n.toLocaleString()+"회 — 체인은 이진 탐색이 가능하므로",correct:false,mc:"bst-myth",fb:"연결 리스트는 이진 탐색이 불가능하다(3장) — 순차 탐색뿐이다."},
+      {text:"0회 — 모든 키의 주소를 이미 알고 있으므로",correct:false,mc:"zero-myth",fb:"주소를 알아도 체인 안에서 키 비교는 해야 한다."}]};
+}

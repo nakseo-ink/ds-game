@@ -1322,8 +1322,8 @@ function exOutro(){
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36(), G37:()=>genG37(), G38:()=>genG38(), G39:()=>genG39(), G40:()=>genG40(), G41:()=>genG41(), G42:()=>genG42(), G43:()=>genG43(), G44:()=>genG44(), G45:()=>genG45(), G46:()=>genG46(), G47:()=>genG47(), G48:()=>genG48() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i), AP10:(i)=>genAP10ch(i), AP11:(i)=>genAP11ch(i), AP12:(i)=>genAP12ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36(), G37:()=>genG37(), G38:()=>genG38(), G39:()=>genG39(), G40:()=>genG40(), G41:()=>genG41(), G42:()=>genG42(), G43:()=>genG43(), G44:()=>genG44(), G45:()=>genG45(), G46:()=>genG46(), G47:()=>genG47(), G48:()=>genG48(), G49:()=>genG49(), G50:()=>genG50(), G51:()=>genG51(), G52:()=>genG52() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i), AP10:(i)=>genAP10ch(i), AP11:(i)=>genAP11ch(i), AP12:(i)=>genAP12ch(i), AP13:(i)=>genAP13ch(i) };
 let GW=null;
 function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; S.momLine=null; S.duelDone=false; S.duelRewarded=false; }
 function gwStart(){ gwInit(); gwGo(0); }
@@ -2179,7 +2179,7 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null, ch11:(typeof CH11!=="undefined")?CH11:null, ch12:(typeof CH12!=="undefined")?CH12:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null, ch11:(typeof CH11!=="undefined")?CH11:null, ch12:(typeof CH12!=="undefined")?CH12:null, ch13:(typeof CH13!=="undefined")?CH13:null };
 function cpLabel(sv){
   if(sv.ch==="chM"&&typeof CHM!=="undefined") return (CHM.cpl&&CHM.cpl[sv.cp])||"※ 중간고사 · 이어서";
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
@@ -2249,6 +2249,7 @@ function sceneTitle(){
   if(typeof CH10!=="undefined") CH_MENU.push({id:"ch10", label:chLabel(CH10), go:()=>{ setChapter(CH10); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH11!=="undefined") CH_MENU.push({id:"ch11", label:chLabel(CH11), go:()=>{ setChapter(CH11); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH12!=="undefined") CH_MENU.push({id:"ch12", label:chLabel(CH12), go:()=>{ setChapter(CH12); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH13!=="undefined") CH_MENU.push({id:"ch13", label:chLabel(CH13), go:()=>{ setChapter(CH13); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
