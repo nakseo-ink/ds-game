@@ -3218,3 +3218,342 @@ function genAP10ch(idx){
     okfb:'규칙대로 — 선행이 전부 끝난 작업을 번호 순으로 하나씩 꺼내면 '+ans+' — 이것이 위상 정렬이다. 사이클이 있으면 이런 순서는 존재하지 않는다.',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
+
+/* ================================================================
+   6장(A) 단순 정렬 — G41 어휘·안정성 / G42 선택 / G43 버블 / G44 삽입 / AP11 심화(셸·이동 계수·안정성 실전)
+   params: arr="26,5,..."(배열) + ans — 테스트 독립 재검산용(자체 정렬 시뮬)
+   ================================================================ */
+function srArr(n){
+  const pool=[]; for(let v=1;v<=99;v++) pool.push(v);
+  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
+  return pool.slice(0,n);
+}
+function srStr(a){ return a.join(", "); }
+function srSelStates(a){
+  const arr=a.slice(), n=arr.length, states=[];
+  for(let i=0;i<n-1;i++){ let least=i;
+    for(let j=i+1;j<n;j++) if(arr[j]<arr[least]) least=j;
+    const t=arr[i]; arr[i]=arr[least]; arr[least]=t;
+    states.push(arr.slice());
+  }
+  return states;
+}
+function srBubStates(a){
+  const arr=a.slice(), n=arr.length, states=[], swapsPer=[];
+  for(let i=n-1;i>0;i--){ let s=0;
+    for(let j=0;j<i;j++) if(arr[j]>arr[j+1]){ const t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t; s++; }
+    states.push(arr.slice()); swapsPer.push(s);
+  }
+  return {states:states, swapsPer:swapsPer};
+}
+function srInsStates(a){
+  const arr=a.slice(), n=arr.length, states=[], moves=[];
+  for(let i=1;i<n;i++){ const next=arr[i]; let j=i-1, m=0;
+    while(j>=0 && next<arr[j]){ arr[j+1]=arr[j]; j--; m++; }
+    arr[j+1]=next; states.push(arr.slice()); moves.push(m);
+  }
+  return {states:states, moves:moves};
+}
+function srViz(a,hi,done){ return {type:"arr", a:a.slice(), hi:hi||[], done:done||[]}; }
+/* --- G41. 정렬의 어휘 (유닛 A) --- */
+function genG41(){
+  const qtype=pick(["key","inout","stable","whynosingle"]);
+  if(qtype==="key"){
+    const ans="키(key) — 레코드를 식별하는 기준 필드";
+    return {id:"G41",qtype:qtype,params:{ans:ans},
+      stem:'전화번호부에서 레코드를 찾거나 정렬할 때 <b>기준이 되는 필드</b>를 무엇이라 하는가?',
+      okfb:'이름·번호 같은 기준 필드가 키 — 정렬은 키의 순서로 레코드를 다시 세우는 일이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"레코드(record) — 객체 하나에 대한 정보 전체",correct:false,mc:"record-confuse",fb:"레코드는 한 사람의 정보 전체 — 기준이 되는 것은 그 안의 한 필드다."},
+        {text:"리스트(list) — 레코드들을 모아 놓은 것",correct:false,mc:"list-confuse",fb:"리스트는 모임 전체 — 기준 필드가 아니다."},
+        {text:"파일(file) — 외부에 저장된 정보의 모임",correct:false,mc:"file-confuse",fb:"파일은 저장 위치의 이야기 — 기준 필드가 아니다."}]};
+  }
+  if(qtype==="inout"){
+    const ext=Math.random()<0.5;
+    const ans=ext?"외부 정렬 — 보조 기억장치를 오가며 정렬한다":"내부 정렬 — 주기억장치 안에서 전부 정렬한다";
+    return {id:"G41",qtype:qtype,params:{ans:ans},
+      stem:ext?'데이터가 너무 많아 <b>주기억장치에 전부 올릴 수 없는</b> 경우의 정렬은?':'리스트가 작아 <b>주기억장치에 전부 올려놓고</b> 정렬할 수 있는 경우의 정렬은?',
+      okfb:ext?'다 못 올리면 외부 정렬 — 보조 기억장치와 오가며 정렬한다.':'다 올라가면 내부 정렬 — 이번 장의 정렬들은 모두 내부 정렬이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:ext?"내부 정렬 — 주기억장치 안에서 전부 정렬한다":"외부 정렬 — 보조 기억장치를 오가며 정렬한다",correct:false,mc:"inout-flip",fb:"주기억장치에 다 들어가느냐가 기준이다."},
+        {text:"안정 정렬 — 같은 키의 순서를 보존하며 정렬한다",correct:false,mc:"stable-confuse",fb:"안정성은 같은 키의 순서 이야기 — 저장 위치와 무관하다."},
+        {text:"선형 정렬 — 배열을 한 줄로 늘어놓고 정렬한다",correct:false,mc:"made-up",fb:"그런 분류는 없다 — 내부/외부는 메모리 기준이다."}]};
+  }
+  if(qtype==="stable"){
+    const ans="같은 키를 가진 레코드들의 원래 순서가 보존된다";
+    return {id:"G41",qtype:qtype,params:{ans:ans},
+      stem:'정렬이 <b>안정(stable)</b>하다는 것의 뜻은?',
+      okfb:'이름순 명단을 학년순으로 다시 정렬해도, 같은 학년 안에서는 이름순이 남아 있는 성질이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"어떤 입력에도 실행 시간이 흔들리지 않는다",correct:false,mc:"time-confuse",fb:"시간의 안정이 아니라 같은 키의 순서 이야기다."},
+        {text:"정렬 도중 프로그램이 중단되지 않는다",correct:false,mc:"crash-confuse",fb:"오류 안정성이 아니라 순서 보존의 성질이다."},
+        {text:"추가 메모리를 전혀 사용하지 않는다",correct:false,mc:"space-confuse",fb:"그건 제자리(in-place) 정렬의 이야기다."}]};
+  }
+  const ans="초기 순서와 크기에 따라 유불리가 달라지기 때문";
+  return {id:"G41",qtype:qtype,params:{ans:ans},
+    stem:'"모든 경우에 최상이 되는 <b>유일한 정렬 기법은 없다</b>"라고 하는 이유는?',
+    okfb:'거의 정렬된 입력·작은 리스트·큰 레코드 — 상황마다 유리한 정렬이 다르다. 그래서 상대적 장단점 파악이 중요하다.',
+    choices:[
+      {text:ans,correct:true},
+      {text:"아직 최상의 정렬이 발명되지 않았기 때문",correct:false,mc:"future-myth",fb:"발명의 문제가 아니라 상황마다 기준이 다른 것이다."},
+      {text:"정렬마다 결과 배열이 조금씩 다르기 때문",correct:false,mc:"result-myth",fb:"올바른 정렬의 결과는 모두 같다 — 다른 것은 과정의 비용이다."},
+      {text:"컴퓨터 기종마다 명령어가 다르기 때문",correct:false,mc:"hw-myth",fb:"기종이 아니라 입력의 성질(순서·크기)이 가르는 문제다."}]};
+}
+/* --- G42. 선택 정렬 (유닛 B) --- */
+function genG42(){
+  const qtype=pick(["pass1","passk","fixed","cmp"]);
+  const n=pick([5,6]), a=srArr(n), st=srSelStates(a);
+  if(qtype==="cmp"){
+    const ans=String(n*(n-1)/2);
+    return {id:"G42",qtype:qtype,params:{n:n,arr:a.join(","),ans:ans},viz:srViz(a),mono:true,
+      stem:'그림의 배열(원소 '+n+'개)이 <b>이미 정렬되어 있더라도</b>, 선택 정렬이 수행하는 총 <b>비교 횟수</b>는?',
+      okfb:'최솟값임을 "확인"하려면 남은 전부를 봐야 한다 — (n−1)+(n−2)+…+1 = '+ans+'회, 초기 상태와 무관하다.',
+      choices:g2Fill([
+        {text:String(n-1),correct:false,mc:"swap-confuse",fb:"n−1은 교환(회전) 수 — 비교는 회전마다 남은 전부와 한다."},
+        {text:String(n*n),correct:false,mc:"square-slip",fb:"n²이 아니라 (n−1)+(n−2)+…+1이다."},
+        {text:"0회 — 정렬되어 있으면 비교하지 않는다",correct:false,mc:"sorted-myth",fb:"정렬 여부를 미리 알 수 없다 — 확인 자체가 비교다."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(qtype==="fixed"){
+    const k=pick([2,3]);
+    const ans=srStr(st[k-1].slice(0,k));
+    const sorted=a.slice().sort((x,y)=>x-y);
+    return {id:"G42",qtype:qtype,params:{arr:a.join(","),k:k,ans:ans},viz:srViz(a),mono:true,
+      stem:'그림의 배열에 선택 정렬을 적용할 때, <b>'+k+'회전이 끝난 직후</b> 앞에서부터 <b>정렬이 확정된 원소들</b>은? (앞 → 뒤)',
+      okfb:'회전마다 남은 것 중 최솟값이 하나씩 앞에 확정된다 — '+k+'회전이면 가장 작은 '+k+'개: '+ans+'.',
+      choices:g2Fill([
+        {text:srStr(a.slice(0,k)),correct:false,mc:"orig-confuse",fb:"원래 앞 "+k+"개가 아니라 전체에서 가장 작은 "+k+"개가 확정된다."},
+        {text:srStr(sorted.slice(0,k+1)),correct:false,mc:"off-by-one",fb:"그건 "+(k+1)+"회전의 결과다."},
+        {text:srStr(sorted.slice(n-k)),correct:false,mc:"maxmin-flip",fb:"선택 정렬(최솟값 선택)은 작은 쪽부터 확정한다."}
+      ],{text:ans,correct:true},4)};
+  }
+  const k=(qtype==="pass1")?1:pick([2,3]);
+  let a2=a, st2=st, guard=80;
+  while(guard-->0 && srStr(st2[k-1])===srStr(a2)){ a2=srArr(n); st2=srSelStates(a2); }  /* 회전이 배열을 바꾸는 입력만 */
+  const ans=srStr(st2[k-1]);
+  const bub=srBubStates(a2).states;
+  const cands=[];
+  if(srStr(bub[k-1])!==ans) cands.push({text:srStr(bub[k-1]),correct:false,mc:"bubble-confuse",fb:"그건 버블 정렬의 "+k+"회전 결과 — 선택은 최솟값을 찾아 '한 번' 교환한다."});
+  if(st2[k]&&srStr(st2[k])!==ans) cands.push({text:srStr(st2[k]),correct:false,mc:"off-by-one",fb:"그건 "+(k+1)+"회전 후의 모습이다."});
+  const sorted=srStr(a2.slice().sort((x,y)=>x-y));
+  if(sorted!==ans) cands.push({text:sorted,correct:false,mc:"final-confuse",fb:"완전히 정렬된 최종 결과다 — 물은 것은 "+k+"회전 직후다."});
+  cands.push({text:srStr(a2),correct:false,mc:"no-change",fb:"이 입력에서는 회전이 배열을 바꾼다 — 교환을 다시 짚어 보라."});
+  const sw2=st2[k-1].slice(); if(sw2.length>k+1){ const t3=sw2[k]; sw2[k]=sw2[k+1]; sw2[k+1]=t3; }
+  if(srStr(sw2)!==ans) cands.push({text:srStr(sw2),correct:false,mc:"near-slip",fb:"미정렬 구역의 순서는 건드리지 않는다 — 교환된 두 자리만 달라진다."});
+  { /* 형태 무관 보충 오답 — 이웃 값 교환 변형 (후보 붕괴 방지) */
+    const mk=(arr,i2)=>{ const c=arr.slice(); const t3=c[i2]; c[i2]=c[i2+1]; c[i2+1]=t3; return srStr(c); };
+    const base=ans.split(", ").map(Number);
+    for(const i2 of [0,1,2]){
+      if(cands.length>=3) break;
+      if(i2+1>=base.length) break;
+      const s3=mk(base,i2);
+      if(s3!==ans && !cands.find(c=>c.text===s3)) cands.push({text:s3,correct:false,mc:"near-slip",fb:"이웃한 두 값이 뒤바뀌어 있다 — 결과를 한 칸씩 다시 짚어 보라."});
+    }
+  }
+  return {id:"G42",qtype:qtype,params:{arr:a2.join(","),k:k,ans:ans},viz:srViz(a2),mono:true,
+    stem:'그림의 배열에 <b>선택 정렬</b>을 적용할 때, <b>'+k+'회전이 끝난 직후</b>의 배열은? (회전 = 최솟값을 찾아 맨 앞 미정렬 자리와 교환)',
+    okfb:k+'회전 후: '+ans+' — 남은 것 중 최솟값이 ['+(k-1)+'] 자리로 온다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G43. 버블 정렬 (유닛 C) --- */
+function genG43(){
+  const qtype=pick(["pass1","last","swap1","early"]);
+  if(qtype==="early"){
+    const ans="이미 정렬에 가까운 입력";
+    return {id:"G43",qtype:qtype,params:{ans:ans},
+      stem:'"한 회전 동안 <b>교환이 한 번도 없으면</b> 정렬 완료로 보고 멈춘다"는 개선이 <b>가장 큰 이득</b>을 주는 입력은?',
+      okfb:'거의 정렬된 입력이면 첫 한두 회전에 교환이 사라져 O(n) 수준에 끝난다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"크기가 거꾸로 뒤집힌 역순 입력",correct:false,mc:"reverse-myth",fb:"역순이면 끝까지 교환이 이어진다 — 개선이 전혀 작동하지 않는다."},
+        {text:"완전히 무작위로 섞인 입력",correct:false,mc:"random-myth",fb:"무작위면 거의 매 회전 교환이 있어 이득이 작다."},
+        {text:"원소 수가 아주 많은 입력",correct:false,mc:"size-myth",fb:"크기가 아니라 초기 순서가 가르는 이득이다."}]};
+  }
+  const n=pick([5,6]), a=srArr(n), B=srBubStates(a);
+  if(qtype==="last"){
+    const ans=String(Math.max.apply(null,a));
+    return {id:"G43",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:srViz(a),mono:true,
+      stem:'그림의 배열에 버블 정렬을 적용할 때, <b>1회전이 끝나면 맨 뒤에 확정되는</b> 값은?',
+      okfb:'이웃 교환을 거치며 가장 큰 '+ans+'가 끝까지 떠밀려 간다 — 회전마다 최댓값이 하나씩 뒤에 확정된다.',
+      choices:g2Fill([
+        {text:String(Math.min.apply(null,a)),correct:false,mc:"minmax-flip",fb:"버블(오름차순)은 큰 값이 뒤로 떠오른다."},
+        {text:String(a.slice().sort((x,y)=>x-y)[n-2]),correct:false,mc:"second-slip",fb:"두 번째로 큰 값은 2회전에서 확정된다."},
+        {text:String(a[n-1]),correct:false,mc:"orig-confuse",fb:"원래 맨 뒤의 값이 아니라 전체 최댓값이 온다."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(qtype==="swap1"){
+    const ans=String(B.swapsPer[0]);
+    return {id:"G43",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:srViz(a),mono:true,
+      stem:'그림의 배열에 버블 정렬 <b>1회전</b>(이웃 비교 '+(n-1)+'번)을 수행할 때 일어나는 <b>교환의 횟수</b>는?',
+      okfb:'이웃 쌍을 차례로 견주면 '+ans+'번 어긋나 교환된다 — 1회전 후 배열은 '+srStr(B.states[0])+'.',
+      choices:g2Fill([
+        {text:String(B.swapsPer[0]+1),correct:false,mc:"count-slip",fb:"이웃 비교를 처음부터 다시 세어 보라."},
+        {text:String(Math.max(0,B.swapsPer[0]-1)),correct:false,mc:"count-slip2",fb:"교환 하나를 빠뜨렸다 — 큰 값이 연달아 밀려가는 구간을 보라."},
+        {text:String(n-1),correct:false,mc:"cmp-confuse",fb:String(n-1)+"은 '비교'의 수 — 교환은 어긋난 쌍에서만 일어난다."}
+      ],{text:ans,correct:true},4)};
+  }
+  let a2=a, B2=B, guard=80;
+  while(guard-->0 && (B2.swapsPer[0]===0 || srStr(B2.states[0])===srStr(a2))){ a2=srArr(n); B2=srBubStates(a2); }
+  const ans=srStr(B2.states[0]);
+  const sel=srSelStates(a2);
+  const cands=[];
+  if(srStr(sel[0])!==ans) cands.push({text:srStr(sel[0]),correct:false,mc:"select-confuse",fb:"그건 선택 정렬의 1회전 — 버블은 이웃끼리만 교환한다."});
+  if(B2.states[1]&&srStr(B2.states[1])!==ans) cands.push({text:srStr(B2.states[1]),correct:false,mc:"off-by-one",fb:"그건 2회전 후의 모습이다."});
+  const sorted=srStr(a2.slice().sort((x,y)=>x-y));
+  if(sorted!==ans) cands.push({text:sorted,correct:false,mc:"final-confuse",fb:"최종 결과가 아니라 1회전 직후를 물었다."});
+  cands.push({text:srStr(a2),correct:false,mc:"no-change",fb:"어긋난 이웃이 있는 한 1회전에서 배열은 달라진다."});
+  { /* 형태 무관 보충 오답 — 이웃 값 교환 변형 (후보 붕괴 방지) */
+    const mk=(arr,i2)=>{ const c=arr.slice(); const t3=c[i2]; c[i2]=c[i2+1]; c[i2+1]=t3; return srStr(c); };
+    const base=ans.split(", ").map(Number);
+    for(const i2 of [0,1,2]){
+      if(cands.length>=3) break;
+      if(i2+1>=base.length) break;
+      const s3=mk(base,i2);
+      if(s3!==ans && !cands.find(c=>c.text===s3)) cands.push({text:s3,correct:false,mc:"near-slip",fb:"이웃한 두 값이 뒤바뀌어 있다 — 결과를 한 칸씩 다시 짚어 보라."});
+    }
+  }
+  return {id:"G43",qtype:qtype,params:{arr:a2.join(","),ans:ans},viz:srViz(a2),mono:true,
+    stem:'그림의 배열에 <b>버블 정렬 1회전</b>(앞에서부터 이웃끼리 비교, 어긋나면 교환)을 수행한 직후의 배열은?',
+    okfb:'1회전 후: '+ans+' — 최댓값이 맨 뒤에 확정된다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G44. 삽입 정렬 (유닛 D) --- */
+function genG44(){
+  const qtype=pick(["stepk","moves","bestcase","whichfast"]);
+  if(qtype==="bestcase"){
+    const ans="이미 정렬에 가까운 입력 — 비교가 곧바로 멈춘다";
+    return {id:"G44",qtype:qtype,params:{ans:ans},
+      stem:'삽입 정렬이 <b>O(n) 수준으로 가장 빠르게</b> 끝나는 입력은?',
+      okfb:'끼워 넣을 자리가 바로 왼쪽이면 비교 한 번에 단계가 끝난다 — 거의 정렬된 입력이 최선이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"크기가 거꾸로 선 역순 입력 — 밀 것이 확실하다",correct:false,mc:"reverse-myth",fb:"역순은 매번 끝까지 밀어야 하는 최악의 입력이다."},
+        {text:"무작위 입력 — 어느 쪽으로도 치우치지 않는다",correct:false,mc:"random-myth",fb:"무작위는 평균의 경우 — 최선은 아니다."},
+        {text:"모든 값이 큰 입력 — 비교가 단순해진다",correct:false,mc:"value-myth",fb:"값의 크기가 아니라 순서가 비용을 정한다."}]};
+  }
+  if(qtype==="whichfast"){
+    const ans="삽입은 비교가 바로 멈추지만 선택은 항상 끝까지 훑기 때문";
+    return {id:"G44",qtype:qtype,params:{ans:ans},
+      stem:'<b>거의 정렬된 입력</b>에서 삽입 정렬이 선택 정렬보다 빨리 끝나는 이유는?',
+      okfb:'삽입은 제자리면 비교 1번 — 선택은 "최솟값 확인"을 위해 언제나 남은 전부를 본다(n(n−1)/2 고정).',
+      choices:[
+        {text:ans,correct:true},
+        {text:"삽입은 교환 대신 밀기를 써서 이동 자체가 없기 때문",correct:false,mc:"move-myth",fb:"밀기도 이동이다 — 차이는 비교가 멈추느냐다."},
+        {text:"선택 정렬은 정렬된 입력에서 오히려 교환이 늘기 때문",correct:false,mc:"swap-myth",fb:"교환은 회전당 1번으로 같다 — 문제는 비교가 줄지 않는 것."},
+        {text:"삽입은 큰 값부터, 선택은 작은 값부터 다루기 때문",correct:false,mc:"order-myth",fb:"다루는 방향의 문제가 아니라 비교가 조기 종료되는가의 문제다."}]};
+  }
+  const n=pick([5,6]); let a=srArr(n), I=srInsStates(a);
+  const k=pick([1,2,3]);
+  if(qtype==="moves"){
+    let a3=a, I3=I, guard2=80;
+    while(guard2-->0 && I3.moves[k-1]===0){ a3=srArr(n); I3=srInsStates(a3); }
+    a=a3; I=I3;
+    const ans=String(I.moves[k-1]);
+    return {id:"G44",qtype:qtype,params:{arr:a.join(","),k:k,ans:ans},viz:srViz(a),mono:true,
+      stem:'그림의 배열에 삽입 정렬을 적용할 때, <span class="mono">list['+k+']</span>(값 '+a[k]+')를 제자리에 끼워 넣는 단계에서 <b>오른쪽으로 밀리는 원소의 수</b>는?',
+      okfb:a[k]+'보다 큰 왼쪽 원소가 '+ans+'개 — 그만큼 한 칸씩 밀리고 빈 자리에 '+a[k]+'가 들어간다.',
+      choices:g2Fill([
+        {text:String(I.moves[k-1]+1),correct:false,mc:"count-slip",fb:"끼워 넣는 원소 자신은 '밀리는 수'에 넣지 않는다."},
+        {text:String(Math.max(0,I.moves[k-1]-1)),correct:false,mc:"count-slip2",fb:a[k]+"보다 큰 왼쪽 원소를 다시 세어 보라."},
+        {text:String(k),correct:false,mc:"index-myth",fb:"자리 번호만큼이 아니라 '"+a[k]+"보다 큰 것'의 수만큼 밀린다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* stepk — 해당 단계가 배열을 바꾸는 입력만 */
+  let a2=a, I2=I, guard=80;
+  while(guard-->0 && srStr(I2.states[k-1])===srStr(a2)){ a2=srArr(n); I2=srInsStates(a2); }
+  const ans=srStr(I2.states[k-1]);
+  const cands=[];
+  if(I2.states[k]&&srStr(I2.states[k])!==ans) cands.push({text:srStr(I2.states[k]),correct:false,mc:"off-by-one",fb:"그건 list["+(k+1)+"]까지 처리한 뒤의 모습이다."});
+  const sel=srSelStates(a2);
+  if(srStr(sel[k-1])!==ans) cands.push({text:srStr(sel[k-1]),correct:false,mc:"select-confuse",fb:"그건 선택 정렬의 "+k+"회전 — 삽입은 앞쪽 '정렬된 패'에 끼워 넣는다."});
+  const sorted=srStr(a2.slice().sort((x,y)=>x-y));
+  if(sorted!==ans) cands.push({text:sorted,correct:false,mc:"final-confuse",fb:"최종 결과가 아니라 해당 단계 직후를 물었다."});
+  cands.push({text:srStr(a2),correct:false,mc:"no-change",fb:"이 단계에서는 밀기가 일어난다 — next보다 큰 왼쪽 원소를 짚어 보라."});
+  const half=a2.slice(); { const nx=half[k]; let j2=k-1; if(j2>=0&&nx<half[j2]){ half[j2+1]=half[j2]; half[j2]=nx; } }
+  if(srStr(half)!==ans) cands.push({text:srStr(half),correct:false,mc:"half-shift",fb:"한 칸만 밀고 멈췄다 — next보다 큰 것이 남아 있는 한 계속 민다."});
+  { /* 형태 무관 보충 오답 — 이웃 값 교환 변형 (후보 붕괴 방지) */
+    const mk=(arr,i2)=>{ const c=arr.slice(); const t3=c[i2]; c[i2]=c[i2+1]; c[i2+1]=t3; return srStr(c); };
+    const base=ans.split(", ").map(Number);
+    for(const i2 of [0,1,2]){
+      if(cands.length>=3) break;
+      if(i2+1>=base.length) break;
+      const s3=mk(base,i2);
+      if(s3!==ans && !cands.find(c=>c.text===s3)) cands.push({text:s3,correct:false,mc:"near-slip",fb:"이웃한 두 값이 뒤바뀌어 있다 — 결과를 한 칸씩 다시 짚어 보라."});
+    }
+  }
+  return {id:"G44",qtype:qtype,params:{arr:a2.join(","),k:k,ans:ans},viz:srViz(a2),mono:true,
+    stem:'그림의 배열에 <b>삽입 정렬</b>을 적용할 때, <span class="mono">list['+k+']</span>(값 '+a2[k]+')를 제자리에 <b>끼워 넣은 직후</b>의 배열은?',
+    okfb:'앞 '+(k+1)+'개가 정렬된 패가 된다: '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- AP11. 심화 — 셸 정렬 / 이동 계수 / 안정성 실전 --- */
+function srShellPass(a,gap){
+  const arr=a.slice(), n=arr.length;
+  for(let r=0;r<gap;r++){
+    const idx=[]; for(let i=r;i<n;i+=gap) idx.push(i);
+    const vals=idx.map(i=>arr[i]).sort((x,y)=>x-y);
+    idx.forEach((i,t)=>{ arr[i]=vals[t]; });
+  }
+  return arr;
+}
+function genAP11ch(idx){
+  if(idx===0){
+    /* 셸 정렬 — 미니 강의 내장 */
+    let a,gap,res,guard=60;
+    do{ a=srArr(6); gap=2; res=srShellPass(a,gap); }
+    while(guard-->0 && srStr(res)===srStr(a));
+    const evens=[a[0],a[2],a[4]], odds=[a[1],a[3],a[5]];
+    const ans=srStr(res);
+    const full=srStr(a.slice().sort((x,y)=>x-y));
+    const cands=[
+      {text:srStr(srBubStates(a).states[0]),correct:false,mc:"bubble-confuse",fb:"이웃 교환이 아니라 gap 간격의 부분 리스트를 각각 정렬한다."},
+      {text:srStr(a),correct:false,mc:"no-change",fb:"부분 리스트가 정렬되며 배열이 달라진다."}
+    ];
+    if(full!==ans) cands.push({text:full,correct:false,mc:"final-confuse",fb:"전체 정렬은 gap을 줄여 가며 여러 패스를 거친 뒤의 일이다."});
+    return {id:"AP11",qtype:"shell",params:{arr:a.join(","),gap:gap,ans:ans},viz:srViz(a),mono:true,
+      stem:'[심화 — 셸 정렬] 새 개념 하나. 삽입 정렬은 멀리 있는 원소를 <b>한 칸씩만</b> 옮길 수 있어, 제자리에서 먼 원소가 많으면 느려진다. <b>셸 정렬(shell sort)</b>은 이를 고친다 — 배열을 <b>gap 간격으로 건너뛰며 뽑은 부분 리스트</b>로 나누고, <b>각 부분 리스트를 삽입 정렬</b>한 뒤, gap을 줄여 가며 반복한다. 마지막 gap=1은 이미 "거의 정렬된 입력"이 되어 있어 삽입 정렬의 최선(빠른 경우)으로 끝난다.<br><br>그림의 배열에서 gap=2로 나누면 부분 리스트는 두 개다 — 짝수 자리 <span class="mono">list[0]·list[2]·list[4]</span> = ['+evens.join(", ")+'] 와 홀수 자리 <span class="mono">list[1]·list[3]·list[5]</span> = ['+odds.join(", ")+']. 이 <b>두 부분 리스트를 각각 오름차순 정렬</b>(gap=2의 한 패스)한 직후, 전체 배열의 모습은? (각 값은 자기 부분 리스트의 자리들 안에서만 이동한다)',
+      okfb:'짝수 자리 ['+evens.join(", ")+'] → ['+evens.slice().sort((x,y)=>x-y).join(", ")+'], 홀수 자리 ['+odds.join(", ")+'] → ['+odds.slice().sort((x,y)=>x-y).join(", ")+'] — 합치면 '+ans+'. 큰 값이 성큼성큼 이동하는 것이 셸의 힘이다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){
+    /* 이동 계수 — 역순 입력의 삽입 정렬 총 밀기 수 */
+    const n=pick([5,6]);
+    const base=srArr(n).sort((x,y)=>y-x);            /* 역순 배열 */
+    const I=srInsStates(base);
+    const total=I.moves.reduce((s,m)=>s+m,0);        /* = n(n-1)/2 */
+    const ans=String(total);
+    return {id:"AP11",qtype:"movecount",params:{arr:base.join(","),ans:ans},viz:srViz(base),mono:true,
+      stem:'[심화 — 이동의 값어치] 그림처럼 <b>완전히 역순</b>인 배열(원소 '+n+'개)에 삽입 정렬을 적용하면, 전체 실행에서 <b>오른쪽으로 밀리는 이동의 총 횟수</b>는? (단계별 밀림을 전부 더한다)',
+      okfb:'매 단계 왼쪽 전부가 밀린다: 1+2+…+'+(n-1)+' = '+ans+'회 — 역순이 삽입 정렬의 최악인 이유이고, O(n²)의 정체다.',
+      choices:g2Fill([
+        {text:String(n-1),correct:false,mc:"last-only",fb:"마지막 단계 하나만 센 값이다 — 전 단계를 더한다."},
+        {text:String(n*n),correct:false,mc:"square-slip",fb:"n²이 아니라 1+2+…+(n−1)이다."},
+        {text:String(n*(n-1)),correct:false,mc:"double-count",fb:"두 배로 세었다 — 밀림은 쌍마다 한 번이다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* idx 2 — 안정성 실전: 같은 키 태그 */
+  const keys=srArr(3);                                /* 서로 다른 3키 + 중복 1쌍 */
+  const dup=keys[0];
+  const rest=[keys[1],keys[2]];
+  const arr=[{k:dup,t:"a"},{k:rest[0],t:""},{k:dup,t:"b"},{k:rest[1],t:""}];
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t2=arr[i]; arr[i]=arr[j]; arr[j]=t2; }
+  const ia=arr.findIndex(x=>x.t==="a"), ib=arr.findIndex(x=>x.t==="b");
+  if(ia>ib){ arr[ia].t="b"; arr[ib].t="a"; }          /* a가 항상 앞 */
+  const lab=x=>x.k+(x.t||"");
+  const stableOut=arr.slice().sort((x,y)=>x.k-y.k || (x.t==="a"?-1:1));
+  const ans=stableOut.map(lab).join(", ");
+  const unstable=stableOut.map(x=>({k:x.k,t:x.t==="a"?"b":x.t==="b"?"a":""}));
+  const wrong1=unstable.map(lab).join(", ");
+  return {id:"AP11",qtype:"stabletag",params:{arr:arr.map(lab).join(","),ans:ans},mono:true,
+    viz:{type:"arr", a:arr.map(lab), hi:[], done:[]},
+    stem:'[심화 — 안정성 실전] 같은 키 '+dup+'가 두 번 나온다 — 원래 순서를 표시하려고 앞의 것에 a, 뒤의 것에 b를 붙였다('+dup+'a가 '+dup+'b보다 앞). 이 배열을 <b>안정 정렬</b>(예: 삽입·버블)로 오름차순 정렬한 결과는?',
+    okfb:'안정 정렬은 같은 키의 원래 순서를 보존한다 — '+dup+'a가 여전히 '+dup+'b 앞: '+ans+'.',
+    choices:g2Fill([
+      {text:wrong1,correct:false,mc:"stable-flip",fb:"같은 키의 순서가 뒤집혔다 — 안정 정렬은 원래 순서(a 먼저)를 지킨다."},
+      {text:arr.map(lab).join(", "),correct:false,mc:"no-change",fb:"정렬 자체는 일어난다 — 보존되는 것은 같은 키 사이의 순서뿐이다."},
+      {text:stableOut.slice().reverse().map(lab).join(", "),correct:false,mc:"desc-flip",fb:"내림차순이 아니라 오름차순이다."}
+    ],{text:ans,correct:true},4)};
+}

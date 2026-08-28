@@ -932,7 +932,7 @@ function sceneSettlement(noPay){
   stage.appendChild(el('<div class="card fade">'+
     '<div style="font-size:13px;color:var(--ink-dim);">쪽지시험 결과 — '+chNum(CH)+' "'+CH.meta.title+'"</div>'+
     '<div class="card" style="background:var(--panel2); margin-top:14px; font-size:15px; line-height:2;">'+
-    '유닛 숙달 ('+gwUnits.join("·")+') — <b>'+unitScore+'점</b><br>'+
+    '유닛 숙달 '+gwUnits.length+'/'+gwUnits.length+' ('+gwUnits.join("·")+') — <b>'+unitScore+'점</b> <span style="color:var(--ink-dim);font-size:12.5px;">(유닛당 '+CH.exam.unitPts+'점 × '+gwUnits.length+' — 숙달해야 통과하므로 여기까지 온 이상 만점)</span><br>'+
     '과외 문답 첫 시도 정답 '+S.tutorFirstTry+'/3 — <b>'+tutorScore+'점</b><br>'+
     '<span style="color:var(--accent); font-size:19px;">합계 '+score+'점 '+(passed?"— 통과 ✅":"— 미달 🔁")+'</span>'+
     (S.aplusAccepted?('<br>A+ 심화: '+(S.aplusSuccess?'<b style="color:var(--accent2);">성공 — 도윤 성적 A+ 페이스 🔥</b>':"아쉽게 미달 (불이익 없음)")):"")+
@@ -1322,8 +1322,8 @@ function exOutro(){
 /* ================================================================
    주간 루프 공용 러너 (ch02+) — 챕터 데이터(flow·trials·pool)만으로 실행
    ================================================================ */
-const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36(), G37:()=>genG37(), G38:()=>genG38(), G39:()=>genG39(), G40:()=>genG40() };
-const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i), AP10:(i)=>genAP10ch(i) };
+const GEN2={ G6:()=>genG6(false), G7:()=>genG7(false), G8:()=>genG8(false), G9:()=>genG9(), G10:()=>genG10(), G11:()=>genG11(), G12:()=>genG12(), G13:()=>genG13(), G14:()=>genG14(), G15:()=>genG15(), G16:()=>genG16(), G17:()=>genG17(), G18:()=>genG18(), G19:()=>genG19(), G20:()=>genG20(), G21:()=>genG21(), G22:()=>genG22(), G23:()=>genG23(), G24:()=>genG24(), G25:()=>genG25(), G26:()=>genG26(), G27:()=>genG27(), G28:()=>genG28(), G29:()=>genG29(), G30:()=>genG30(), G31:()=>genG31(), G32:()=>genG32(), G33:()=>genG33(), G34:()=>genG34(), G35:()=>genG35(), G36:()=>genG36(), G37:()=>genG37(), G38:()=>genG38(), G39:()=>genG39(), G40:()=>genG40(), G41:()=>genG41(), G42:()=>genG42(), G43:()=>genG43(), G44:()=>genG44() };
+const GENAP={ AP2:(i)=>genAP2ch(i), AP3:(i)=>genAP3ch(i), AP4:(i)=>genAP4ch(i), AP5:(i)=>genAP5ch(i), AP6:(i)=>genAP6ch(i), AP7:(i)=>genAP7ch(i), AP8:(i)=>genAP8ch(i), AP9:(i)=>genAP9ch(i), AP10:(i)=>genAP10ch(i), AP11:(i)=>genAP11ch(i) };
 let GW=null;
 function gwInit(){ GW={streaks:{}, attempts:{}, poolLeft:shuffle((CH.pool||[]).slice())}; S.momLine=null; S.duelDone=false; S.duelRewarded=false; }
 function gwStart(){ gwInit(); gwGo(0); }
@@ -1599,7 +1599,24 @@ function adjMatEl(v){
   t+='</table>';
   const wrap=el('<div class="fade" style="overflow-x:auto;"></div>'); wrap.innerHTML=t; return wrap;
 }
+/* ---- 위젯: 배열 상자 (정렬용) — v={type:"arr", a:[값...], hi:[비교 강조 idx], done:[확정 idx], sep?:경계 idx(이 앞까지 정렬됨 표시), tags?:[값 아래 꼬리표]} ---- */
+function arrVizEl(v){
+  const hi=new Set(v.hi||[]), done=new Set(v.done||[]);
+  let h='<div style="display:flex;gap:0;align-items:flex-end;flex-wrap:wrap;margin:8px 0;">';
+  v.a.forEach((val,i)=>{
+    const isHi=hi.has(i), isDone=done.has(i);
+    const bd=isHi?'2px solid var(--accent)':'1px solid var(--line)';
+    const bg=isDone?'var(--cell-hi)':'var(--cell)';
+    const sepL=(v.sep!==undefined&&i===v.sep)?'margin-left:14px;':'';
+    h+='<div style="display:flex;flex-direction:column;align-items:center;'+sepL+'margin-right:4px;">'+
+       '<div class="mono" style="min-width:40px;padding:9px 6px;text-align:center;border:'+bd+';border-radius:8px;background:'+bg+';font-weight:700;font-size:14.5px;color:'+(isHi?'var(--accent)':'var(--ink)')+';">'+val+'</div>'+
+       '<div style="font-size:10.5px;color:var(--ink-dim);margin-top:3px;">['+i+']'+((v.tags&&v.tags[i]!==undefined&&v.tags[i]!=="")?' <span style="color:var(--accent2);">'+v.tags[i]+'</span>':'')+'</div></div>';
+  });
+  h+='</div>';
+  const wrap=el('<div class="fade" style="overflow-x:auto;"></div>'); wrap.innerHTML=h; return wrap;
+}
 function anyVizEl(v){
+  if(v.type==="arr") return arrVizEl(v);
   if(v.type==="graph") return graphVizEl(v);
   if(v.type==="adjmat") return adjMatEl(v);
   if(v.type==="stack") return stackVizEl(v);
@@ -1699,7 +1716,16 @@ function gwTrial(key,i){
     const p=poolItems[0];
     GW.poolLeft.splice(GW.poolLeft.indexOf(p),1);
     item={...p}; if(p.choices) item.choices=shuffle(p.choices.map(c=>({...c}))); src="pool:"+p.id;
-  } else { item=GEN2[t.gen](); src=t.gen; }
+  } else {
+    /* 동일 문제 연속 출제 방지 — 유닛별 최근 2문의 시그니처(qtype+params)를 기억하고, 겹치면 재생성 */
+    GW.recentSig=GW.recentSig||{};
+    const seen=GW.recentSig[key]=GW.recentSig[key]||[];
+    let g=6;
+    do{ item=GEN2[t.gen](); } while(g-->0 && seen.indexOf((item.qtype||"")+"|"+JSON.stringify(item.params||{}))>=0);
+    seen.push((item.qtype||"")+"|"+JSON.stringify(item.params||{}));
+    if(seen.length>2) seen.shift();
+    src=t.gen;
+  }
   log("item_shown",{unit:key, gen:src, qtype:item.qtype||"", params:item.params||{}, attempt:GW.attempts[key]});
   stage.innerHTML="";
   const card=el('<div class="card fade">'+streakBar(GW.streaks[key]||0, t.label+" · 문제 #"+GW.attempts[key])+'</div>');
@@ -2150,7 +2176,7 @@ const CPLABEL={
   "study-E":"금요일 밤 · 유닛 E 자습", "trialE":"금요일 밤 · triple 연습",
   "saturday":"토요일 · 과외 2일차 / A+", "sunday":"월요일 · 쪽지시험"
 };
-const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null };
+const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null, ch11:(typeof CH11!=="undefined")?CH11:null };
 function cpLabel(sv){
   if(sv.ch==="chM"&&typeof CHM!=="undefined") return (CHM.cpl&&CHM.cpl[sv.cp])||"※ 중간고사 · 이어서";
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
@@ -2218,6 +2244,7 @@ function sceneTitle(){
   if(typeof CH08!=="undefined") CH_MENU.push({id:"ch08", label:chLabel(CH08), go:()=>{ setChapter(CH08); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH09!=="undefined") CH_MENU.push({id:"ch09", label:chLabel(CH09), go:()=>{ setChapter(CH09); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH10!=="undefined") CH_MENU.push({id:"ch10", label:chLabel(CH10), go:()=>{ setChapter(CH10); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  if(typeof CH11!=="undefined") CH_MENU.push({id:"ch11", label:chLabel(CH11), go:()=>{ setChapter(CH11); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
