@@ -13,7 +13,7 @@
    설계 문서: 30-콘텐츠\20-시험문제은행-설계.md
    ============================================================ */
 const EXAMBANK = {
-  meta: { ver:"1.0", range:["ch01","ch02","ch03","ch04","ch05","ch06"] },
+  meta: { ver:"2.1", range:["ch01","ch02","ch03","ch04","ch05","ch06","ch07","ch08","ch09","ch10","ch11","ch12","ch13"] },
   items: [
 
   /* ================= 1장 배열과 구조 (X101~X108) ================= */
@@ -569,7 +569,534 @@ const EXAMBANK = {
      {text:"C",correct:true},
      {text:"B",correct:false,mc:"lr-swap",fb:"중위에서 A보다 앞에 있는 D·B·E는 전부 왼쪽 서브트리다."},
      {text:"E",correct:false,mc:"subtree-slip",fb:"E는 중위에서 A 앞 — 왼쪽 서브트리 소속이다."},
-     {text:"알 수 없다",correct:false,mc:"varies-myth",fb:"전위와 중위가 함께 주어지면 트리는 하나로 정해진다."}]}
+     {text:"알 수 없다",correct:false,mc:"varies-myth",fb:"전위와 중위가 함께 주어지면 트리는 하나로 정해진다."}]},
+
+  /* ================= 4장(C) 히프와 BST (X701~X705) — v2.0 기말 확장 ================= */
+  {id:"X701", ch:"ch07", unit:"A", diff:1, src:"기사",
+   stem:'<b>max 히프</b>의 정의로 옳은 것은?',
+   okfb:'max 히프 = 완전 이진 트리이면서, 모든 부모의 키가 자식의 키보다 크거나 같은 트리.',
+   choices:[
+     {text:"부모의 키가 자식의 키보다 크거나 같은 완전 이진 트리",correct:true},
+     {text:"왼쪽 자식이 오른쪽 자식보다 항상 작은 이진 트리",correct:false,mc:"sibling-myth",fb:"히프는 형제 사이의 대소를 정하지 않는다 — 부모·자식 관계만 정한다."},
+     {text:"모든 노드의 키가 정렬된 순서로 저장된 이진 트리",correct:false,mc:"bst-confuse",fb:"좌<자신<우의 전순서는 이진 탐색 트리의 규칙이다."},
+     {text:"루트에서 리프까지의 경로 길이가 전부 같은 트리",correct:false,mc:"shape-only",fb:"완전 이진 트리는 마지막 레벨이 왼쪽부터 채워지면 된다 — 경로 길이가 전부 같을 필요는 없다."}]},
+
+  {id:"X702", ch:"ch07", unit:"B", diff:2, src:"대학", mono:true,
+   stem:'배열 <span class="mono">[10, 7, 8, 3, 2, 5]</span>(인덱스 1부터)로 저장된 max 히프에서 <b>최댓값을 삭제</b>한 직후의 배열은?',
+   okfb:'마지막 원소 5를 루트로 올리고 아래로 내린다: 5는 자식 7·8 중 큰 8과 교환 — [8, 7, 5, 3, 2].',
+   choices:[
+     {text:"8, 7, 5, 3, 2",correct:true},
+     {text:"8, 7, 2, 3, 5",correct:false,mc:"wrong-fill",fb:"빈 루트는 마지막 원소(5)로 채운 뒤 내려보낸다 — 5가 8의 자리로 간다."},
+     {text:"7, 3, 8, 2, 5",correct:false,mc:"left-only",fb:"내려보낼 때는 두 자식 중 큰 쪽(8)과 교환한다 — 왼쪽(7)이 아니다."},
+     {text:"8, 5, 7, 3, 2",correct:false,mc:"swap-slip",fb:"5는 8의 원래 자리(인덱스 3)로 들어간다 — 7의 자리가 아니다."}]},
+
+  {id:"X703", ch:"ch07", unit:"C", diff:1, src:"기사",
+   stem:'<b>이진 탐색 트리</b>를 <b>중위 순회</b>하면 얻어지는 것은?',
+   okfb:'좌 < 자신 < 우의 규칙 때문에, 중위 순회(좌→자신→우)는 키를 오름차순으로 방문한다.',
+   choices:[
+     {text:"키의 오름차순 나열",correct:true},
+     {text:"키의 내림차순 나열",correct:false,mc:"reverse",fb:"내림차순은 우→자신→좌로 도는 역중위 순회의 결과다."},
+     {text:"삽입된 순서 그대로의 나열",correct:false,mc:"insert-order",fb:"삽입 순서는 트리 모양에만 남는다 — 중위 순회는 값의 순서를 따른다."},
+     {text:"레벨(층) 순서의 나열",correct:false,mc:"level-confuse",fb:"레벨 순서는 큐를 쓰는 레벨 순회의 결과다."}]},
+
+  {id:"X704", ch:"ch07", unit:"C", diff:3, src:"기사", mono:true,
+   stem:'이진 탐색 트리의 <b>탐색</b> 함수다. 빈칸에 들어갈 것은?',
+   code:["TreeNode* search(TreeNode *p, int key){","  if (p == NULL) return NULL;","  if (key == p->key) return p;","  if (key < p->key)","    return search( ________ , key);","  return search(p->right, key);","}"],
+   okfb:'찾는 키가 현재보다 작으면 왼쪽 서브트리로 내려간다 — p->left.',
+   choices:[
+     {text:"p->left",correct:true},
+     {text:"p->right",correct:false,mc:"lr-swap",fb:"작은 키는 왼쪽에 있다 — 오른쪽은 큰 키의 방향이다."},
+     {text:"p",correct:false,mc:"no-descend",fb:"자기 자신을 다시 부르면 무한 재귀다 — 한 층 내려가야 한다."},
+     {text:"p->left->left",correct:false,mc:"two-step",fb:"한 번의 비교는 한 층만 내려간다 — 두 층을 건너뛰면 후보를 놓친다."}]},
+
+  {id:"X705", ch:"ch07", unit:"D", diff:2, src:"대학",
+   stem:'키를 <b>오름차순으로 계속 삽입</b>해 만든 이진 탐색 트리에서, n개 중 하나를 탐색하는 최악 시간은?',
+   okfb:'매번 오른쪽으로만 자라 높이가 n인 경사 트리가 된다 — 탐색은 O(n).',
+   choices:[
+     {text:"O(n) — 한쪽으로만 자라 높이가 n이 되므로",correct:true},
+     {text:"O(log n) — BST는 언제나 균형을 유지하므로",correct:false,mc:"balance-myth",fb:"보통의 BST는 스스로 균형을 잡지 않는다 — 삽입 순서가 모양을 정한다."},
+     {text:"O(1) — 정렬된 입력은 위치가 자명하므로",correct:false,mc:"sorted-myth",fb:"정렬된 입력은 오히려 최악의 모양(경사 트리)을 만든다."},
+     {text:"O(n log n) — 삽입과 탐색이 겹치므로",correct:false,mc:"total-confuse",fb:"n log n은 전체 정렬류 비용의 자릿수 — 탐색 한 번의 비용이 아니다."}]},
+
+  /* ================= 5장(A) 그래프와 표현 (X801~X805) ================= */
+  {id:"X801", ch:"ch08", unit:"A", diff:2, src:"기사",
+   stem:'정점이 <b>6개</b>인 무방향 <b>완전 그래프</b>의 간선 수는?',
+   okfb:'완전 그래프의 간선 수 = n(n−1)/2 = 6×5/2 = 15.',
+   choices:[
+     {text:"15",correct:true},
+     {text:"30",correct:false,mc:"no-half",fb:"n(n−1)은 방향 그래프의 셈 — 무방향은 (0,1)=(1,0)이라 2로 나눈다."},
+     {text:"36",correct:false,mc:"square",fb:"n²은 자기 자신으로의 간선까지 센 것 — 완전 그래프에 자기 간선은 없다."},
+     {text:"5",correct:false,mc:"tree-confuse",fb:"n−1은 신장 트리의 간선 수 — 완전 그래프는 모든 쌍을 잇는다."}]},
+
+  {id:"X802", ch:"ch08", unit:"B", diff:1, src:"기사",
+   stem:'무방향 그래프에서 <b>모든 정점의 차수를 합하면</b> 간선 수 e와 어떤 관계인가?',
+   okfb:'간선 하나가 양 끝 두 정점의 차수를 1씩 올린다 — 차수의 합 = 2e.',
+   choices:[
+     {text:"2e — 간선 하나가 두 정점의 차수를 만드므로",correct:true},
+     {text:"e — 간선 하나가 차수 하나를 만드므로",correct:false,mc:"one-end",fb:"간선 (u, v)는 u와 v 양쪽의 차수에 들어간다 — 두 번 세어진다."},
+     {text:"e/2 — 간선 두 개가 차수 하나를 만드므로",correct:false,mc:"reverse-half",fb:"방향이 반대다 — 합이 간선 수의 두 배다."},
+     {text:"n − 1 — 정점 수에 따라 정해진다",correct:false,mc:"tree-confuse",fb:"n−1은 신장 트리의 간선 수 — 차수의 합과는 무관하다."}]},
+
+  {id:"X803", ch:"ch08", unit:"C", diff:2, src:"대학",
+   stem:'간선이 <b>7개</b>인 무방향 그래프를 <b>인접 행렬</b>로 저장하면, 행렬 안의 <b>1의 총 개수</b>는?',
+   okfb:'간선 (i, j) 하나가 행렬의 [i][j]와 [j][i] 두 칸을 1로 만든다 — 7×2 = 14.',
+   choices:[
+     {text:"14",correct:true},
+     {text:"7",correct:false,mc:"one-cell",fb:"무방향 간선은 대칭인 두 칸에 기록된다 — 한 칸이 아니다."},
+     {text:"49",correct:false,mc:"square",fb:"49는 7²— 간선 수를 제곱할 이유가 없다."},
+     {text:"행렬의 크기에 따라 다르다",correct:false,mc:"size-myth",fb:"행렬이 커져도 1의 개수는 간선 수의 두 배로 정해져 있다 — 나머지는 0일 뿐."}]},
+
+  {id:"X804", ch:"ch08", unit:"D", diff:1, src:"기사",
+   stem:'정점은 많고 간선은 <b>드문(희소한)</b> 그래프에 <b>인접 리스트</b>가 유리한 이유는?',
+   okfb:'인접 리스트는 실제로 있는 간선만 노드로 저장한다 — 행렬은 없는 간선의 0까지 n²칸을 쓴다.',
+   choices:[
+     {text:"있는 간선만 저장해 공간이 간선 수에 비례하므로",correct:true},
+     {text:"두 정점의 연결 여부를 한 번에 알 수 있으므로",correct:false,mc:"matrix-trait",fb:"한 번에 아는 것은 행렬의 장점 — 리스트는 체인을 따라가야 한다."},
+     {text:"간선이 드물수록 리스트가 자동으로 정렬되므로",correct:false,mc:"sort-myth",fb:"인접 리스트에 자동 정렬은 없다 — 공간 절약이 핵심이다."},
+     {text:"희소한 그래프는 행렬로 표현할 수 없으므로",correct:false,mc:"cant-myth",fb:"표현은 된다 — 다만 대부분의 칸이 0으로 낭비될 뿐이다."}]},
+
+  {id:"X805", ch:"ch08", unit:"C", diff:3, src:"기사구", mono:true,
+   stem:'인접 행렬 <span class="mono">adj_mat</span>로 저장된 <b>방향</b> 그래프에서 정점 v의 <b>진출 차수</b>를 세는 코드다. 빈칸에 들어갈 것은?',
+   code:["int out_degree(int v){","  int j, count = 0;","  for (j = 0; j < n; j++)","    if ( ________ ) count++;","  return count;","}"],
+   okfb:'진출 간선 v→j는 행렬의 v행에 기록된다 — adj_mat[v][j]를 센다.',
+   choices:[
+     {text:"adj_mat[v][j]",correct:true},
+     {text:"adj_mat[j][v]",correct:false,mc:"in-out-swap",fb:"[j][v]는 j→v, 곧 들어오는 간선 — 진입 차수를 세게 된다."},
+     {text:"adj_mat[v][v]",correct:false,mc:"self-loop",fb:"[v][v]는 자기 자신으로의 간선 한 칸만 반복해 보는 셈이다."},
+     {text:"adj_mat[j][j]",correct:false,mc:"diag-slip",fb:"대각선 칸들은 v와 무관하다 — v의 행을 훑어야 한다."}]},
+
+  /* ================= 5장(B) 그래프 탐색 (X901~X905) ================= */
+  {id:"X901", ch:"ch09", unit:"A", diff:1, src:"기사",
+   stem:'그래프 탐색에서 <b>DFS와 BFS가 사용하는 자료구조</b>를 옳게 짝지은 것은?',
+   okfb:'DFS는 되돌아갈 갈림길을 스택(재귀 호출 스택)에, BFS는 다음에 갈 정점을 큐에 저장한다.',
+   choices:[
+     {text:"DFS는 스택, BFS는 큐",correct:true},
+     {text:"DFS는 큐, BFS는 스택",correct:false,mc:"swap",fb:"반대다 — 깊이 우선은 최근 갈림길부터(스택), 너비 우선은 먼저 발견한 정점부터(큐)."},
+     {text:"둘 다 스택",correct:false,mc:"stack-both",fb:"BFS가 스택을 쓰면 먼저 발견한 정점이 뒤로 밀린다 — 너비 우선이 무너진다."},
+     {text:"둘 다 우선순위 큐",correct:false,mc:"pq-confuse",fb:"우선순위 큐는 Dijkstra 같은 가중치 알고리즘의 도구다."}]},
+
+  {id:"X902", ch:"ch09", unit:"B", diff:2, src:"대학", mono:true,
+   stem:'인접 정점: <span class="mono">0:(1,2) / 1:(0,3) / 2:(0,4) / 3:(1) / 4:(2)</span>. 정점 0에서 <b>DFS</b>를 시작하면(번호 작은 쪽 먼저) 방문 순서는?',
+   okfb:'0→1(작은 쪽)→3, 3에서 막혀 되돌아와 0의 다음 인접 2→4. 순서는 0 1 3 2 4.',
+   choices:[
+     {text:"0 1 3 2 4",correct:true},
+     {text:"0 1 2 3 4",correct:false,mc:"bfs-confuse",fb:"층별로 넓히는 것은 BFS의 순서 — DFS는 1에서 3까지 먼저 파고든다."},
+     {text:"0 2 4 1 3",correct:false,mc:"order-slip",fb:"번호 작은 쪽 먼저 규칙이면 0의 인접 중 1을 2보다 먼저 방문한다."},
+     {text:"0 1 3 4 2",correct:false,mc:"jump-slip",fb:"3에서 되돌아온 곳은 0 — 0의 다음 인접인 2를 거쳐야 4에 닿는다."}]},
+
+  {id:"X903", ch:"ch09", unit:"C", diff:2, src:"대학", mono:true,
+   stem:'인접 정점: <span class="mono">0:(1,2,3) / 1:(0,4) / 2:(0) / 3:(0) / 4:(1)</span>. 정점 0에서 <b>BFS</b>를 시작하면(번호 작은 쪽 먼저) 방문 순서는?',
+   okfb:'0을 꺼내며 1·2·3을 큐에 — 그다음 1을 꺼내며 4를 큐에. 순서는 0 1 2 3 4.',
+   choices:[
+     {text:"0 1 2 3 4",correct:true},
+     {text:"0 1 4 2 3",correct:false,mc:"dfs-confuse",fb:"1에서 4로 먼저 파고드는 것은 DFS — BFS는 0의 이웃 셋을 먼저 다 방문한다."},
+     {text:"0 3 2 1 4",correct:false,mc:"order-slip",fb:"번호 작은 쪽 먼저 규칙이면 1·2·3 순서로 큐에 들어간다."},
+     {text:"0 1 2 4 3",correct:false,mc:"queue-slip",fb:"4는 1의 이웃이라 3보다 늦게 큐에 들어간다 — 큐는 들어간 순서대로 나온다."}]},
+
+  {id:"X904", ch:"ch09", unit:"D", diff:1, src:"기사",
+   stem:'정점이 <b>8개</b>인 연결 그래프의 <b>신장 트리</b>가 갖는 간선 수는?',
+   okfb:'신장 트리는 모든 정점을 사이클 없이 잇는다 — 간선 수는 항상 n−1 = 7.',
+   choices:[
+     {text:"7",correct:true},
+     {text:"8",correct:false,mc:"n-slip",fb:"간선이 n개면 사이클이 하나 생긴다 — 트리는 n−1개다."},
+     {text:"28",correct:false,mc:"complete-confuse",fb:"28 = 8×7/2은 완전 그래프의 간선 수다."},
+     {text:"그래프의 간선 수에 따라 다르다",correct:false,mc:"varies-myth",fb:"원래 간선이 몇 개든, 골라 낸 신장 트리는 정확히 n−1개를 갖는다."}]},
+
+  {id:"X905", ch:"ch09", unit:"B", diff:3, src:"기사구", mono:true,
+   stem:'깊이 우선 탐색의 재귀 코드다. 빈칸에 들어갈 조건은?',
+   code:["void dfs(int v){","  GraphNode *w;","  visited[v] = TRUE;","  printf(\"%d \", v);","  for (w = graph[v]; w; w = w->link)","    if ( ________ )","      dfs(w->vertex);","}"],
+   okfb:'아직 방문하지 않은 인접 정점으로만 재귀한다 — !visited[w->vertex].',
+   choices:[
+     {text:"!visited[w->vertex]",correct:true},
+     {text:"visited[w->vertex]",correct:false,mc:"negate-miss",fb:"방문한 곳으로 다시 들어가면 무한 순환이다 — 부정(!)이 필요하다."},
+     {text:"w->vertex != v",correct:false,mc:"self-only",fb:"자기 자신만 피해서는 부족하다 — 이미 방문한 다른 정점으로도 되돌아간다."},
+     {text:"w->link != NULL",correct:false,mc:"link-confuse",fb:"link는 인접 리스트의 다음 노드일 뿐 — 방문 여부와 무관하다."}]},
+
+  /* ================= 5장(C) 가중치 그래프 (X1001~X1005) ================= */
+  {id:"X1001", ch:"ch10", unit:"B", diff:1, src:"기사",
+   stem:'<b>Kruskal 알고리즘</b>의 동작 원리로 옳은 것은?',
+   okfb:'간선을 가중치 오름차순으로 정렬해 두고, 사이클을 만들지 않는 간선만 차례로 채택한다.',
+   choices:[
+     {text:"가중치가 작은 간선부터, 사이클을 만들지 않으면 채택한다",correct:true},
+     {text:"한 정점에서 출발해 트리에 인접한 최소 간선을 채택한다",correct:false,mc:"prim-confuse",fb:"하나의 트리를 키워 가는 것은 Prim의 방식이다."},
+     {text:"출발 정점에서 각 정점까지의 최단 거리를 확정해 간다",correct:false,mc:"dijkstra-confuse",fb:"그것은 Dijkstra — 최단 경로의 문제다."},
+     {text:"가중치가 큰 간선부터 하나씩 제거해 간다",correct:false,mc:"reverse-build",fb:"Kruskal은 빈 상태에서 작은 간선을 더해 간다 — 큰 것을 지우는 방식이 아니다."}]},
+
+  {id:"X1002", ch:"ch10", unit:"A", diff:2, src:"대학", mono:true,
+   stem:'정점 A·B·C·D, 간선 <span class="mono">(A,B)=1, (B,C)=2, (A,C)=3, (C,D)=4, (B,D)=5</span>인 그래프의 <b>최소 비용 신장 트리</b>의 가중치 합은?',
+   okfb:'작은 것부터: 1 채택, 2 채택, 3은 A–B–C 사이클이라 거부, 4 채택 — 합 1+2+4 = 7.',
+   choices:[
+     {text:"7",correct:true},
+     {text:"6",correct:false,mc:"cycle-miss",fb:"1+2+3=6은 (A,C)를 넣은 셈 — A·B·C가 사이클이 되어 거부해야 한다."},
+     {text:"8",correct:false,mc:"skip-slip",fb:"세 간선이면 정점 넷을 다 잇는다 — 1+2+4보다 큰 조합을 고를 이유가 없다."},
+     {text:"10",correct:false,mc:"wrong-pick",fb:"1+4+5는 (B,C)=2를 건너뛴 조합 — 작은 간선부터 사이클 검사만 하면 된다."}]},
+
+  {id:"X1003", ch:"ch10", unit:"C", diff:1, src:"기사",
+   stem:'MST를 만드는 <b>Prim 알고리즘</b>이 Kruskal과 구별되는 특징은?',
+   okfb:'Prim은 시작 정점에서 출발해 언제나 하나의 트리를 유지하며, 트리에 인접한 최소 간선으로 키워 간다.',
+   choices:[
+     {text:"언제나 하나의 트리를 유지하며 인접한 최소 간선으로 키운다",correct:true},
+     {text:"간선을 가중치 순으로 정렬해 놓고 시작한다",correct:false,mc:"kruskal-trait",fb:"전체 간선 정렬은 Kruskal의 준비 단계다 — Prim은 트리 주변만 본다."},
+     {text:"여러 조각의 트리가 자라다 마지막에 합쳐진다",correct:false,mc:"forest-confuse",fb:"조각들이 자라는 것은 Kruskal의 모습 — Prim은 처음부터 끝까지 한 덩어리다."},
+     {text:"결과 트리의 가중치 합이 Kruskal보다 항상 작다",correct:false,mc:"better-myth",fb:"둘 다 최소 비용 신장 트리를 만든다 — 합은 같다."}]},
+
+  {id:"X1004", ch:"ch10", unit:"D", diff:2, src:"대학", mono:true,
+   stem:'간선 <span class="mono">v0→v1=5, v0→v2=10, v1→v2=3</span>인 방향 그래프에서 <b>Dijkstra(출발 v0)</b>가 끝난 뒤 <span class="mono">distance[2]</span>는?',
+   okfb:'직행 10보다 v1을 거친 5+3=8이 짧다 — v1 확정 때 distance[2]가 10에서 8로 갱신된다.',
+   choices:[
+     {text:"8",correct:true},
+     {text:"10",correct:false,mc:"no-update",fb:"직행 거리에서 멈춘 값 — v1을 확정한 뒤 5+3=8로 갱신해야 한다."},
+     {text:"3",correct:false,mc:"edge-only",fb:"3은 v1→v2 간선 하나의 값 — 출발점 v0에서의 거리가 아니다."},
+     {text:"5",correct:false,mc:"wrong-vertex",fb:"5는 distance[1] — v2까지는 그 뒤로 3을 더 가야 한다."}]},
+
+  {id:"X1005", ch:"ch10", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'Dijkstra에서 정점 u를 확정한 직후 실행하는 <b>거리 갱신</b> 코드다. 빈칸에 들어갈 것은?',
+   code:["for (w = 0; w < n; w++)","  if (!found[w])","    if ( ________ < distance[w])","      distance[w] = distance[u] + cost[u][w];"],
+   okfb:'u를 거쳐 가는 새 경로의 길이 distance[u]+cost[u][w]가 기존 값보다 짧으면 갱신한다.',
+   choices:[
+     {text:"distance[u] + cost[u][w]",correct:true},
+     {text:"cost[u][w]",correct:false,mc:"edge-only",fb:"간선 하나의 길이만 비교하면 출발점에서 u까지 온 거리가 빠진다."},
+     {text:"distance[u]",correct:false,mc:"no-edge",fb:"u까지의 거리만으로는 w에 닿지 못한다 — u→w 간선을 더해야 한다."},
+     {text:"distance[w] + cost[u][w]",correct:false,mc:"self-add",fb:"갱신 대상인 distance[w]를 새 경로 쪽에 더하면 비교가 성립하지 않는다."}]},
+
+  /* ================= 6장(A) 단순 정렬 (X1101~X1105) ================= */
+  {id:"X1101", ch:"ch11", unit:"A", diff:1, src:"기사",
+   stem:'<b>안정(stable) 정렬</b>의 정의로 옳은 것은?',
+   okfb:'키가 같은 레코드들의 상대적 순서가 정렬 후에도 유지되는 정렬이다.',
+   choices:[
+     {text:"같은 키를 가진 레코드들의 원래 순서가 유지된다",correct:true},
+     {text:"어떤 입력에서도 실행 시간이 일정하다",correct:false,mc:"time-confuse",fb:"시간의 일관성은 별개의 성질 — 안정성은 같은 키의 순서에 대한 약속이다."},
+     {text:"추가 메모리를 전혀 사용하지 않는다",correct:false,mc:"inplace-confuse",fb:"그것은 제자리(in-place) 정렬의 성질이다."},
+     {text:"정렬 도중에 중단해도 앞부분은 정렬돼 있다",correct:false,mc:"partial-myth",fb:"회전마다 앞부분이 확정되는 것은 일부 정렬의 우연한 성질일 뿐이다."}]},
+
+  {id:"X1102", ch:"ch11", unit:"B", diff:2, src:"기사구", mono:true,
+   stem:'배열 <span class="mono">[8, 3, 4, 9, 7]</span>에 <b>선택 정렬 1회전</b>(최솟값 선택)을 수행한 직후의 배열은?',
+   okfb:'남은 전체에서 최솟값 3을 골라 맨 앞 8과 교환한다 — [3, 8, 4, 9, 7].',
+   choices:[
+     {text:"3, 8, 4, 9, 7",correct:true},
+     {text:"3, 4, 8, 9, 7",correct:false,mc:"multi-move",fb:"1회전의 교환은 한 번뿐이다 — 최솟값과 맨 앞만 자리를 바꾼다."},
+     {text:"3, 8, 4, 7, 9",correct:false,mc:"bubble-confuse",fb:"이웃 교환으로 큰 값이 끝으로 밀리는 것은 버블 정렬의 1회전이다."},
+     {text:"8, 3, 4, 7, 9",correct:false,mc:"max-confuse",fb:"최솟값 선택은 앞자리를 확정한다 — 뒤가 아니라 앞이 바뀐다."}]},
+
+  {id:"X1103", ch:"ch11", unit:"C", diff:2, src:"기사구", mono:true,
+   stem:'배열 <span class="mono">[9, 6, 7, 3, 5]</span>에 <b>버블 정렬 1회전</b>을 수행한 직후의 배열은?',
+   okfb:'9가 이웃 비교마다 교환되며 끝까지 밀려간다 — [6, 7, 3, 5, 9].',
+   choices:[
+     {text:"6, 7, 3, 5, 9",correct:true},
+     {text:"3, 9, 6, 7, 5",correct:false,mc:"select-confuse",fb:"최솟값이 앞으로 오는 것은 선택 정렬 — 버블은 최댓값이 뒤로 간다."},
+     {text:"6, 7, 5, 3, 9",correct:false,mc:"pair-slip",fb:"3과 5는 이번 회전에서 비교될 때 이미 순서가 맞아 교환되지 않는다."},
+     {text:"3, 5, 6, 7, 9",correct:false,mc:"onepass-myth",fb:"완성까지는 여러 회전이 필요하다 — 1회전은 최댓값 하나만 확정한다."}]},
+
+  {id:"X1104", ch:"ch11", unit:"D", diff:1, src:"기사",
+   stem:'<b>거의 정렬된</b> 입력에서 가장 빨리 끝나는 단순 정렬과 그 이유는?',
+   okfb:'삽입 정렬 — 제자리에 있는 원소는 비교 한 번으로 끝나, 정렬된 입력이면 O(n)에 끝난다.',
+   choices:[
+     {text:"삽입 정렬 — 제자리 원소는 비교 한 번으로 끝나므로",correct:true},
+     {text:"선택 정렬 — 교환 횟수가 가장 적으므로",correct:false,mc:"select-trait",fb:"교환은 적지만 비교는 입력과 무관하게 항상 n(n−1)/2번이다."},
+     {text:"버블 정렬 — 이웃만 비교하므로 가장 단순해서",correct:false,mc:"simple-myth",fb:"단순함과 속도는 별개다 — 기본 버블은 정렬된 입력에도 전 회전을 돈다."},
+     {text:"셋 다 같다 — 모두 O(n²)이므로",correct:false,mc:"bigO-flat",fb:"최악의 자릿수가 같아도 입력에 따른 실제 횟수는 다르다 — 삽입만 입력에 민감하다."}]},
+
+  {id:"X1105", ch:"ch11", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'삽입 정렬 코드다. 빈칸에 들어갈 것은?',
+   code:["for (i = 1; i < n; i++){","  next = list[i];","  for (j = i-1; j >= 0 && list[j] > next; j--)","    ________ ;","  list[j+1] = next;","}"],
+   okfb:'큰 원소를 한 칸 뒤로 민다 — list[j+1] = list[j].',
+   choices:[
+     {text:"list[j+1] = list[j]",correct:true},
+     {text:"list[j] = list[j+1]",correct:false,mc:"dir-swap",fb:"앞으로 당기면 밀 자리가 생기지 않는다 — 뒤로 밀어야 next의 자리가 난다."},
+     {text:"list[j] = next",correct:false,mc:"early-place",fb:"밀기가 끝나기 전에 next를 넣으면 아직 비교하지 않은 원소를 덮는다."},
+     {text:"SWAP(list[j], list[j+1])",correct:false,mc:"swap-waste",fb:"복사해 둔 next가 있으니 교환은 낭비다 — 한 방향 밀기만 하면 된다."}]},
+
+  /* ================= 6장(B) 고급 정렬 (X1201~X1205) ================= */
+  {id:"X1201", ch:"ch12", unit:"A", diff:1, src:"기사",
+   stem:'첫 원소를 피봇으로 삼는 <b>퀵 정렬</b>이 <b>최악의 O(n²)</b>이 되는 대표적 입력은?',
+   okfb:'이미 정렬된(또는 역순) 입력 — 분할이 1 : n−1로 쏠려 재귀 깊이가 n이 된다.',
+   choices:[
+     {text:"이미 정렬된 입력 — 분할이 한쪽으로 쏠리므로",correct:true},
+     {text:"무작위로 섞인 입력 — 예측이 불가능하므로",correct:false,mc:"random-myth",fb:"무작위 입력은 오히려 평균적인 절반 분할을 만든다 — 퀵의 좋은 경우다."},
+     {text:"모든 키가 서로 다른 입력",correct:false,mc:"distinct-myth",fb:"키가 다 다른 것은 문제가 아니다 — 쏠림은 순서에서 온다."},
+     {text:"크기가 홀수인 입력",correct:false,mc:"size-myth",fb:"크기의 홀짝은 분할의 균형과 무관하다."}]},
+
+  {id:"X1202", ch:"ch12", unit:"B", diff:2, src:"기사",
+   stem:'원소 <b>8개</b>를 반복(비재귀) <b>합병 정렬</b>로 정렬할 때, 필요한 <b>회전(pass)의 수</b>는?',
+   okfb:'런 길이가 1→2→4→8로 배가된다 — 회전 수는 ⌈log₂8⌉ = 3.',
+   choices:[
+     {text:"3",correct:true},
+     {text:"8",correct:false,mc:"n-confuse",fb:"n번 도는 것은 단순 정렬의 셈 — 합병은 회전마다 런이 배가된다."},
+     {text:"4",correct:false,mc:"off-one",fb:"1→2→4→8은 세 번의 배가다 — 시작 상태는 회전이 아니다."},
+     {text:"7",correct:false,mc:"n-1-confuse",fb:"n−1은 선택 정렬의 회전 수 — 합병은 log₂n번이면 된다."}]},
+
+  {id:"X1203", ch:"ch12", unit:"C", diff:2, src:"대학", mono:true,
+   stem:'배열 <span class="mono">[5, 3, 8, 1]</span>(인덱스 1부터)을 <b>max 히프로 구성</b>한 직후의 배열은?',
+   okfb:'마지막 내부 노드부터 조정한다: 3은 자식 1과 문제없음, 루트 5는 자식 3·8 중 큰 8과 교환 — [8, 3, 5, 1].',
+   choices:[
+     {text:"8, 3, 5, 1",correct:true},
+     {text:"8, 5, 3, 1",correct:false,mc:"sort-confuse",fb:"내림차순 완전 정렬이 아니다 — 부모≥자식만 맞추면 5는 3과 자리를 바꿀 이유가 없다."},
+     {text:"5, 3, 8, 1",correct:false,mc:"no-adjust",fb:"루트 5 아래에 8이 있으면 max 히프가 아니다 — 조정이 필요하다."},
+     {text:"1, 3, 5, 8",correct:false,mc:"min-confuse",fb:"작은 값이 위로 가는 것은 min 히프다."}]},
+
+  {id:"X1204", ch:"ch12", unit:"D", diff:1, src:"기사",
+   stem:'O(n log n) 정렬(퀵·합병·히프) 가운데 <b>안정</b>인 것은?',
+   okfb:'합병 정렬 — merge가 같은 키일 때 앞 배열을 먼저 옮기므로 순서가 유지된다. 퀵·히프는 원거리 교환으로 불안정.',
+   choices:[
+     {text:"합병 정렬",correct:true},
+     {text:"퀵 정렬",correct:false,mc:"quick-myth",fb:"분할의 원거리 교환이 같은 키의 순서를 뒤집을 수 있다 — 불안정이다."},
+     {text:"히프 정렬",correct:false,mc:"heap-myth",fb:"루트와 마지막 원소의 교환이 순서를 건너뛴다 — 불안정이다."},
+     {text:"셋 다 안정이다",correct:false,mc:"all-myth",fb:"셋 중 안정은 합병뿐 — 그래서 합병이 안정성이 필요한 곳의 표준이다."}]},
+
+  {id:"X1205", ch:"ch12", unit:"A", diff:3, src:"기사구", mono:true,
+   stem:'퀵 정렬의 <b>분할(partition)</b> 코드다. 마지막 빈칸에 들어갈 것은?',
+   code:["pivot = list[left]; i = left; j = right + 1;","do {","  do i++; while (list[i] < pivot);","  do j--; while (list[j] > pivot);","  if (i < j) SWAP(list[i], list[j]);","} while (i < j);","SWAP(list[left], ________ );"],
+   okfb:'두 인덱스가 교차한 뒤 j는 피봇 이하 구역의 끝 — 피봇을 list[j]와 교환해 제자리에 놓는다.',
+   choices:[
+     {text:"list[j]",correct:true},
+     {text:"list[i]",correct:false,mc:"ij-swap",fb:"교차 후 i는 피봇보다 큰 값 위에 있다 — 피봇이 큰 값 구역에 놓이게 된다."},
+     {text:"list[right]",correct:false,mc:"end-slip",fb:"오른쪽 끝은 분할 경계와 무관한 자리다."},
+     {text:"pivot",correct:false,mc:"var-confuse",fb:"pivot은 값의 복사본 — 배열의 칸이 아니라 교환할 수 없다."}]},
+
+  /* ================= 7장 해시 (X1301~X1305) ================= */
+  {id:"X1301", ch:"ch13", unit:"A", diff:1, src:"기사",
+   stem:'해싱에서 서로 다른 키가 <b>같은 주소로 계산</b>되는 일과, 그런 키들을 부르는 이름을 옳게 짝지은 것은?',
+   okfb:'같은 주소로 계산되는 일이 충돌(collision), 그렇게 된 키들이 동거자(synonym)다.',
+   choices:[
+     {text:"충돌(collision) — 동거자(synonym)",correct:true},
+     {text:"오버플로(overflow) — 동거자(synonym)",correct:false,mc:"overflow-confuse",fb:"오버플로는 버킷의 슬롯이 다 차서 저장할 곳이 없는 상태 — 충돌의 다음 단계다."},
+     {text:"충돌(collision) — 포화(saturation)",correct:false,mc:"term-slip",fb:"같은 주소의 키들을 부르는 표준 용어는 synonym이다."},
+     {text:"군집(cluster) — 프로브(probe)",correct:false,mc:"cluster-confuse",fb:"군집은 선형 조사에서 찬 칸들이 이어진 구간, 프로브는 조사 1회를 가리킨다."}]},
+
+  {id:"X1302", ch:"ch13", unit:"B", diff:2, src:"기사구", mono:true,
+   stem:'테이블 크기 <b>M = 13</b>인 해시 테이블에서 <b>제산법</b> <span class="mono">h(k) = k mod M</span>으로 키 <b>55</b>의 홈 주소를 구하면?',
+   okfb:'55 = 13×4 + 3 — 홈 주소는 3이다.',
+   choices:[
+     {text:"3",correct:true},
+     {text:"4",correct:false,mc:"quotient",fb:"4는 몫이다 — 제산법이 쓰는 것은 나머지다."},
+     {text:"55",correct:false,mc:"no-hash",fb:"키를 그대로 쓰면 테이블(0~12)을 벗어난다 — 나머지로 접어 넣는다."},
+     {text:"5",correct:false,mc:"digit-slip",fb:"끝자리 5는 mod 10의 결과 — M이 13이면 13으로 나눈 나머지다."}]},
+
+  {id:"X1303", ch:"ch13", unit:"C", diff:2, src:"대학", mono:true,
+   stem:'M = 7, <span class="mono">h(k) = k mod 7</span>인 빈 테이블에 <b>선형 조사</b>로 키 <b>15, 8, 22</b>를 차례로 삽입한다. <b>22가 저장되는 인덱스</b>는?',
+   okfb:'15→[1]. 8도 홈 주소 1이라 충돌 — [2]에 저장. 22도 홈 주소 1 — [1]·[2]가 차 있어 [3]에 저장된다.',
+   choices:[
+     {text:"3",correct:true},
+     {text:"1",correct:false,mc:"no-probe",fb:"홈 주소 [1]에는 이미 15가 저장되어 있다 — 다음 칸으로 조사를 이어가야 한다."},
+     {text:"2",correct:false,mc:"one-probe",fb:"[2]는 8이 차지했다 — 한 칸 더 이동해야 한다."},
+     {text:"4",correct:false,mc:"over-probe",fb:"[3]은 비어 있다 — 빈 칸을 만나는 즉시 저장한다."}]},
+
+  {id:"X1304", ch:"ch13", unit:"A", diff:1, src:"기사",
+   stem:'슬롯 24개짜리 해시 테이블에 레코드 18개가 저장돼 있다. <b>적재율(적재 밀도) α</b>는?',
+   okfb:'α = 저장된 레코드 수 ÷ 전체 슬롯 수 = 18/24 = 0.75.',
+   choices:[
+     {text:"0.75",correct:true},
+     {text:"1.33",correct:false,mc:"reciprocal",fb:"24/18로 뒤집어 나눈 값 — α는 찬 비율이라 1을 넘을 수 없다(슬롯 기준)."},
+     {text:"0.25",correct:false,mc:"empty-ratio",fb:"0.25는 빈 슬롯의 비율 — α는 채워진 쪽을 잰다."},
+     {text:"18",correct:false,mc:"count-confuse",fb:"레코드 개수 그 자체가 아니라, 전체 대비 비율이다."}]},
+
+  {id:"X1305", ch:"ch13", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'<b>체이닝</b> 해시 테이블에 새 노드 p를 버킷 h의 체인 <b>맨 앞</b>에 삽입하는 코드다. 빈칸에 들어갈 것은?',
+   code:["p = malloc(sizeof(Node));","p->key = k;","p->link = tab[h];","________ ;"],
+   okfb:'새 노드가 기존 체인 전체를 뒤에 매단 뒤, 버킷의 머리를 새 노드로 바꾼다 — tab[h] = p.',
+   choices:[
+     {text:"tab[h] = p",correct:true},
+     {text:"tab[h]->link = p",correct:false,mc:"tail-attempt",fb:"머리의 뒤에 붙이면 맨 앞 삽입이 아니고, 빈 버킷(NULL)에서는 역참조 오류가 난다."},
+     {text:"p = tab[h]",correct:false,mc:"assign-reverse",fb:"대입 방향이 반대다 — 새 노드를 잃고 테이블은 그대로다."},
+     {text:"p->link = NULL",correct:false,mc:"chain-cut",fb:"기존 체인을 끊어 버린다 — 이미 p->link가 체인을 물고 있다."}]},
+
+  /* ===== v2.1 — 기말 범위 확정(중간 이후 = ch07~ch13)에 따른 2차 확장: 장별 +3문 ===== */
+
+  {id:"X706", ch:"ch07", unit:"A", diff:1, src:"기사",
+   stem:'<b>우선순위 큐</b>의 삭제 연산이 꺼내는 원소는?',
+   okfb:'우선순위 큐는 들어온 순서가 아니라 <b>우선순위가 가장 높은</b> 원소를 꺼낸다 — 그래서 히프로 구현한다.',
+   choices:[
+     {text:"우선순위가 가장 높은 원소",correct:true},
+     {text:"가장 먼저 들어온 원소",correct:false,mc:"fifo-confuse",fb:"먼저 온 순서(FIFO)는 보통 큐의 규칙이다."},
+     {text:"가장 나중에 들어온 원소",correct:false,mc:"lifo-confuse",fb:"나중 것부터(LIFO)는 스택의 규칙이다."},
+     {text:"임의의 원소 하나",correct:false,mc:"random-myth",fb:"임의라면 자료구조가 필요 없다 — 꺼내는 기준이 곧 우선순위다."}]},
+
+  {id:"X707", ch:"ch07", unit:"B", diff:2, src:"대학", mono:true,
+   stem:'배열 <span class="mono">[9, 7, 8, 3, 2, 5]</span>(인덱스 1부터)로 저장된 max 히프에 키 <b>10</b>을 삽입한 직후의 배열은?',
+   okfb:'10은 [7]에 들어가 부모 8(인덱스 3), 다시 부모 9(루트)를 이기며 두 번 올라간다 — [10, 7, 9, 3, 2, 5, 8].',
+   choices:[
+     {text:"10, 7, 9, 3, 2, 5, 8",correct:true},
+     {text:"9, 7, 8, 3, 2, 5, 10",correct:false,mc:"no-up",fb:"끝에 붙인 채 끝나면 부모 8보다 큰 10이 아래에 있다 — 올라가기가 필요하다."},
+     {text:"10, 9, 8, 3, 2, 5, 7",correct:false,mc:"resort",fb:"전체를 내림차순으로 다시 세우는 게 아니다 — 10이 지나간 경로만 바뀐다."},
+     {text:"10, 7, 8, 3, 2, 5, 9",correct:false,mc:"swap-slip",fb:"10과 자리를 바꾸는 것은 경로 위의 8과 9다 — 8이 [7]로 내려간다."}]},
+
+  {id:"X708", ch:"ch07", unit:"B", diff:3, src:"기사구", mono:true,
+   stem:'max 히프의 <b>삽입</b> 코드다. 빈칸에 공통으로 들어갈 것은?',
+   code:["i = ++n;","while (i != 1 && item > heap[ ____ ]) {","  heap[i] = heap[ ____ ];","  i = ____ ;","}","heap[i] = item;"],
+   okfb:'올라가기의 상대는 언제나 부모 — 인덱스 i의 부모는 i/2다.',
+   choices:[
+     {text:"i / 2",correct:true},
+     {text:"i * 2",correct:false,mc:"child-slip",fb:"i*2는 왼쪽 자식 — 삽입은 아래에서 위로, 부모와 비교한다."},
+     {text:"i - 1",correct:false,mc:"linear-slip",fb:"한 칸 앞은 형제나 남 — 트리의 부모는 i/2에 있다."},
+     {text:"n / 2",correct:false,mc:"fixed-slip",fb:"n/2는 마지막 내부 노드 — 올라가는 위치 i에 따라 부모도 바뀌어야 한다."}]},
+
+  {id:"X806", ch:"ch08", unit:"A", diff:2, src:"기사",
+   stem:'정점이 <b>5개</b>인 <b>방향</b> 그래프가 가질 수 있는 간선의 최대 수는? (자기 자신으로의 간선 제외)',
+   okfb:'모든 순서쌍이 서로 다른 간선이다 — n(n−1) = 5×4 = 20.',
+   choices:[
+     {text:"20",correct:true},
+     {text:"10",correct:false,mc:"undir-confuse",fb:"10 = n(n−1)/2는 무방향의 값 — 방향에서는 두 방향이 서로 다른 간선이다."},
+     {text:"25",correct:false,mc:"self-loop",fb:"25 = n²은 자기 자신으로의 간선까지 센 것이다."},
+     {text:"4",correct:false,mc:"tree-confuse",fb:"n−1은 신장 트리의 간선 수다."}]},
+
+  {id:"X807", ch:"ch08", unit:"C", diff:1, src:"기사",
+   stem:'<b>무방향</b> 그래프의 인접 행렬이 항상 갖는 성질은?',
+   okfb:'간선 (i, j)가 [i][j]와 [j][i]를 함께 1로 만들므로, 행렬은 대각선을 기준으로 대칭이다.',
+   choices:[
+     {text:"주대각선을 기준으로 대칭이다",correct:true},
+     {text:"모든 대각선 원소가 1이다",correct:false,mc:"diag-myth",fb:"대각선 [i][i]는 자기 간선 자리 — 보통 0이다."},
+     {text:"각 행의 합이 모두 같다",correct:false,mc:"degree-myth",fb:"행의 합은 그 정점의 차수 — 정점마다 다를 수 있다."},
+     {text:"0이 하나도 없다",correct:false,mc:"complete-confuse",fb:"0이 없는 것은 완전 그래프일 때뿐이다."}]},
+
+  {id:"X808", ch:"ch08", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'<b>인접 리스트</b>로 저장된 그래프에서 정점 v의 차수를 세는 코드다. 빈칸에 들어갈 것은?',
+   code:["int degree(int v){","  int count = 0;","  GraphNode *p;","  for (p = graph[v]; p != NULL; p = ____ )","    count++;","  return count;","}"],
+   okfb:'체인을 따라 다음 노드로 이동한다 — p = p->link.',
+   choices:[
+     {text:"p->link",correct:true},
+     {text:"p->vertex",correct:false,mc:"field-confuse",fb:"vertex는 정점 번호(값) — 다음 노드를 가리키는 것은 link다."},
+     {text:"graph[v]",correct:false,mc:"reset-loop",fb:"머리로 되돌리면 무한 반복이다."},
+     {text:"graph[p->vertex]",correct:false,mc:"jump-slip",fb:"이웃 정점의 리스트로 건너뛰면 v의 차수가 아니라 남의 체인을 세게 된다."}]},
+
+  {id:"X906", ch:"ch09", unit:"D", diff:1, src:"기사",
+   stem:'연결되지 않은 그래프에서 <b>연결 요소</b>들을 모두 찾는 표준 방법은?',
+   okfb:'아직 방문하지 않은 정점이 남아 있는 동안, 그 정점에서 DFS(또는 BFS)를 다시 시작한다 — 시작한 횟수가 곧 연결 요소의 수다.',
+   choices:[
+     {text:"미방문 정점마다 탐색을 다시 시작한다",correct:true},
+     {text:"모든 정점 쌍의 경로 존재를 하나씩 검사한다",correct:false,mc:"pairwise-waste",fb:"n²쌍 검사는 낭비다 — 탐색 한 번이 요소 하나를 통째로 방문한다."},
+     {text:"차수가 0인 정점의 수를 센다",correct:false,mc:"isolated-only",fb:"고립 정점만 세면 여러 정점짜리 요소를 놓친다."},
+     {text:"간선 수가 n−1인지 확인한다",correct:false,mc:"tree-confuse",fb:"그것은 트리 판정의 일부 — 요소를 나열하지는 못한다."}]},
+
+  {id:"X907", ch:"ch09", unit:"A", diff:2, src:"대학", mono:true,
+   stem:'인접 정점: <span class="mono">0:(1,2) / 1:(0,3) / 2:(0,3) / 3:(1,2)</span>. 정점 0에서 <b>DFS</b>를 시작하면(번호 작은 쪽 먼저) 방문 순서는?',
+   okfb:'0→1→3(1의 다음 인접), 3에서 2로 이어진다 — 0 1 3 2.',
+   choices:[
+     {text:"0 1 3 2",correct:true},
+     {text:"0 1 2 3",correct:false,mc:"bfs-confuse",fb:"0의 이웃을 먼저 다 도는 것은 BFS다 — DFS는 1에서 3으로 파고든다."},
+     {text:"0 2 3 1",correct:false,mc:"order-slip",fb:"번호 작은 쪽 먼저 규칙이면 0에서 1을 2보다 먼저 방문한다."},
+     {text:"0 3 1 2",correct:false,mc:"adj-miss",fb:"3은 0의 인접 정점이 아니다 — 1이나 2를 거쳐야 닿는다."}]},
+
+  {id:"X908", ch:"ch09", unit:"C", diff:3, src:"기사구", mono:true,
+   stem:'너비 우선 탐색(BFS) 코드다. 빈칸에 들어갈 것은?',
+   code:["visited[v] = TRUE;","enqueue(q, v);","while (!is_empty(q)) {","  v = dequeue(q);","  for (w = graph[v]; w; w = w->link)","    if (!visited[w->vertex]) {","      visited[w->vertex] = TRUE;","      ________ ;","    }","}"],
+   okfb:'새로 발견한 정점을 큐의 뒤에 세운다 — enqueue(q, w->vertex).',
+   choices:[
+     {text:"enqueue(q, w->vertex)",correct:true},
+     {text:"enqueue(q, v)",correct:false,mc:"self-requeue",fb:"방금 꺼낸 v를 다시 넣으면 무한 반복이다 — 넣을 것은 새 이웃이다."},
+     {text:"dequeue(q)",correct:false,mc:"op-reverse",fb:"발견은 넣기(enqueue)다 — 꺼내기는 while의 첫 줄이 맡는다."},
+     {text:"push(s, w->vertex)",correct:false,mc:"dfs-confuse",fb:"스택에 쌓으면 깊이 우선이 된다 — BFS는 큐다."}]},
+
+  {id:"X1006", ch:"ch10", unit:"A", diff:1, src:"기사",
+   stem:'<b>신장 트리</b>에 원래 그래프의 간선 하나를 <b>추가</b>하면 반드시 생기는 것은?',
+   okfb:'트리에서는 어떤 두 정점 사이든 경로가 이미 하나 있다 — 간선을 더하면 그 경로와 합쳐져 사이클이 된다.',
+   choices:[
+     {text:"사이클",correct:true},
+     {text:"고립 정점",correct:false,mc:"reverse-effect",fb:"간선을 더해서 고립이 생길 수는 없다 — 연결은 더 늘어난다."},
+     {text:"새로운 연결 요소",correct:false,mc:"component-confuse",fb:"신장 트리는 이미 전부 연결돼 있다 — 요소가 늘 이유가 없다."},
+     {text:"아무 일도 일어나지 않는다",correct:false,mc:"no-change-myth",fb:"두 끝 정점 사이에 이미 경로가 있으므로, 새 간선은 반드시 사이클을 닫는다."}]},
+
+  {id:"X1007", ch:"ch10", unit:"B", diff:2, src:"대학", mono:true,
+   stem:'간선 <span class="mono">(A,B)=1, (C,D)=2, (B,C)=3, (A,C)=4, (B,D)=5</span>인 그래프에 <b>Kruskal</b>을 적용할 때 <b>처음으로 거부되는</b> 간선은?',
+   okfb:'1·2 채택, 3은 {A,B}와 {C,D}를 잇는 다리라 채택 — 4 (A,C)에서 A와 C가 이미 같은 트리이므로 처음 거부된다.',
+   choices:[
+     {text:"(A,C) = 4",correct:true},
+     {text:"(B,C) = 3",correct:false,mc:"bridge-miss",fb:"3이 올 때 A·B와 C·D는 아직 서로 다른 트리다 — 잇는 간선은 채택된다."},
+     {text:"(B,D) = 5",correct:false,mc:"late-slip",fb:"5도 거부되지만 처음이 아니다 — 4가 먼저 사이클 검사에 걸린다."},
+     {text:"(C,D) = 2",correct:false,mc:"early-slip",fb:"2가 올 때 C와 D는 아직 어느 트리에도 함께 있지 않다 — 채택된다."}]},
+
+  {id:"X1008", ch:"ch10", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'Dijkstra의 <b>choose</b> 함수 — 다음에 확정할 정점을 고른다. 빈칸에 들어갈 것은?',
+   code:["int choose(int distance[], int n, int found[]){","  int i, min = INT_MAX, minpos = -1;","  for (i = 0; i < n; i++)","    if (distance[i] < min && ________ ) {","      min = distance[i];  minpos = i;","    }","  return minpos;","}"],
+   okfb:'아직 확정되지 않은 정점 중에서만 골라야 한다 — !found[i].',
+   choices:[
+     {text:"!found[i]",correct:true},
+     {text:"found[i]",correct:false,mc:"negate-miss",fb:"이미 확정된 정점을 다시 고르면 알고리즘이 제자리를 돈다."},
+     {text:"distance[i] > 0",correct:false,mc:"zero-slip",fb:"출발 정점의 거리 0도 유효한 값이다 — 확정 여부와는 무관하다."},
+     {text:"i != 0",correct:false,mc:"start-only",fb:"출발 정점만 빼는 것으로는 부족하다 — 확정된 모든 정점을 빼야 한다."}]},
+
+  {id:"X1106", ch:"ch11", unit:"B", diff:2, src:"기사",
+   stem:'원소 <b>5개</b>를 선택 정렬로 정렬할 때 <b>총 비교 횟수</b>는? (입력의 순서와 무관)',
+   okfb:'회전마다 4, 3, 2, 1번 — 합계 n(n−1)/2 = 10번. 선택 정렬의 비교 횟수는 입력과 무관하게 고정이다.',
+   choices:[
+     {text:"10",correct:true},
+     {text:"5",correct:false,mc:"n-confuse",fb:"n번이 아니다 — 회전마다 남은 원소 전부와 비교한다."},
+     {text:"25",correct:false,mc:"square",fb:"n²은 근사 자릿수일 뿐 — 정확한 값은 n(n−1)/2다."},
+     {text:"4",correct:false,mc:"pass-confuse",fb:"4는 회전(pass)의 수 — 비교는 그 안에서 여러 번 일어난다."}]},
+
+  {id:"X1107", ch:"ch11", unit:"A", diff:1, src:"기사",
+   stem:'정렬할 레코드 전체가 <b>주기억장치에 올라온 채</b> 진행되는 정렬을 부르는 이름은?',
+   okfb:'내부 정렬 — 전부 메모리 안에서 끝난다. 다 안 들어가 보조 기억장치를 오가면 외부 정렬이다.',
+   choices:[
+     {text:"내부 정렬",correct:true},
+     {text:"외부 정렬",correct:false,mc:"reverse",fb:"외부 정렬은 데이터가 주기억장치에 다 들어가지 않을 때의 방식이다."},
+     {text:"안정 정렬",correct:false,mc:"stable-confuse",fb:"안정성은 같은 키의 순서 보존에 대한 성질 — 저장 위치와 무관하다."},
+     {text:"제자리 정렬",correct:false,mc:"inplace-confuse",fb:"제자리(in-place)는 추가 메모리를 거의 안 쓴다는 뜻 — 이 구분과는 다른 축이다."}]},
+
+  {id:"X1108", ch:"ch11", unit:"C", diff:3, src:"기사구", mono:true,
+   stem:'버블 정렬 코드다. 빈칸에 <b>공통으로</b> 들어갈 것은?',
+   code:["for (i = n-1; i > 0; i--)","  for (j = 0; j < i; j++)","    if (list[j] > list[ ____ ])","      SWAP(list[j], list[ ____ ]);"],
+   okfb:'버블 정렬은 이웃끼리 비교하고 교환한다 — j의 이웃은 j+1.',
+   choices:[
+     {text:"j + 1",correct:true},
+     {text:"i",correct:false,mc:"far-compare",fb:"멀리 있는 i와 비교하면 이웃 교환이 아니다 — 선택 정렬과도 다른 엉뚱한 동작이 된다."},
+     {text:"j - 1",correct:false,mc:"dir-slip",fb:"j는 0부터 시작한다 — j−1은 첫 회에 배열 밖이다."},
+     {text:"n - 1",correct:false,mc:"end-fixed",fb:"항상 끝 원소와 비교하면 지나가는 자리의 이웃 관계가 무너진다."}]},
+
+  {id:"X1206", ch:"ch12", unit:"B", diff:2, src:"대학", mono:true,
+   stem:'배열 <span class="mono">[8, 3, 2, 9, 7, 1, 5, 4]</span>에 반복 합병 정렬의 <b>1회전</b>(길이 1끼리 합병)을 수행한 직후의 배열은?',
+   okfb:'이웃한 둘씩 정렬해 합친다: (8,3)(2,9)(7,1)(5,4) → [3, 8, 2, 9, 1, 7, 4, 5].',
+   choices:[
+     {text:"3, 8, 2, 9, 1, 7, 4, 5",correct:true},
+     {text:"1, 2, 3, 4, 5, 7, 8, 9",correct:false,mc:"onepass-myth",fb:"완성은 ⌈log₂8⌉ = 3회전 뒤다 — 1회전은 길이 2짜리 런을 만들 뿐이다."},
+     {text:"3, 2, 8, 9, 1, 5, 7, 4",correct:false,mc:"pair-slip",fb:"짝은 (8,3)(2,9)(7,1)(5,4) — 각 짝 안에서만 순서를 맞춘다."},
+     {text:"3, 8, 9, 2, 1, 7, 5, 4",correct:false,mc:"half-merge",fb:"(2,9)와 (5,4)도 각각 합병 대상이다 — 절반만 처리하고 멈추지 않는다."}]},
+
+  {id:"X1207", ch:"ch12", unit:"C", diff:1, src:"기사",
+   stem:'<b>히프 정렬</b>의 시간 복잡도로 옳은 것은?',
+   okfb:'삭제(재조정 log n)를 n번 반복 — 최선·평균·최악 모두 O(n log n)이다. 입력에 따라 무너지지 않는 것이 히프 정렬의 강점.',
+   choices:[
+     {text:"최선·평균·최악 모두 O(n log n)",correct:true},
+     {text:"평균 O(n log n), 최악 O(n²)",correct:false,mc:"quick-confuse",fb:"최악이 n²으로 무너지는 것은 퀵 정렬이다."},
+     {text:"최선 O(n), 최악 O(n²)",correct:false,mc:"insert-confuse",fb:"입력에 따라 n에서 n²까지 출렁이는 것은 삽입 정렬이다."},
+     {text:"항상 O(n²)",correct:false,mc:"simple-confuse",fb:"n²은 단순 정렬들의 자릿수 — 히프는 트리 높이 덕에 log n을 얻는다."}]},
+
+  {id:"X1208", ch:"ch12", unit:"B", diff:3, src:"기사구", mono:true,
+   stem:'두 정렬 구간을 합치는 <b>merge</b> 코드의 마무리다. 빈칸에 들어갈 것은?',
+   code:["while (i <= mid && j <= right)","  list[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];","while (i <= mid)","  ________ ;","while (j <= right)","  list[k++] = a[j++];"],
+   okfb:'한쪽이 끝나면 남은 쪽을 그대로 옮긴다 — 앞 구간의 잔여 복사는 list[k++] = a[i++].',
+   choices:[
+     {text:"list[k++] = a[i++]",correct:true},
+     {text:"list[k++] = a[j++]",correct:false,mc:"side-swap",fb:"이 루프의 조건은 i <= mid — 앞 구간의 잔여를 옮기는 자리다."},
+     {text:"i++",correct:false,mc:"skip-copy",fb:"인덱스만 밀면 남은 원소들이 결과에서 사라진다."},
+     {text:"list[k] = a[i]",correct:false,mc:"no-advance",fb:"두 인덱스를 전진시키지 않으면 같은 자리에 무한히 복사한다."}]},
+
+  {id:"X1306", ch:"ch13", unit:"B", diff:1, src:"기사",
+   stem:'제산법 <span class="mono">h(k) = k mod M</span>에서 테이블 크기 M을 <b>소수</b>로 고르는 이유는?',
+   okfb:'M이 키들의 패턴과 공약수를 가지면 특정 버킷에만 쏠린다 — 소수는 1 이외의 공약수를 갖지 않아 고르게 흩는다.',
+   choices:[
+     {text:"키의 패턴과 공약수를 갖지 않아 주소가 고르게 흩어지므로",correct:true},
+     {text:"소수는 나눗셈 연산이 더 빠르므로",correct:false,mc:"speed-myth",fb:"나눗셈 속도는 M의 소수 여부와 무관하다 — 문제는 분포다."},
+     {text:"소수 크기의 테이블은 오버플로가 발생하지 않으므로",correct:false,mc:"overflow-myth",fb:"오버플로는 적재율의 문제 — 테이블 크기의 소수성과는 무관하다."},
+     {text:"충돌 자체가 일어나지 않게 되므로",correct:false,mc:"no-collision-myth",fb:"키가 버킷보다 많으면 충돌은 피할 수 없다 — 소수는 쏠림을 줄일 뿐이다."}]},
+
+  {id:"X1307", ch:"ch13", unit:"C", diff:2, src:"대학", mono:true,
+   stem:'M = 7, <span class="mono">h(k) = k mod 7</span>인 선형 조사 테이블에 현재 <span class="mono">[3]=10, [4]=17</span>만 저장되어 있다(둘 다 홈 주소 3). 키 <b>24</b>를 삽입하면 저장되는 인덱스는?',
+   okfb:'24의 홈 주소도 3 — [3]·[4]가 차 있으므로 한 칸씩 이동해 [5]에 저장된다.',
+   choices:[
+     {text:"5",correct:true},
+     {text:"3",correct:false,mc:"no-probe",fb:"[3]에는 이미 10이 저장되어 있다 — 다음 칸으로 조사를 이어간다."},
+     {text:"4",correct:false,mc:"one-probe",fb:"[4]는 17이 차지했다 — 한 칸 더 이동해야 한다."},
+     {text:"0",correct:false,mc:"wrap-slip",fb:"처음으로 되돌아오는 것은 [6]까지 다 찼을 때다 — [5]가 비어 있다."}]},
+
+  {id:"X1308", ch:"ch13", unit:"D", diff:3, src:"기사구", mono:true,
+   stem:'<b>체이닝</b> 해시 테이블의 <b>탐색</b> 코드다. 빈칸에 들어갈 것은?',
+   code:["Node* search(int k){","  int h = k % M;","  Node *p = tab[h];","  while (p != NULL) {","    if (p->key == k) return p;","    ________ ;","  }","  return NULL;","}"],
+   okfb:'같은 버킷의 체인을 따라 다음 노드로 이동한다 — p = p->link.',
+   choices:[
+     {text:"p = p->link",correct:true},
+     {text:"p = tab[h+1]",correct:false,mc:"probe-confuse",fb:"옆 버킷으로 옮겨 가는 것은 선형 조사의 방식 — 체이닝은 한 버킷의 체인만 따라간다."},
+     {text:"h = (h + 1) % M",correct:false,mc:"rehash-slip",fb:"주소를 다시 계산할 이유가 없다 — 동거자들은 전부 이 체인에 있다."},
+     {text:"p->link = p",correct:false,mc:"assign-reverse",fb:"대입 방향이 반대다 — 체인을 자기 자신으로 덮어써 망가뜨린다."}]}
 
   ]};
 

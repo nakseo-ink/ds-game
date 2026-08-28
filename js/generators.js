@@ -2533,8 +2533,8 @@ function genAP8ch(idx){
     const n=pick([5,6,7,8]);
     const ans=String(n*(n-1));
     const cands=[
-      {text:String(n*(n-1)/2),correct:false,mc:"undir-confuse",fb:"절반은 무방향의 값 — 방향에서는 <a,b>와 <b,a>가 서로 다른 간선이다."},
-      {text:String(n*n),correct:false,mc:"square-slip",fb:"셀프 루프 <v,v>는 허용되지 않는다."},
+      {text:String(n*(n-1)/2),correct:false,mc:"undir-confuse",fb:"절반은 무방향의 값 — 방향에서는 &lt;a,b&gt;와 &lt;b,a&gt;가 서로 다른 간선이다."},
+      {text:String(n*n),correct:false,mc:"square-slip",fb:"셀프 루프 &lt;v,v&gt;는 허용되지 않는다."},
       {text:String(2*n),correct:false,mc:"linear-guess",fb:"정점마다 나머지 전부로 나가는 간선이 있다 — 곱으로 자란다."}
     ];
     return {id:"AP8",qtype:"dircomp",params:{n,ans},

@@ -27,6 +27,7 @@ if(!wallet.cleared) wallet.cleared={};                       /* 챕터 클리어
 if(!wallet.examDone) wallet.examDone={};                     /* 시험 챕터 — 정산(보상·trust) 1회 지급 가드 */
 if(!wallet.examBest) wallet.examBest={};                     /* 시험 챕터 — 최고 점수 기록 */
 if(typeof wallet.e1Done!=="boolean") wallet.e1Done=false;    /* E1(어머니의 질문) — 최초 1회 발동 */
+if(typeof wallet.finaleBonusDone!=="boolean") wallet.finaleBonusDone=false;  /* chF 학기말 보너스 — 1회 지급 가드 */
 function addClue(id,text){
   if(wallet.clues.some(c=>c.id===id)) return false;
   wallet.clues.push({id,text}); saveWallet(); log("clue_found",{id});
@@ -1283,12 +1284,12 @@ function exSettle(){
   const imp=(lastR>1&&s1!==undefined)?('<div style="font-size:15px;color:var(--ink-dim);margin-top:6px;">진단 '+s1+'점 → 최종 <b style="color:var(--accent);">'+final+'점</b>'+(final>s1?' <b style="color:var(--accent2);">(+'+(final-s1)+' — 특훈의 값이다)</b>':final<s1?' (−'+(s1-final)+')':' (동점)')+'</div>'):'';
   const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">※ '+CH.meta.title+' — 결과</div>'+
     '<div class="card" style="background:var(--panel2);margin-top:12px;text-align:center;">'+
-    '<div style="font-size:13px;color:var(--ink-dim);">도윤의 중간고사 점수</div>'+
+    '<div style="font-size:13px;color:var(--ink-dim);">도윤의 '+CH.meta.title+' 점수</div>'+
     '<div style="font-size:38px;color:var(--accent);margin:4px 0;"><b>'+final+'</b><span style="font-size:16px;color:var(--ink-dim);"> / 100 — '+band.name+'</span></div>'+imp+
     '<div style="font-size:12.5px;color:var(--ink-dim);">최종 모의 풀이 시간 '+exFmtMs(EX.times[lastR]||0)+(wallet.examBest[CURCH]!==undefined?' · 기록 최고 '+wallet.examBest[CURCH]+'점':'')+'</div></div>'+
     '<div class="dlg" style="margin-top:14px;"><div class="portrait">'+AV(final>=cfg.passLine?"doyun-happy":"doyun-worried")+'</div><div class="bubble"><div class="who">도윤</div>'+band.doyun+'</div></div>'+
-    (first&&pay?('<div class="dlg" style="margin-top:10px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>중간고사예요. 과외비도 <b>중간고사만큼</b> — '+final+'점, 평소의 두 배로 계산했어요.</div></div>'+
-      '<div class="card" style="background:var(--panel2);margin-top:10px;">💰 중간고사 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+final+'점 × '+cfg.payPerPoint.toLocaleString()+'원)</span> → 잔고 <b>'+money(S.balance)+'</b></div>'):'')+
+    (first&&pay?('<div class="dlg" style="margin-top:10px;"><div class="portrait">'+AV("madam")+'</div><div class="bubble"><div class="who">윤 여사</div>'+CH.meta.title+'예요. 과외비도 <b>'+CH.meta.title+'만큼</b> — '+final+'점, 평소의 두 배로 계산했어요.</div></div>'+
+      '<div class="card" style="background:var(--panel2);margin-top:10px;">💰 '+CH.meta.title+' 과외비 +'+money(pay)+' <span style="color:var(--ink-dim);font-size:13px;">('+final+'점 × '+cfg.payPerPoint.toLocaleString()+'원)</span> → 잔고 <b>'+money(S.balance)+'</b></div>'):'')+
     '<div class="caption" style="min-height:auto;margin-top:10px;">현관을 나서는 길 — 윤 여사가 한마디를 얹는다. '+EX.momLine+'</div>'+
     (band.threat?('<div class="dlg" style="margin-top:10px;"><div class="portrait">📵</div><div class="bubble"><div class="who">발신 번호 없음 <span style="color:var(--ink-dim);font-size:11.5px;">— 밤 11시 정각</span></div>'+band.threat+'</div></div>'):'')+
     '<div style="margin-top:16px;text-align:right;">'+
@@ -1298,12 +1299,13 @@ function exSettle(){
   stage.appendChild(card);
   const rv=$("#exrev2"); if(rv) rv.onclick=()=>exReview(wrongLast,0,exSettle);
   const rt=$("#exretry"); if(rt) rt.onclick=()=>{ exBuildRx(lastR); exDlgSeq(CH.clinicIntro,0,"클리닉 개시",exClinic); };
+  const exNext=(CH.finale&&final>=cfg.passLine)?()=>exFinale(final):exOutro;  /* chF — 통과 시 피날레 시퀀스로 */
   $("#exdoor").onclick=()=>{
     commit();  /* 미달 상태로 나가는 경우 — 이 순간 확정(1회 가드) */
-    if(wallet.e1Done){ exOutro(); return; }
+    if(wallet.e1Done){ exNext(); return; }
     wallet.e1Done=true; saveWallet(); log("e1_fired",{trust:wallet.trust});
     const beats=wallet.trust<=3?CH.e1.low:wallet.trust>=7?CH.e1.high:CH.e1.mid;
-    exDlgSeq(beats,0,"챕터 종료 ▶",exOutro);
+    exDlgSeq(beats,0,"챕터 종료 ▶",exNext);
   };
 }
 function exOutro(){
@@ -1317,6 +1319,27 @@ function exOutro(){
     '<div style="margin-top:20px;"><button class="btn ghost" id="exagain">특훈 다시 열기 ↺</button> <button class="btn" id="extitle">타이틀로 ▶</button></div></div>'));
   $("#exagain").onclick=()=>{ log("exam_again",{}); exStart(); };
   $("#extitle").onclick=sceneTitle;
+}
+/* ---- 피날레 (chF 전용 — CH.finale이 있고 통과했을 때만 exSettle이 호출) ----
+   beats(cond 지원) 재생 → 학기말 보너스(bonusMin 이상, 1회 가드) → 종료 카드 → exOutro */
+function exFinale(final){
+  BookFab.hide();
+  const F=CH.finale;
+  log("exam_finale",{final});
+  exDlgSeq(F.beats,0,"학기의 끝 ▶",()=>{
+    let bonus=0;
+    if(F.bonus&&final>=(F.bonusMin||101)&&!wallet.finaleBonusDone){
+      wallet.finaleBonusDone=true; bonus=F.bonus; S.balance+=bonus; saveWallet();
+      $("#hud-money").textContent=money(S.balance);
+      log("finale_bonus",{bonus});
+    }
+    stage.innerHTML="";
+    stage.appendChild(el('<div class="card fade" style="text-align:center;padding:40px 24px;">'+
+      (bonus?'<div class="card" style="background:var(--panel2);margin-bottom:16px;">💰 '+(F.bonusLabel||"학기말 보너스")+' +'+money(bonus)+' → 잔고 <b>'+money(S.balance)+'</b></div>':'')+
+      '<div style="font-size:15px;line-height:1.8;">'+F.endCard+'</div>'+
+      '<div style="margin-top:22px;"><button class="btn" id="exfin">챕터 종료 ▶</button></div></div>'));
+    $("#exfin").onclick=exOutro;
+  });
 }
 
 /* ================================================================
@@ -2182,6 +2205,7 @@ const CPLABEL={
 const CHBYID={ ch01:CH01, ch02:(typeof CH02!=="undefined")?CH02:null, ch03:(typeof CH03!=="undefined")?CH03:null, ch04:(typeof CH04!=="undefined")?CH04:null, ch05:(typeof CH05!=="undefined")?CH05:null, ch06:(typeof CH06!=="undefined")?CH06:null, ch07:(typeof CH07!=="undefined")?CH07:null, ch08:(typeof CH08!=="undefined")?CH08:null, ch09:(typeof CH09!=="undefined")?CH09:null, ch10:(typeof CH10!=="undefined")?CH10:null, ch11:(typeof CH11!=="undefined")?CH11:null, ch12:(typeof CH12!=="undefined")?CH12:null, ch13:(typeof CH13!=="undefined")?CH13:null };
 function cpLabel(sv){
   if(sv.ch==="chM"&&typeof CHM!=="undefined") return (CHM.cpl&&CHM.cpl[sv.cp])||"※ 중간고사 · 이어서";
+  if(sv.ch==="chF"&&typeof CHF!=="undefined") return (CHF.cpl&&CHF.cpl[sv.cp])||"※ 기말고사 · 이어서";
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc) return (fc.cpl&&fc.cpl[sv.cp])||(chNum(fc)+" · 이어서");
   return ((sv.ch==="ch00"?CPLABEL0:CPLABEL)[sv.cp])||"이어서 하기";
@@ -2194,6 +2218,7 @@ function resumeFrom(sv){
   tracesB=sv.tracesB||0; runsD=sv.runsD||0;
   if(sv.ch==="ch00"){ setChapter(CH00); (CPMAP0[sv.cp]||sceneTitle)(); return; }
   if(sv.ch==="chM"&&typeof CHM!=="undefined"){ setChapter(CHM); exResume(sv); return; }
+  if(sv.ch==="chF"&&typeof CHF!=="undefined"){ setChapter(CHF); exResume(sv); return; }
   const fc=sv.ch&&CHBYID[sv.ch]&&CHBYID[sv.ch].flow?CHBYID[sv.ch]:null;
   if(fc){
     setChapter(fc);
@@ -2250,6 +2275,10 @@ function sceneTitle(){
   if(typeof CH11!=="undefined") CH_MENU.push({id:"ch11", label:chLabel(CH11), go:()=>{ setChapter(CH11); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH12!=="undefined") CH_MENU.push({id:"ch12", label:chLabel(CH12), go:()=>{ setChapter(CH12); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH13!=="undefined") CH_MENU.push({id:"ch13", label:chLabel(CH13), go:()=>{ setChapter(CH13); gwInit(); log("chapter_start",{}); sceneIntro(); }});
+  /* 기말고사 — 마지막 관문 (※, 7장 뒤) */
+  if(typeof CHF!=="undefined") CH_MENU.push({id:"chF", exam:true,
+    label:CHF.meta.special+' '+CHF.meta.title+(wallet.examBest&&wallet.examBest.chF!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chF?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chF+'점</span>':''),
+    go:()=>{ setChapter(CHF); log("chapter_start",{}); exStart(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");
   CH_MENU.forEach(c=>{
