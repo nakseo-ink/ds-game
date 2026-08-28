@@ -3557,3 +3557,369 @@ function genAP11ch(idx){
       {text:stableOut.slice().reverse().map(lab).join(", "),correct:false,mc:"desc-flip",fb:"내림차순이 아니라 오름차순이다."}
     ],{text:ans,correct:true},4)};
 }
+
+/* ================= 6장(B) 고급 정렬 — G45~G48 + AP12 ================= */
+/* --- 시뮬 유틸: 퀵 분할 / 합병 패스 / 히프 --- */
+function srQuick1(a){
+  /* 교재 quicksort의 첫 분할 한 번 — 전체 배열, pivot=a[0]. {arr, j(피봇 최종 자리), preswap(마지막 SWAP 직전 상태), swaps} */
+  const arr=a.slice(), n=arr.length, pivot=arr[0];
+  let i=0, j=n, swaps=0;
+  while(true){
+    do{ i++; } while(i<n && arr[i]<pivot);
+    do{ j--; } while(arr[j]>pivot);
+    if(i<j){ const t=arr[i]; arr[i]=arr[j]; arr[j]=t; swaps++; } else break;
+  }
+  const preswap=arr.slice();
+  const t=arr[0]; arr[0]=arr[j]; arr[j]=t;
+  return {arr:arr, j:j, preswap:preswap, swaps:swaps};
+}
+function srMerge2(x,y){
+  const out=[]; let i=0,j=0;
+  while(i<x.length&&j<y.length) out.push(x[i]<=y[j]?x[i++]:y[j++]);
+  while(i<x.length) out.push(x[i++]);
+  while(j<y.length) out.push(y[j++]);
+  return out;
+}
+function srMergePass(a,len){
+  /* merge_pass 한 회전 (0-based 배열) */
+  const n=a.length, out=[];
+  let i=0;
+  for(; i+2*len<=n; i+=2*len) out.push(...srMerge2(a.slice(i,i+len), a.slice(i+len,i+2*len)));
+  if(i+len<n) out.push(...srMerge2(a.slice(i,i+len), a.slice(i+len,n)));
+  else for(; i<n; i++) out.push(a[i]);
+  return out;
+}
+function srHeapAdjust(arr,root,n){
+  /* 교재 adjust — arr는 논리 1..n (JS에선 arr[k-1]) */
+  const temp=arr[root-1], rootkey=temp;
+  let child=2*root;
+  while(child<=n){
+    if(child<n && arr[child-1]<arr[child]) child++;
+    if(rootkey>arr[child-1]) break;
+    arr[Math.floor(child/2)-1]=arr[child-1]; child*=2;
+  }
+  arr[Math.floor(child/2)-1]=temp;
+}
+function srHeapBuild(a){
+  const arr=a.slice(), n=arr.length;
+  for(let i=Math.floor(n/2); i>0; i--) srHeapAdjust(arr,i,n);
+  return arr;
+}
+function srHeapExtract(h,k){
+  /* 구성된 히프 h에서 heapsort 추출 k회 — 상태 반환 */
+  const arr=h.slice(), n=arr.length;
+  for(let i=n-1; i>=n-k; i--){
+    const t=arr[0]; arr[0]=arr[i]; arr[i]=t;
+    srHeapAdjust(arr,1,i);
+  }
+  return arr;
+}
+function srNearSlips(cands,ansStr){
+  /* 이웃 값 교환 보충 오답 — 후보 붕괴 방지 공용 */
+  const base=ansStr.split(", ");
+  for(const i2 of [0,1,2,3]){
+    if(cands.length>=3) break;
+    if(i2+1>=base.length) break;
+    const c=base.slice(); const t=c[i2]; c[i2]=c[i2+1]; c[i2+1]=t;
+    const s=c.join(", ");
+    if(s!==ansStr && !cands.find(x=>x.text===s)) cands.push({text:s,correct:false,mc:"near-slip",fb:"이웃한 두 값이 뒤바뀌어 있다 — 결과를 한 칸씩 다시 짚어 보라."});
+  }
+  return cands;
+}
+/* --- G45. 퀵 정렬 (유닛 A) --- */
+function genG45(){
+  const qtype=pick(["part1","pivotpos","recur","worst"]);
+  if(qtype==="recur"){
+    const ans="피봇을 뺀 왼쪽 부리스트와 오른쪽 부리스트 각각";
+    return {id:"G45",qtype:qtype,params:{ans:ans},
+      stem:'퀵 정렬에서 <b>분할이 끝난 직후</b>, 재귀 호출이 이어지는 대상은?',
+      okfb:'피봇은 정확한 자기 자리에 앉았다 — 다시 볼 필요가 없다. quicksort(left, j−1)과 quicksort(j+1, right), 피봇을 뺀 양쪽이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"피봇을 포함한 왼쪽 부리스트와 오른쪽 부리스트",correct:false,mc:"pivot-include",fb:"피봇 자리는 확정 — 포함하면 같은 일을 반복하게 된다."},
+        {text:"항상 정확히 절반으로 나눈 앞쪽과 뒤쪽",correct:false,mc:"half-myth",fb:"경계는 절반이 아니라 피봇이 앉은 자리 j가 정한다."},
+        {text:"왼쪽 부리스트만 — 오른쪽은 이미 정렬되어 있다",correct:false,mc:"left-only",fb:"오른쪽은 '피봇보다 크다'만 보장될 뿐 정렬은 아직이다."}]};
+  }
+  if(qtype==="worst"){
+    const ans="이미 정렬된(또는 역순) 입력 — 분할이 0 : (n−1)로 쏠린다";
+    return {id:"G45",qtype:qtype,params:{ans:ans},
+      stem:'<b>첫 원소를 피봇</b>으로 쓰는 퀵 정렬이 <b>최악 O(n²)</b>이 되는 입력은?',
+      okfb:'정렬된 입력이면 피봇(첫 원소)이 항상 최솟값 — 왼쪽 부리스트가 비고 분할 깊이가 n이 된다. 처방이 중간값·무작위 피봇이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"무작위로 뒤섞인 입력 — 분할의 크기를 전혀 예측할 수 없어진다",correct:false,mc:"random-myth",fb:"무작위는 평균의 경우 — 반반에 가까운 분할이 기대되어 오히려 O(n log n)이다."},
+        {text:"모든 값이 서로 다른 입력 — 같은 값이 없어 비교가 최대로 늘어난다",correct:false,mc:"distinct-myth",fb:"값이 전부 다른 것은 정상 조건일 뿐 — 문제는 분할의 쏠림이다."},
+        {text:"크기가 홀수인 입력 — 피봇을 빼면 절반으로 나뉠 수 없게 된다",correct:false,mc:"odd-myth",fb:"한 개 차이는 성능에 영향이 없다 — 0:(n−1)의 쏠림이 문제다."}]};
+  }
+  /* 배열형 — 첫 분할이 실제로 배열을 바꾸고, 피봇이 끝에 앉지 않는 입력만 */
+  let a,Q,guard=120;
+  const n=pick([6,7]);
+  do{ a=srArr(n); Q=srQuick1(a); }
+  while(guard-->0 && (Q.j===0 || Q.j===n-1 || srStr(Q.arr)===srStr(a)));
+  if(qtype==="pivotpos"){
+    const ans=String(Q.j);
+    return {id:"G45",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:srViz(a,[0]),mono:true,
+      stem:'그림의 배열에 퀵 정렬을 적용한다 — 피봇은 첫 원소 <b>'+a[0]+'</b>. <b>첫 분할이 끝난 직후</b> 피봇 '+a[0]+'가 앉는 <b>인덱스</b>는?',
+      okfb:'피봇보다 작은 원소가 '+Q.j+'개 — 전부 앞으로 오므로 피봇의 확정 자리는 ['+ans+']다.',
+      choices:g2Fill([
+        {text:String(Q.j===0?1:0),correct:false,mc:"stay-myth",fb:"피봇은 마지막 SWAP(list[left]↔list[j])으로 경계 자리까지 이동한다."},
+        {text:String(n-1),correct:false,mc:"end-myth",fb:"맨 뒤는 최댓값의 자리 — 피봇의 자리는 '저보다 작은 것의 수'가 정한다."},
+        {text:String(Math.min(n-1,Q.j+1)),correct:false,mc:"off-by-one",fb:a[0]+"보다 작은 원소의 수를 다시 세어 보라."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* part1 — 첫 분할 직후의 배열 */
+  const ans=srStr(Q.arr);
+  const cands=[];
+  if(srStr(Q.preswap)!==ans) cands.push({text:srStr(Q.preswap),correct:false,mc:"no-final-swap",fb:"i와 j가 교차한 뒤의 마지막 SWAP(피봇↔list[j])을 빠뜨렸다."});
+  const sorted=srStr(a.slice().sort((x,y)=>x-y));
+  if(sorted!==ans) cands.push({text:sorted,correct:false,mc:"final-confuse",fb:"전체 정렬은 재귀가 다 끝난 뒤 — 첫 분할 직후를 물었다."});
+  if(srStr(a)!==ans) cands.push({text:srStr(a),correct:false,mc:"no-change",fb:"이 입력에서는 분할이 배열을 바꾼다 — 어긋난 쌍의 교환을 따라가 보라."});
+  srNearSlips(cands,ans);
+  return {id:"G45",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:srViz(a,[0]),mono:true,
+    stem:'그림의 배열에 퀵 정렬을 적용한다 — 피봇은 첫 원소 <b>'+a[0]+'</b>. <b>첫 분할(피봇 안착까지)이 끝난 직후</b>의 배열은?',
+    okfb:'어긋난 쌍의 교환 '+Q.swaps+'번 뒤 i·j가 교차 — 마지막으로 피봇을 ['+Q.j+']에 안착: '+ans+'. 피봇 왼쪽은 전부 '+a[0]+'보다 작고 오른쪽은 크다.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G46. 합병 정렬 (유닛 B) --- */
+function genG46(){
+  const qtype=pick(["merge2","pass1","passcnt","lonely"]);
+  if(qtype==="passcnt"){
+    const n=pick([8,10,16,20,32]);
+    const ans=String(Math.ceil(Math.log2(n)));
+    return {id:"G46",qtype:qtype,params:{n:n,ans:ans},mono:true,
+      stem:'원소 <b>'+n+'개</b>의 배열을 반복 합병 정렬로 정렬할 때, 필요한 <b>패스(회전)의 수</b>는? (길이 1 → 2 → 4 → …)',
+      okfb:'부리스트 길이가 패스마다 2배 — 1이 '+n+' 이상이 될 때까지 ⌈log₂'+n+'⌉ = '+ans+'번이다.',
+      choices:g2Fill([
+        {text:String(Math.floor(n/2)),correct:false,mc:"half-myth",fb:"n/2는 첫 패스의 쌍 수 — 패스 수는 log₂n이다."},
+        {text:String(n-1),correct:false,mc:"linear-myth",fb:"n−1번이면 단순 정렬의 회전 수 — 합병은 길이가 2배씩 큰다."},
+        {text:String(Math.ceil(Math.log2(n))+1),correct:false,mc:"off-by-one",fb:"길이 1에서 시작해 2배씩: 1→2→…→"+n+" 이상까지 몇 번인지 다시 세어 보라."}
+      ],{text:ans,correct:true},4)};
+  }
+  if(qtype==="lonely"){
+    const ans="그대로 복사되어 다음 패스에서 합병을 기다린다";
+    return {id:"G46",qtype:qtype,params:{ans:ans},
+      stem:'반복 합병 정렬의 한 패스에서, 부리스트의 수가 홀수라 <b>짝이 없는 마지막 부리스트</b>는 어떻게 처리되는가?',
+      okfb:'merge_pass의 else 분기 — sorted[j]=list[j]로 그대로 복사만 하고, 다음 패스에서 짝을 만난다(그림 7.7의 [19, 48]이 그 예).',
+      choices:[
+        {text:ans,correct:true},
+        {text:"앞의 두 부리스트와 셋이 한꺼번에 합병된다",correct:false,mc:"triple-myth",fb:"merge는 언제나 두 리스트만 합친다 — 3자 합병 분기는 없다."},
+        {text:"버려졌다가 마지막에 삽입 정렬로 끼워 넣는다",correct:false,mc:"discard-myth",fb:"버려지는 원소는 없다 — 복사되어 살아남는다."},
+        {text:"그 자리에서 스스로 반으로 쪼개져 합병된다",correct:false,mc:"split-myth",fb:"이미 정렬된 부리스트 — 쪼갤 이유가 없다."}]};
+  }
+  if(qtype==="merge2"){
+    /* 정렬된 두 리스트의 병합 */
+    const total=pick([6,7]);
+    const all=srArr(total).sort((x,y)=>x-y);
+    const xlen=pick([3,total-3]);
+    const idxs=[]; for(let i=0;i<total;i++) idxs.push(i);
+    for(let i=idxs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=idxs[i]; idxs[i]=idxs[j]; idxs[j]=t; }
+    const xset=new Set(idxs.slice(0,xlen));
+    const x=all.filter((_,i)=>xset.has(i)), y=all.filter((_,i)=>!xset.has(i));
+    const ans=srStr(srMerge2(x,y));
+    const zip=[]; for(let i=0;i<Math.max(x.length,y.length);i++){ if(i<x.length) zip.push(x[i]); if(i<y.length) zip.push(y[i]); }
+    const cands=[];
+    if(srStr(zip)!==ans) cands.push({text:srStr(zip),correct:false,mc:"zip-myth",fb:"번갈아 하나씩이 아니라 — 맨 앞끼리 비교해 작은 쪽을 꺼낸다."});
+    const concat=x.concat(y);
+    if(srStr(concat)!==ans) cands.push({text:srStr(concat),correct:false,mc:"concat-myth",fb:"이어 붙이기만 해서는 정렬이 되지 않는다 — 비교하며 꺼내야 한다."});
+    srNearSlips(cands,ans);
+    return {id:"G46",qtype:qtype,params:{x:x.join(","),y:y.join(","),ans:ans},mono:true,
+      stem:'정렬된 두 리스트 <span class="mono">['+x.join(", ")+']</span> 과 <span class="mono">['+y.join(", ")+']</span> 를 <b>합병(merge)</b>한 결과는?',
+      okfb:'두 줄의 맨 앞끼리 비교해 작은 쪽을 꺼내 담기를 반복 — '+ans+'.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* pass1 — 길이 1의 첫 패스 직후 */
+  let a,guard=60,res;
+  const n=pick([6,7]);
+  do{ a=srArr(n); res=srMergePass(a,1); }
+  while(guard-->0 && srStr(res)===srStr(a));
+  const ans=srStr(res);
+  const cands=[];
+  const sorted=srStr(a.slice().sort((x,y)=>x-y));
+  if(sorted!==ans) cands.push({text:sorted,correct:false,mc:"final-confuse",fb:"전체 정렬은 마지막 패스 뒤 — 길이 1의 첫 패스 직후를 물었다."});
+  const bub=srStr(srBubStates(a).states[0]);
+  if(bub!==ans && !cands.find(c=>c.text===bub)) cands.push({text:bub,correct:false,mc:"bubble-confuse",fb:"이웃을 계속 교환하며 가는 것은 버블 — 합병 패스는 쌍 안에서만 정렬한다."});
+  if(srStr(a)!==ans) cands.push({text:srStr(a),correct:false,mc:"no-change",fb:"어긋난 쌍이 있다 — (0,1)(2,3)… 쌍끼리 견줘 보라."});
+  srNearSlips(cands,ans);
+  return {id:"G46",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:srViz(a),mono:true,
+    stem:'그림의 배열을 <b>길이 1의 정렬 리스트 '+n+'개</b>로 보고, 반복 합병 정렬의 <b>첫 패스</b>(쌍쌍이 합병'+(n%2?', 마지막 하나는 짝 없음':'')+')를 수행한 직후의 배열은?',
+    okfb:'(0,1)·(2,3)… 쌍 안에서만 작은 쪽이 앞으로'+(n%2?', 외톨이는 그대로 복사':'')+' — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G47. 히프 정렬 (유닛 C) --- */
+function genG47(){
+  const qtype=pick(["build","extract1","bigchild","space"]);
+  if(qtype==="bigchild"){
+    const ans="작은 자식과 바꾸면 그 자식이 다른 자식보다 작아 부모 조건이 다시 깨지기 때문";
+    return {id:"G47",qtype:qtype,params:{ans:ans},
+      stem:'adjust(내려보내기)에서 두 자식 중 <b>큰 쪽</b>과 비교·교환하는 이유는?',
+      okfb:'올라오는 값은 두 자식 모두의 부모가 된다 — 큰 자식이 올라와야 남은 자식보다 크다는 조건이 지켜진다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"큰 자식 쪽의 부트리가 항상 더 깊어서, 내려보낼 길이 그쪽에만 남아 있기 때문",correct:false,mc:"depth-myth",fb:"깊이와는 무관하다 — 부모 ≥ 자식 조건을 지키는 문제다."},
+        {text:"작은 자식 쪽은 이미 제자리가 확정된 구역이라 건드리면 질서가 깨지기 때문",correct:false,mc:"fixed-myth",fb:"확정된 것은 없다 — 조건 유지를 위해 큰 쪽을 고르는 것이다."},
+        {text:"완전 이진 트리에서는 오른쪽 자식이 왼쪽 자식보다 항상 크게 유지되기 때문",correct:false,mc:"sibling-myth",fb:"형제의 대소는 정해져 있지 않다 — 그래서 매번 비교해 고른다."}]};
+  }
+  if(qtype==="space"){
+    const ans="히프 정렬 — 배열 안에서 전부 해결한다(제자리)";
+    return {id:"G47",qtype:qtype,params:{ans:ans},
+      stem:'합병 정렬과 히프 정렬은 둘 다 <b>최악에도 O(n log n)</b>이다. <b>추가 배열 없이</b> 정렬을 끝내는 쪽은?',
+      okfb:'합병은 원소 수만큼의 추가 배열(sorted/extra)이 필요하지만, 히프는 배열 안의 교환·내려보내기만으로 끝난다 — 메모리가 빠듯하면 히프다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"합병 정렬 — 부리스트가 제자리에서 합쳐진다",correct:false,mc:"merge-flip",fb:"합병은 결과를 담을 별도 배열이 필요하다 — 그것이 합병의 대가다."},
+        {text:"둘 다 — O(n log n) 정렬은 모두 제자리다",correct:false,mc:"both-myth",fb:"복잡도와 메모리는 별개의 성질이다."},
+        {text:"둘 다 아니다 — 둘 다 추가 배열이 필요하다",correct:false,mc:"neither-myth",fb:"히프는 제자리 — 그것이 히프 정렬의 자랑이다."}]};
+  }
+  if(qtype==="build"){
+    let a,h,guard=60;
+    do{ a=srArr(7); h=srHeapBuild(a); }
+    while(guard-->0 && srStr(h)===srStr(a));
+    const ans=srStr(h);
+    const cands=[];
+    const desc=srStr(a.slice().sort((x,y)=>y-x));
+    if(desc!==ans) cands.push({text:desc,correct:false,mc:"desc-myth",fb:"히프는 내림차순 정렬이 아니다 — 부모 ≥ 자식만 지키는 느슨한 질서다."});
+    const asc=srStr(a.slice().sort((x,y)=>x-y));
+    if(asc!==ans) cands.push({text:asc,correct:false,mc:"sorted-confuse",fb:"오름차순 완성은 추출이 다 끝난 뒤 — 구성 직후를 물었다."});
+    if(srStr(a)!==ans) cands.push({text:srStr(a),correct:false,mc:"no-change",fb:"부모보다 큰 자식이 있다 — 구성이 배열을 바꾼다."});
+    srNearSlips(cands,ans);
+    return {id:"G47",qtype:qtype,params:{arr:a.join(","),ans:ans},viz:{type:"arr",a:a.slice(),hi:[],done:[],base:1},mono:true,
+      stem:'그림의 배열(1번 칸부터, 원소 7개)에 heapsort의 <b>1단계 — 최대 히프 구성</b>(i = 3, 2, 1 순서로 adjust)을 수행한 직후의 배열은?',
+      okfb:'자식 있는 노드(3→2→1)를 아래에서부터 내려보내기 — '+ans+'. 최댓값 '+Math.max.apply(null,a)+'가 1번 칸(루트)에 온다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  /* extract1 — 구성된 히프에서 추출 1회 */
+  let a,h,guard=60;
+  do{ a=srArr(7); h=srHeapBuild(a); }
+  while(guard-->0 && srStr(h)===srStr(a));
+  const after=srHeapExtract(h,1);
+  const ans=srStr(after);
+  const n=h.length;
+  const swapOnly=h.slice(); { const t=swapOnly[0]; swapOnly[0]=swapOnly[n-1]; swapOnly[n-1]=t; }
+  const cands=[];
+  if(srStr(swapOnly)!==ans) cands.push({text:srStr(swapOnly),correct:false,mc:"no-adjust",fb:"교환 뒤의 adjust(내려보내기)를 빠뜨렸다 — 루트의 질서를 복구해야 한다."});
+  const asc=srStr(a.slice().sort((x,y)=>x-y));
+  if(asc!==ans && !cands.find(c=>c.text===asc)) cands.push({text:asc,correct:false,mc:"final-confuse",fb:"전부 추출한 뒤의 최종 결과 — 1회 추출 직후를 물었다."});
+  if(srStr(h)!==ans) cands.push({text:srStr(h),correct:false,mc:"no-change",fb:"추출은 반드시 배열을 바꾼다 — 루트와 마지막의 교환부터."});
+  srNearSlips(cands,ans);
+  return {id:"G47",qtype:qtype,params:{heap:h.join(","),ans:ans},viz:{type:"arr",a:h.slice(),hi:[0],done:[],base:1},mono:true,
+    stem:'그림은 <b>구성이 끝난 최대 히프</b>다(1번 칸부터). heapsort의 <b>추출 1회</b> — SWAP(list[1], list['+n+']) 후 adjust(list, 1, '+(n-1)+') — 를 수행한 직후의 배열은?',
+    okfb:'최댓값 '+h[0]+'가 맨 뒤로 가 확정되고, 올라온 '+h[n-1]+'가 내려보내기로 제자리를 찾는다 — '+ans+'.',
+    choices:g2Fill(cands,{text:ans,correct:true},4)};
+}
+/* --- G48. 종합 비교 (유닛 D) --- */
+function genG48(){
+  const qtype=pick(["which","cmplx","stablepick","guarantee"]);
+  if(qtype==="which"){
+    const cases=[
+      {sc:"거의 정렬된 배열에 새 값 몇 개가 섞여 들어온다 — 빠르게 마무리하고 싶다", ans:"삽입 정렬", why:"거의 정렬된 입력은 삽입의 최선 O(n) — 비교 한 번씩으로 끝난다."},
+      {sc:"레코드 하나하나가 사진을 포함해 매우 무겁다 — 이동(교환)을 최소로 하고 싶다", ans:"선택 정렬", why:"교환이 회전당 1번, 총 n−1번뿐 — 이동이 비쌀 때의 선택이다."},
+      {sc:"수백만 건 무작위 데이터 — 평균적으로 가장 빠르게, 추가 배열 없이 정렬하고 싶다", ans:"퀵 정렬", why:"평균 O(n log n)의 실전 최속 + 제자리 — 라이브러리 정렬의 근간이다."},
+      {sc:"같은 키의 원래 순서를 지키면서, 어떤 입력에도 O(n log n)을 보장해야 한다", ans:"합병 정렬", why:"보장 + 안정을 둘 다 갖춘 것은 합병뿐이다(추가 배열이 대가)."},
+      {sc:"어떤 입력에도 O(n log n)을 보장해야 하는데, 추가 배열을 쓸 메모리가 없다", ans:"히프 정렬", why:"보장 + 제자리 — 합병에서 추가 배열을 뺀 자리의 답이다."}
+    ];
+    const c=pick(cases);
+    const others=["선택 정렬","버블 정렬","삽입 정렬","퀵 정렬","합병 정렬","히프 정렬"].filter(x=>x!==c.ans);
+    for(let i=others.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=others[i]; others[i]=others[j]; others[j]=t; }
+    return {id:"G48",qtype:qtype,params:{sc:c.sc,ans:c.ans},
+      stem:'상황 — "'+c.sc+'". 가장 알맞은 정렬은?',
+      okfb:c.why,
+      choices:[
+        {text:c.ans,correct:true},
+        {text:others[0],correct:false,mc:"mismatch1",fb:"요구 조건(순서 보존·보장·메모리·이동 비용)을 표에 대 보라."},
+        {text:others[1],correct:false,mc:"mismatch2",fb:"이 상황의 핵심 요구를 다시 짚어 보라 — 표의 어느 칸이 갈리는가."},
+        {text:others[2],correct:false,mc:"mismatch3",fb:"만능 정렬은 없다 — 조건과 성질을 하나씩 대조하라."}]};
+  }
+  if(qtype==="cmplx"){
+    const cells=[
+      {q:"퀵 정렬의 <b>최악</b>", ans:"O(n²)", why:"정렬된 입력+첫 피봇의 쏠림 — 퀵의 유일한 약점이다."},
+      {q:"퀵 정렬의 <b>평균</b>", ans:"O(n log n)", why:"반반에 가까운 분할 — 깊이 log n × 층마다 n."},
+      {q:"합병 정렬의 <b>최악</b>", ans:"O(n log n)", why:"패스 log n번 × 패스당 n — 입력 순서와 무관한 보장이다."},
+      {q:"히프 정렬의 <b>최악</b>", ans:"O(n log n)", why:"추출 n회 × 내려보내기 log n — 역시 입력 무관 보장이다."},
+      {q:"삽입 정렬의 <b>최선</b>", ans:"O(n)", why:"거의 정렬된 입력 — 단계마다 비교 1번에 끝난다."}
+    ];
+    const c=pick(cells);
+    const opts=["O(n)","O(n log n)","O(n²)","O(log n)"].filter(x=>x!==c.ans);
+    return {id:"G48",qtype:qtype,params:{q:c.q,ans:c.ans},mono:true,
+      stem:'복잡도 표의 빈칸 — '+c.q+'의 시간 복잡도는?',
+      okfb:c.why,
+      choices:[
+        {text:c.ans,correct:true},
+        {text:opts[0],correct:false,mc:"cell-slip1",fb:"표를 다시 그려 보라 — 이 정렬의 이 경우가 어디서 오는지."},
+        {text:opts[1],correct:false,mc:"cell-slip2",fb:"최선·평균·최악을 혼동하지 않았는지 확인하라."},
+        {text:opts[2],correct:false,mc:"cell-slip3",fb:"이 복잡도가 나오는 정렬·경우가 무엇인지 되짚어 보라."}]};
+  }
+  if(qtype==="stablepick"){
+    const ans="삽입 · 버블 · 합병";
+    return {id:"G48",qtype:qtype,params:{ans:ans},
+      stem:'배운 정렬 중 <b>안정(stable) 정렬만</b> 바르게 묶은 것은?',
+      okfb:'이웃만 다루는 삽입·버블, <=로 앞 리스트를 우선하는 합병이 안정 — 멀리 건너뛰는 선택·퀵·히프는 불안정이다.',
+      choices:[
+        {text:ans,correct:true},
+        {text:"선택 · 퀵 · 히프",correct:false,mc:"flip-all",fb:"정확히 불안정 셋을 골랐다 — 건너뛰는 교환이 순서를 깬다."},
+        {text:"삽입 · 퀵 · 합병",correct:false,mc:"quick-slip",fb:"퀵은 피봇 교환이 멀리 건너뛴다 — 불안정이다."},
+        {text:"버블 · 합병 · 히프",correct:false,mc:"heap-slip",fb:"히프는 루트↔마지막 교환이 순서를 깬다 — 불안정이다."}]};
+  }
+  const ans="합병 정렬과 히프 정렬";
+  return {id:"G48",qtype:"guarantee",params:{ans:ans},
+    stem:'<b>어떤 입력이 와도 O(n log n)</b>이 보장되는(최악이 없는) 정렬의 묶음은?',
+    okfb:'합병(패스 구조)과 히프(트리 높이) — 입력 순서가 비용을 흔들지 못한다. 퀵은 평균은 빠르나 최악 O(n²)이 있다.',
+    choices:[
+      {text:ans,correct:true},
+      {text:"퀵 정렬과 합병 정렬",correct:false,mc:"quick-slip",fb:"퀵은 정렬된 입력+첫 피봇에서 O(n²) — 보장이 없다."},
+      {text:"퀵 정렬과 히프 정렬",correct:false,mc:"quick-slip2",fb:"퀵의 최악을 잊지 마라 — 보장 조는 합병·히프다."},
+      {text:"삽입 정렬과 합병 정렬",correct:false,mc:"insert-slip",fb:"삽입은 역순에서 O(n²) — 최선이 좋은 것과 보장은 다르다."}]};
+}
+/* --- AP12. 심화 — 기수 정렬 / 퀵 최악 / 표 종합 --- */
+function genAP12ch(idx){
+  if(idx===0){
+    /* 기수 정렬 — 미니 강의 내장: 1의 자리 분배·수집 1패스 */
+    let a,guard=80,res;
+    const mk=()=>{ const arr=[];
+      while(arr.length<4){ const v=10+Math.floor(Math.random()*89); if(!arr.includes(v)&&!arr.some(x=>x%10===v%10)) arr.push(v); }
+      return arr; };
+    do{ a=mk(); res=a.slice().sort((x,y)=>(x%10)-(y%10)); }
+    while(guard-->0 && srStr(res)===srStr(a));
+    const ans=srStr(res);
+    const full=srStr(a.slice().sort((x,y)=>x-y));
+    const tens=srStr(a.slice().sort((x,y)=>Math.floor(x/10)-Math.floor(y/10)));
+    const cands=[];
+    if(full!==ans) cands.push({text:full,correct:false,mc:"final-confuse",fb:"전체 정렬은 10의 자리 패스까지 끝난 뒤 — 1의 자리 패스 직후를 물었다."});
+    if(tens!==ans && !cands.find(c=>c.text===tens)) cands.push({text:tens,correct:false,mc:"digit-flip",fb:"기수 정렬(LSD)은 낮은 자리(1의 자리)부터 시작한다."});
+    if(srStr(a)!==ans) cands.push({text:srStr(a),correct:false,mc:"no-change",fb:"1의 자리 순서가 어긋나 있다 — 버킷에 나눠 담고 차례로 꺼내 보라."});
+    srNearSlips(cands,ans);
+    return {id:"AP12",qtype:"radix",params:{arr:a.join(","),ans:ans},viz:srViz(a),mono:true,
+      stem:'[심화 — 기수 정렬] 새 개념 하나. 지금까지의 정렬은 전부 <b>키 비교</b>로 순서를 정했다 — 그런데 비교를 <b>한 번도 하지 않는</b> 정렬이 있다. <b>기수 정렬(radix sort)</b>: 수를 <b>1의 자리</b> 숫자에 따라 0~9의 버킷에 순서대로 나눠 담고, 버킷 0부터 차례로 다시 꺼내 한 줄로 잇는다(분배→수집). 다음엔 <b>10의 자리</b>로 같은 일을 반복 — 자릿수가 d개면 d패스 만에 정렬이 끝난다(<b>O(d·n)</b>). 단, 꺼낼 때 담은 순서를 지켜야(안정 수집) 앞 패스의 결과가 보존된다.<br><br>그림의 배열에 <b>1의 자리 패스</b>(분배→수집) 하나를 수행한 직후의 배열은?',
+      okfb:'1의 자리만 보고 버킷 순서로 다시 세우면 — '+ans+'. 다음 패스(10의 자리)가 끝나면 전체 정렬이 완성된다.',
+      choices:g2Fill(cands,{text:ans,correct:true},4)};
+  }
+  if(idx===1){
+    /* 퀵 최악 — 정렬된 입력 + 첫 피봇의 첫 분할 */
+    const n=pick([6,7,8]);
+    const base=srArr(n).sort((x,y)=>x-y);
+    const ans="피봇이 [0]에 그대로 — 왼쪽 부리스트가 비고, 오른쪽 "+(n-1)+"개가 통째로 남는다";
+    return {id:"AP12",qtype:"qworst",params:{arr:base.join(","),ans:ans},viz:srViz(base,[0]),mono:true,
+      stem:'[심화 — 퀵의 함정] 그림처럼 <b>이미 정렬된</b> 배열에 첫 원소 '+base[0]+'를 피봇으로 퀵 정렬을 시작하면, <b>첫 분할의 결과</b>는?',
+      okfb:'피봇보다 작은 원소가 하나도 없다 — 분할이 0 : '+(n-1)+'로 완전히 쏠린다. 이것이 매 단계 반복되면 깊이가 n이 되어 O(n²) — 퀵이 정렬된 입력을 가장 싫어하는 이유이고, 중간값·무작위 피봇이 처방인 이유다.',
+      choices:g2Fill([
+        {text:"피봇이 정확히 가운데 자리에 앉아 — 좌우 부리스트가 반반에 가깝게 나뉜다",correct:false,mc:"half-myth",fb:"피봇의 자리는 '저보다 작은 것의 수'가 정한다 — 작은 것이 0개다."},
+        {text:"이미 정렬된 상태임이 감지되어 — 분할 없이 그 자리에서 즉시 종료된다",correct:false,mc:"detect-myth",fb:"퀵에는 정렬 감지 장치가 없다 — 분할은 어김없이 수행된다."},
+        {text:"배열이 역순으로 한 번 뒤집힌 뒤 — 뒤집힌 배열에서 정렬이 다시 시작된다",correct:false,mc:"reverse-myth",fb:"교환이 일어날 어긋난 쌍 자체가 없다 — 쏠린 분할만 남는다."}
+      ],{text:ans,correct:true},4)};
+  }
+  /* idx 2 — 표 종합 판정 */
+  const cases=[
+    {req:"최악에도 O(n log n) <b>보장</b> + <b>안정</b> (추가 배열은 감수)", ans:"합병 정렬", why:"보장·안정 둘 다는 합병뿐 — 추가 배열 O(n)이 그 대가다."},
+    {req:"최악에도 O(n log n) <b>보장</b> + <b>추가 배열 없이</b> (안정성은 포기)", ans:"히프 정렬", why:"보장 + 제자리 = 히프 — 안정성을 내준 자리다."},
+    {req:"<b>평균 최속</b> + 제자리 (최악 O(n²) 위험과 불안정은 감수)", ans:"퀵 정렬", why:"평균 O(n log n) 실전 최속 — 위험은 피봇 전략으로 줄인다."}
+  ];
+  const c=pick(cases);
+  const others=["퀵 정렬","합병 정렬","히프 정렬","삽입 정렬"].filter(x=>x!==c.ans).slice(0,3);
+  return {id:"AP12",qtype:"table",params:{req:c.req,ans:c.ans},
+    stem:'[심화 — 종합 판정] 요구 조건 — "'+c.req+'". 표에서 이 조건을 전부 만족하는 정렬은?',
+    okfb:c.why,
+    choices:[
+      {text:c.ans,correct:true},
+      {text:others[0],correct:false,mc:"table-slip1",fb:"보장·안정·메모리 세 칸을 하나씩 대조해 보라."},
+      {text:others[1],correct:false,mc:"table-slip2",fb:"조건 중 하나가 어긋난다 — 어느 칸인가."},
+      {text:others[2],correct:false,mc:"table-slip3",fb:"요구 조건을 표의 행과 정확히 맞춰 보라."}]};
+}
