@@ -13,7 +13,8 @@ const Log = (function(){
   }
   function log(event, payload){
     const ch = (typeof CURCH!=="undefined") ? CURCH : "ch01"; /* 엔진이 정의하는 현재 챕터 */
-    logs.push({ts:Date.now(), student, chapter:ch, event, ...payload});
+    const sid = localStorage.getItem("dsgame_sid") || undefined; /* 학번 — 입력 전이면 생략 (v0.31) */
+    logs.push({ts:Date.now(), student, sid, chapter:ch, event, ...payload});
     localStorage.setItem(KEY, JSON.stringify(logs));
     const cnt=document.getElementById("logcount"); if(cnt) cnt.textContent=logs.length;
   }

@@ -8,5 +8,6 @@ const CONFIG = {
   SUPABASE_URL: "",        // 예: "https://abcdefgh.supabase.co"
   SUPABASE_ANON_KEY: "",   // Settings > API > anon public key
   LOG_TABLE: "logs",
-  FLUSH_INTERVAL_MS: 30000
+  FLUSH_INTERVAL_MS: 30000,
+  REQUIRE_SID: false       // true면 Supabase 미설정이어도 학번 입력을 요구
 };

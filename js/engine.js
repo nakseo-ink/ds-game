@@ -57,14 +57,19 @@ function saveCP(cp){
   localStorage.setItem(SAVEKEY,JSON.stringify(saveData));
 }
 function clearSave(){ saveData=null; localStorage.removeItem(SAVEKEY); }
+/* ---- 학번(수집 식별자, v0.31) — 수집이 켜진 배포(config에 키 존재)에서만 필수 ---- */
+const SIDKEY="dsgame_sid";
+function sidRequired(){ return !!(CONFIG.SUPABASE_URL || CONFIG.REQUIRE_SID); }
+function getSid(){ return localStorage.getItem(SIDKEY)||""; }
 function exportCode(){
-  const p={v:1, save:saveData, wallet:{balance:S.balance, inventory:wallet.inventory}, c0done:localStorage.getItem(CH0DONEKEY)==="1"};
+  const p={v:2, sid:getSid()||undefined, save:saveData, wallet:{balance:S.balance, inventory:wallet.inventory}, c0done:localStorage.getItem(CH0DONEKEY)==="1"};
   return btoa(unescape(encodeURIComponent(JSON.stringify(p))));
 }
 function importCode(str){
   try{
     const p=JSON.parse(decodeURIComponent(escape(atob(String(str).trim()))));
-    if(p.v!==1) return false;
+    if(p.v!==1&&p.v!==2) return false;
+    if(p.sid&&/^\d{6,10}$/.test(String(p.sid))) localStorage.setItem(SIDKEY,String(p.sid));
     if(p.wallet){ wallet.inventory=p.wallet.inventory||[]; S.balance=p.wallet.balance||0; saveWallet(); }
     if(p.save && p.save.cp) localStorage.setItem(SAVEKEY,JSON.stringify(p.save)); else localStorage.removeItem(SAVEKEY);
     if(p.c0done) localStorage.setItem(CH0DONEKEY,"1");
@@ -2407,29 +2412,150 @@ function resumeFrom(sv){
   }
   setChapter(CH01); (CPMAP[sv.cp]||sceneTitle)();
 }
+/* ================================================================ 과외 장부 — 학습자용 통계 (v0.32)
+   HUD 「도윤 성적」 클릭 → 오버레이. 전부 로컬 로그(localStorage)에서 계산 — 서버·네트워크 불필요.
+   원칙: 자기 데이터만 · 성장 프레임(오답률 대신 「다시 볼 곳」+📕 바로가기) · 확실히 계산되는 것만. */
+function statsChLabel(id){
+  if(id==="ch00") return "1주차";
+  if(id==="chM") return (typeof CHM!=="undefined")?CHM.meta.week+"주차 중간":"중간";
+  if(id==="chF") return (typeof CHF!=="undefined")?CHF.meta.week+"주차 기말":"기말";
+  const C=CHBYID[id]; return C?chNum(C):id;
+}
+function statsBookSec(id){
+  if(id==="ch00") return "ds-w1";
+  const C=CHBYID[id]; if(!C) return null;
+  return C.meta.special?"ds-wH":("ds-w"+C.meta.week);
+}
+function closeStats(){ const b=$("#statsback"),p=$("#statspanel"); if(b){b.style.display="none";} if(p){p.style.display="none";} }
+function openStats(){
+  const L=Log.all().slice(); /* 열람 자체의 로그가 통계에 섞이지 않도록 먼저 스냅샷 */
+  log("stats_open",{});
+  let back=$("#statsback"), pan=$("#statspanel");
+  if(!back){
+    back=el('<div id="statsback"></div>'); document.body.appendChild(back);
+    pan=el('<div id="statspanel"></div>'); document.body.appendChild(pan);
+    back.onclick=closeStats;
+  }
+  const ORDER=["ch00","ch01","ch02","ch03","ch04","ch05","ch06","chM","ch07","ch08","ch09","ch10","ch11","ch12","ch13","chF"];
+  const c0done=localStorage.getItem(CH0DONEKEY)==="1";
+  /* ① 학기 지도 */
+  const cells=ORDER.map(id=>{
+    const exam=(id==="chM"||id==="chF");
+    const cleared= id==="ch00"?c0done:!!(wallet.cleared&&wallet.cleared[id]);
+    const best= exam&&wallet.examBest&&wallet.examBest[id]!==undefined?" · "+wallet.examBest[id]+"점":"";
+    return '<span class="scell'+(cleared?" on":"")+(exam?" exam":"")+'">'+statsChLabel(id)+(cleared?" ✓":"")+best+'</span>';
+  }).join("");
+  const clearedN=(c0done?1:0)+Object.keys(wallet.cleared||{}).filter(k=>k!=="ch00").length;
+  /* ②③ 정확도·다시 볼 곳 — "answer" 이벤트(첫 풀이 스트림, 복습 재도전 제외) */
+  const acc={}; let hintN=0,itemN=0,ansN=0;
+  L.forEach(l=>{
+    if(l.event==="hint_open") hintN++;
+    if(l.event==="item_shown") itemN++;
+    if(l.event==="answer"&&typeof l.correct==="boolean"&&l.unit!=="aplus-retry"){
+      ansN++;
+      const a=acc[l.chapter]||(acc[l.chapter]={n:0,c:0}); a.n++; if(l.correct)a.c++;
+    }
+  });
+  const bars=ORDER.filter(id=>acc[id]&&acc[id].n>0).map(id=>{
+    const a=acc[id], p=Math.round(100*a.c/a.n);
+    return '<div class="sbarrow"><span class="lb">'+statsChLabel(id)+'</span><span class="tr"><span class="fl" style="width:'+p+'%;"></span></span><span class="pc">'+p+'% <span style="opacity:.6;">('+a.n+')</span></span></div>';
+  }).join("");
+  const weak=ORDER.filter(id=>acc[id]&&acc[id].n>=6&&statsBookSec(id))
+    .map(id=>({id, r:1-acc[id].c/acc[id].n, n:acc[id].n}))
+    .filter(w=>w.r>0).sort((a,b)=>b.r-a.r).slice(0,3);
+  const weakHtml=weak.length?weak.map(w=>
+    '<button class="btn ghost sbook" data-sec="'+statsBookSec(w.id)+'" style="font-size:12.5px;padding:6px 12px;margin:4px 6px 0 0;">📕 '+statsChLabel(w.id)+' 다시 보기</button>').join("")
+    :'<span class="snote">아직 특별히 흔들린 주차가 없다 — 이대로 가자.</span>';
+  /* ④ 책 활용 */
+  const dsRead=new Set(), cRead=new Set();
+  L.forEach(l=>{ if(l.event==="book_section"){ if(l.book==="DS") dsRead.add(l.id); else if(l.book==="C") cRead.add(l.id); } });
+  let exdone=0; try{ exdone=Object.keys(JSON.parse(localStorage.getItem("dsgame_bookex")||"{}")).length; }catch(e){}
+  /* ⑤ 학습 리듬 */
+  const days=new Set(L.map(l=>new Date(l.ts).toDateString())).size;
+  let sess=0,last=0; L.forEach(l=>{ if(l.ts-last>30*60*1000) sess++; last=l.ts; });
+  const hours={}; L.forEach(l=>{ const h=new Date(l.ts).getHours(); hours[h]=(hours[h]||0)+1; });
+  const topH=Object.entries(hours).sort((a,b)=>b[1]-a[1])[0];
+  const hintRate=itemN?Math.round(100*hintN/itemN):0;
+  pan.innerHTML="";
+  pan.appendChild(el('<div>'+
+    '<div style="display:flex;align-items:baseline;gap:10px;"><b style="font-size:16px;">📒 과외 장부</b>'+
+    '<span style="font-size:12.5px;color:var(--ink-dim);">도윤의 성적, 그리고 나의 공부 기록</span>'+
+    '<button class="btn ghost" id="statsclose" style="margin-left:auto;padding:4px 12px;font-size:12.5px;">덮기 ✕</button></div>'+
+    (L.length===0?
+      '<div class="snote" style="margin-top:16px;">아직 기록이 없다.<br>오늘 밤 첫 장을 넘기는 순간부터, 이 장부가 채워진다.</div>'
+      :
+      '<div class="shead" style="border-top:none;padding-top:10px;">학기 지도 <span style="color:var(--ink-dim);font-size:12px;">— 클리어 '+clearedN+' / 16</span></div>'+
+      '<div class="sgrid">'+cells+'</div>'+
+      '<div class="shead">주차별 정답률 <span style="color:var(--ink-dim);font-size:12px;">— 첫 풀이 기준 '+ansN+'문항'+(itemN?' · 힌트 사용 '+hintRate+'%':'')+'</span></div>'+
+      (bars||'<div class="snote">아직 푼 문항이 없다.</div>')+
+      '<div class="shead">다시 볼 곳 <span style="color:var(--ink-dim);font-size:12px;">— 오답이 몰린 주차, 📕 책으로 바로</span></div>'+
+      '<div>'+weakHtml+'</div>'+
+      '<div class="shead">책 활용</div>'+
+      '<div class="snote">📕 자료구조 — 읽은 절 '+dsRead.size+'/14 · 연습 「풀었다」 '+exdone+'/28<br>📘 쪽집게 C — 읽은 항목 '+cRead.size+'/25</div>'+
+      '<div class="shead">학습 리듬</div>'+
+      '<div class="snote">공부한 날 '+days+'일 · 학습 세션 '+sess+'회'+(topH?' · 주로 '+topH[0]+'시 무렵에 공부했다':'')+'</div>'
+    )+
+    '<div class="snote" style="margin-top:16px;opacity:.7;">이 기록은 이 기기(브라우저)의 나의 활동만으로 계산된다 — 다른 사람과 비교되지 않는다.</div>'+
+    '</div>'));
+  $("#statsclose").onclick=closeStats;
+  [...pan.querySelectorAll(".sbook")].forEach(b=>b.onclick=()=>{ closeStats(); BookDS.open(b.getAttribute("data-sec")); });
+  back.style.display="block"; pan.style.display="block";
+}
+(function(){ const chip=document.getElementById("hud-gradechip"); if(chip) chip.onclick=openStats; })();
+function titleHeroHTML(inner){
+  /* 포스터 밴드 — 키 비주얼 전폭 배경 위에 제목 (v0.30). inner = 밴드 하단 추가 요소 */
+  return '<div class="heroband">'+
+    '<p class="sub">자 료 구 조</p>'+
+    '<h1>컴퓨터를 모르는 백수,<br>부잣집 과외교사가 되다</h1>'+
+    '<div class="mood">밤 11시, 책상 위의 낡은 책 한 권에서 모든 것이 시작된다.</div>'+
+    (inner||'')+'</div>';
+}
+function sceneSidGate(){
+  /* 학번 게이트 (v0.31) — 수집이 켜진 배포에서 최초 1회. 입력해야 타이틀 진입 */
+  BookFab.hide();
+  $("#hud-day").textContent="메뉴"; $("#hud-unit").textContent="—";
+  stage.innerHTML="";
+  stage.appendChild(el('<div class="fade">'+titleHeroHTML()+
+    '<div class="card" style="max-width:440px;margin:18px auto 0;text-align:center;padding:26px 22px;">'+
+    '<div style="font-size:15.5px;"><b>🎓 학번을 입력해 주세요</b></div>'+
+    '<div style="font-size:12.5px;color:var(--ink-dim);margin-top:9px;line-height:1.75;">이 콘텐츠는 수업 개선과 교육 연구를 위해<br>학습 활동 기록을 <b>학번 단위</b>로 수집합니다.<br>기록은 수업·연구 목적 외에는 사용되지 않습니다.</div>'+
+    '<div style="margin-top:16px;"><input id="sidin" inputmode="numeric" maxlength="10" placeholder="예: 20261234" style="width:220px;background:#12141a;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:16px;text-align:center;font-family:Consolas,monospace;letter-spacing:2px;"></div>'+
+    '<div id="sidmsg" style="color:var(--wrong);font-size:12.5px;min-height:18px;margin-top:7px;"></div>'+
+    '<button class="btn" id="sidgo" style="margin-top:4px;">입력하고 시작 ▶</button>'+
+    '</div></div>'));
+  const go=()=>{
+    const v=$("#sidin").value.trim();
+    if(!/^\d{6,10}$/.test(v)){ $("#sidmsg").textContent="학번은 숫자 6~10자리로 입력해 주세요."; return; }
+    localStorage.setItem(SIDKEY,v);
+    log("sid_set",{});
+    sceneTitle();
+  };
+  $("#sidgo").onclick=go;
+  $("#sidin").addEventListener("keydown",e=>{ if(e.key==="Enter") go(); });
+  $("#sidin").focus();
+}
 function sceneTitle(){
   setChapter(CH01); /* 타이틀 기본 컨텍스트 — 이어하기 시 resumeFrom이 재설정 */
+  if(sidRequired()&&!getSid()){ sceneSidGate(); return; }
   BookFab.hide();
-  setHUD("월요일","유닛 A"); $("#hud-grade").textContent="—"; $("#hud-money").textContent=money(S.balance);
+  /* 타이틀은 특정 주차가 아님 — HUD 중립 표기 (감수: "왜 시작이 2주차인가") */
+  $("#hud-day").textContent="메뉴"; $("#hud-unit").textContent="—";
+  $("#hud-grade").textContent="—"; $("#hud-money").textContent=money(S.balance);
   const sv=saveData;
   stage.innerHTML="";
   const c0done=localStorage.getItem(CH0DONEKEY)==="1";
   stage.appendChild(el('<div class="fade">'+
-    /* 포스터 밴드 — 키 비주얼 전폭 배경 위에 제목·이어하기 (v0.30) */
-    '<div class="heroband">'+
-    '<p class="sub">자 료 구 조</p>'+
-    '<h1>컴퓨터를 모르는 백수,<br>부잣집 과외교사가 되다</h1>'+
-    '<div class="mood">밤 11시, 책상 위의 낡은 책 한 권에서 모든 것이 시작된다.</div>'+
-    (sv? '<div><button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv)+'</button></div>' : '')+
-    '</div>'+
+    titleHeroHTML(sv? '<div><button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv)+'</button></div>' : '')+
     '<div class="card" style="text-align:center; padding:26px 22px 32px; margin-top:18px;">'+
     '<div style="margin:0 0 12px; font-size:12px; color:var(--ink-dim); letter-spacing:3px;">— 챕터 선택 —</div>'+
     '<div id="chlist" style="display:flex; flex-direction:column; gap:9px; align-items:center;"></div>'+
     (S.balance>0||wallet.inventory.length?'<div style="margin-top:14px;"><button class="btn ghost" id="shop0">🛒 상점 · 가방</button></div>':"")+
-    '<div style="margin-top:22px;"><button class="btn ghost" id="codebtn" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">📋 진도 코드 — 다른 컴퓨터로 이어가기</button> '+
+    (getSid()?'<div style="margin-top:16px;font-size:12px;color:#59606e;">🎓 학번 '+getSid()+' <button class="btn ghost" id="sidedit" style="font-size:11px;padding:3px 10px;color:#59606e;border-color:#2a3040;margin-left:6px;">수정</button></div>':'')+
+    '<div style="margin-top:'+(getSid()?'12':'22')+'px;"><button class="btn ghost" id="codebtn" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">📋 진도 코드 — 다른 컴퓨터로 이어가기</button> '+
     '<button class="btn ghost" id="reset0" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">🗑 기록 초기화</button></div>'+
     '<div id="codebox2" style="text-align:left;"></div><div id="resetbox"></div></div></div>'));
   const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
+  const se=$("#sidedit"); if(se) se.onclick=()=>{ localStorage.removeItem(SIDKEY); if(sidRequired()) sceneSidGate(); else sceneTitle(); };
   /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
   const clearTag=id=>wallet.cleared&&wallet.cleared[id]?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':'';
   const chLabel=C=>chNum(C)+' · '+C.meta.title+clearTag(C.meta.id); /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
@@ -2485,7 +2611,7 @@ function sceneTitle(){
       '<div style="margin-top:10px;text-align:right;"><button class="btn ghost" id="resetNo">취소</button> <button class="btn" id="resetYes" style="background:var(--wrong);color:#fff;">전부 삭제</button></div></div>'));
     $("#resetNo").onclick=()=>{ box.innerHTML=""; };
     $("#resetYes").onclick=()=>{
-      ["dsgame_wallet","dsgame_logs","dsgame_sent_upto","dsgame_token","dsgame_save","dsgame_ch0done"].forEach(k=>localStorage.removeItem(k));
+      ["dsgame_wallet","dsgame_logs","dsgame_sent_upto","dsgame_token","dsgame_save","dsgame_ch0done","dsgame_sid"].forEach(k=>localStorage.removeItem(k));
       location.reload();
     };
   };
