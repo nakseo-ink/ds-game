@@ -50,7 +50,7 @@ const CH01 = {
       {check:{id:"A-chk1", stem:'<span class="mono">int a[5] = {7, 2};</span> 일 때 <span class="mono">a[4]</span>의 값은?', mono:true,
         okfb:'부분 초기화의 나머지 칸은 0으로 채워진다.',
         choices:[{text:"0",correct:true},{text:"쓰레기값",correct:false,mc:"partial-init",fb:"초기화를 '일부라도' 하면 나머지는 0이다. 쓰레기값은 아예 초기화하지 않았을 때."},{text:"2",correct:false,mc:"partial-init",fb:"2는 a[1]에 들어갔다. 지정하지 않은 칸은 0."}]}},
-      {gate:{id:"A-g-sizeof", q:'잠깐 — 그런데 <span class="mono">sizeof</span>… 자료형마다 크기가 다르다는 건 확실히 알고 있나?', basics:[
+      {gate:{id:"A-g-sizeof", book:"c-var", q:'잠깐 — 그런데 <span class="mono">sizeof</span>… 자료형마다 크기가 다르다는 건 확실히 알고 있나?', basics:[
         {who:"book", say:'"모든 데이터는 메모리에서 <b>바이트 단위의 칸</b>을 차지한다. <span class="mono">char</span>=1바이트, <span class="mono">int</span>=4바이트, <span class="mono">double</span>=8바이트. <span class="mono">sizeof(타입)</span>이 그 크기를 알려준다."'},
         {say:'아, 타입마다 칸의 폭이 다르구나. int 배열이면 한 칸이 4바이트.'}
       ]}},
@@ -95,7 +95,7 @@ const CH01 = {
       {check:{id:"B-chk0", stem:'위 코드에서 <span class="mono">twice(x)</span>가 끝난 뒤, main의 <span class="mono">x</span>는?', mono:true,
         okfb:'바뀐 것은 복사본 n뿐이다. x와 n은 서로 다른 저장 공간이다.',
         choices:[{text:"그대로 7",correct:true},{text:"14",correct:false,mc:"value-vs-ref",fb:"함수 안에서 바뀐 것은 복사본 n이다. x는 자기 자리에 그대로 있다."},{text:"쓰레기값",correct:false,mc:"garbage-confusion",fb:"x는 건드려지지 않았다. 원래 값 그대로다."}]}},
-      {gate:{id:"B-g-cbv", q:'이 두 용어로 정리해서 알고 있나 — <b>call by value</b>와 <b>call by reference</b>?', basics:[
+      {gate:{id:"B-g-cbv", book:"c-byval", q:'이 두 용어로 정리해서 알고 있나 — <b>call by value</b>와 <b>call by reference</b>?', basics:[
         {who:"book", say:'"방금 본 것이 <b>call by value</b> — 값의 복사본을 전달하므로 원본은 절대 바뀌지 않는다. C의 함수 호출은 <b>언제나</b> 이 방식이다."'},
         {who:"book", say:'"그런데 <b>주소를 값으로</b> 전달하면 이야기가 달라진다. 복사된 것은 주소지만, 그 주소로 찾아가 <b>원본을 바꿀 수 있다</b>. 이 관용을 <b>call by reference</b>라 부른다."',
          code:["void twice(int *p) {   /* p는 x의 '주소'를 받는다 */","    *p = *p * 2;       /* p가 가리키는 곳 = x 자체를 고친다 */","}","","twice(&x);   /* x의 주소를 전달 */"]},
@@ -116,7 +116,7 @@ const CH01 = {
       {say:'타입이 제각각이니 배열로는 못 묶는다… 덩어리째 묶는 도구가 필요해.'},
       {who:"book", say:'"<b>struct</b>가 그 도구다. 멤버들은 메모리에 나란히 놓이고, 접근은 점(.). 중첩이면 점을 두 번: <span class="mono">s1.birth.month</span>"',
        code:["typedef struct {","    char  name[10];   /* 10바이트 */","    int   id;         /*  4바이트 */","    float score;      /*  4바이트 */","} student;","","student s1;","s1.id = 20261234;","strcpy(s1.name, \"doyun\");   /* 문자 배열엔 strcpy */"]},
-      {gate:{id:"C-g-typedef", q:'<span class="mono">typedef</span>… 이게 정확히 뭐 하는 거더라?', basics:[
+      {gate:{id:"C-g-typedef", book:"c-typedef", q:'<span class="mono">typedef</span>… 이게 정확히 뭐 하는 거더라?', basics:[
         {who:"book", say:'"<span class="mono">typedef</span>는 타입에 <b>별칭</b>을 붙인다. <span class="mono">typedef struct {…} student;</span> 뒤에는 <span class="mono">student s1;</span>처럼 새 타입 이름으로 쓴다. 한 가지 주의 — <b>별칭은 정의가 끝나는 순간에 생긴다.</b> 그래서 정의가 진행 중인 구조체 안에서는 아직 별칭을 쓸 수 없다(이 사실이 곧 중요해진다)."'},
         {say:'타입에 이름표를 붙이는 것. 단, 이름표는 정의가 끝나야 붙는다 — 기억해 두자.'}
       ]}},

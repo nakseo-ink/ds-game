@@ -281,7 +281,7 @@ const CH10 = {
        {text:"정점을 번호 순으로",correct:false,mc:"vertex-myth",fb:"정점 순서는 알고리즘과 무관하다."},
        {text:"정점을 차수 순으로",correct:false,mc:"degree-myth",fb:"차수는 판정에 쓰이지 않는다."},
        {text:"간선을 이름(정점 쌍) 순으로",correct:false,mc:"name-myth",fb:"기준은 이름이 아니라 가중치다."}]},
-    {id:"P06", unit:"B", stem:'Kruskal 의사코드의 빈칸에 들어갈 말은?', mono:true,
+    {id:"P06", unit:"B", book:null, stem:'Kruskal 의사코드의 빈칸에 들어갈 말은?', mono:true,
      code:["E에서 최저 비용 간선 (v,w) 선택;","E에서 (v,w)를 삭제;","if ((v,w)가 T에서 ______를 형성하지 않음)","    (v,w)를 T에 추가;","else","    (v,w)를 거부;"],
      okfb:'채택의 유일한 관문 — 사이클을 만들지 않는 간선만 T에 들어간다.',
      choices:[

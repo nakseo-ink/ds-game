@@ -41,14 +41,14 @@ const CH02 = {
       {say:'넣는 곳도, 빼는 곳도 top 하나뿐. 그래서 규칙이 딱 하나로 정해지는구나 — 나중 것이 먼저.'},
       {who:"book", say:'"구현은 1차원 배열이다. 최하위 원소는 stack[0], 변수 <b>top</b>은 최상위 원소의 인덱스. <b>초기값 top = -1 이 곧 공백 스택</b>이다."',
        code:["#define MAX_STACK_SIZE 100","typedef struct {","    int key;","    /* 다른 필드 */","} element;","element stack[MAX_STACK_SIZE];","int top = -1;   /* 비어 있음 */"]},
-      {gate:{id:"c2-g-typedef", q:'잠깐 — <span class="mono">typedef struct</span>… 지난주에 봤는데, 확실히 기억나나?', basics:[
+      {gate:{id:"c2-g-typedef", book:"c-typedef", q:'잠깐 — <span class="mono">typedef struct</span>… 지난주에 봤는데, 확실히 기억나나?', basics:[
         {who:"book", say:'"typedef struct { … } element; — 구조체에 <b>element라는 별칭</b>을 붙인 것이다. 이제 element 한 단어로 이 구조체 타입을 쓸 수 있다. (2주차 유닛 C)"'},
         {say:'아, 그 별칭. int처럼 쓸 수 있게 이름을 만들어 둔 거였지.'}
       ]}},
       {who:"book", say:'"<b>삽입 — push</b>. (이 책은 함수 이름을 add라고 쓰지만, 표준 명칭은 push다 — 같은 함수다.)"',
        code:["void push(int *top, element item) {","    if (*top >= MAX_STACK_SIZE - 1) {","        stack_full();   /* 가득 참 — 오류 처리 */","        return;","    }","    stack[++*top] = item;   /* top을 먼저 올리고, 그 자리에 저장 */","}"]},
       {who:"book", say:'"한 줄씩 보자. <span class="mono">if (*top >= MAX_STACK_SIZE - 1)</span> — 유효한 칸은 0부터 MAX-1까지이므로, top이 이미 <b>마지막 칸(MAX-1)</b>이면 더 넣을 곳이 없다. (지난주의 배열 경계와 같은 이야기다.)"'},
-      {gate:{id:"c2-g-incr", q:'그런데 <span class="mono">++*top</span>… 전위(++x)와 후위(x++)의 차이, 확실히 아나?', basics:[
+      {gate:{id:"c2-g-incr", book:"c-op", q:'그런데 <span class="mono">++*top</span>… 전위(++x)와 후위(x++)의 차이, 확실히 아나?', basics:[
         {who:"book", say:'"<b>++x는 먼저 올리고 그 값을 쓴다. x++는 지금 값을 쓰고 나서 올린다.</b> top이 -1일 때 — stack[++top]은 top을 0으로 만든 뒤 stack[0]에 접근하지만, stack[top++]라면 stack[-1]— 배열 밖!— 에 접근하고 만다. 한 글자 차이가 사고를 부른다."'},
         {say:'순서구나. 먼저 바꾸느냐, 쓰고 나서 바꾸느냐. push는 반드시 <b>먼저 올려야</b> 새 칸에 들어간다.'}
       ]}},
@@ -131,7 +131,7 @@ const CH02 = {
       {who:"book", say:'"배열 queue[MAX_QUEUE_SIZE]를 <b>원형으로 취급</b>한다. 이번에는 <b>front와 rear의 초기값이 0</b>이다. front는 <b>큐의 첫 원소로부터 시계 반대방향으로 하나 앞</b> 위치 — 어제 배운 \'한 칸 앞\' 습관 그대로다. rear는 큐의 현재 끝."',
        viz:{type:"circ",max:5,front:0,rear:0,vals:{}}},
       {who:"book", say:'"<b>front == rear 는 공백 상태</b>다. (지금 그림이 그렇다 — 둘 다 0)"'},
-      {gate:{id:"c2-g-mod", q:'회전에는 <b>% (모듈로)</b> 연산이 쓰인다 — 나머지 연산, 확실하나?', basics:[
+      {gate:{id:"c2-g-mod", book:"c-op", q:'회전에는 <b>% (모듈로)</b> 연산이 쓰인다 — 나머지 연산, 확실하나?', basics:[
         {who:"book", say:'"a % b 는 a를 b로 나눈 <b>나머지</b>다. 7 % 5 = 2. 그리고 <b>(4+1) % 5 = 0</b> — 4 다음이 0으로 돌아온다. 이것이 \'원형\'의 정체다."'},
         {say:'나머지가 시계를 만드는구나. 끝(4)의 다음이 처음(0).'}
       ]}},

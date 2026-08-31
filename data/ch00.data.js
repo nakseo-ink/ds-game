@@ -55,7 +55,7 @@ const CH00 = {
       {who:"할아버지", face:"elder", text:'삼천 원만 받지.', pay:-3000},
       {who:"나", face:"me-shock", text:'<span class="inner">(전 재산의 92.6%가 나갔다. 잔고를 보라… 하지만 이상하게 든든하다.)</span>'},
       {who:"나", face:"me", text:'<span class="inner">속표지 귀퉁이, 또박또박한 옛날 글씨 — <b>"9232054 이동훈"</b>. …학번인가? 이 여백 메모를 다 쓴 사람이겠지. 이동훈 씨, 당신 덕에 삽니다.</span>'},
-      {who:"나", face:"me-proud", text:'<span class="inner">앞으로 막히면 이 책을 뒤지자. 화면 <b>왼쪽 아래의 📖 책</b>이 바로 이 책이다 — 새 여백 메모가 보이면 <b style="color:var(--accent);">!</b> 로 알려준다니(?) 든든하다.</span>'}
+      {who:"나", face:"me-proud", text:'<span class="inner">앞으로 막히면 이 책을 뒤지자. 화면 <b>왼쪽 아래 서가의 📕 책</b>이 바로 이 책이고, 여백 메모가 나타나는 자리는 <b>🔖 책갈피</b>가 알려준다 — 새 메모가 보이면 <b style="color:var(--accent);">!</b> 로 알려준다니(?) 든든하다.</span>'}
     ]
   },
 

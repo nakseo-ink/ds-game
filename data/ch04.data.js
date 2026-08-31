@@ -57,14 +57,14 @@ const CH04 = {
           {text:"원소들을 기억장소에 주소 순서대로 나란히 배치해 둔다",correct:false,mc:"seq-myth",fb:"그건 순차적 사상 — 배열로 되돌아가는 길이다."},
           {text:"운영체제가 원소들의 순서를 표로 만들어 관리해 준다",correct:false,mc:"os-myth",fb:"순서는 자료구조 스스로 지킨다 — 노드 안의 링크가 그 장치다."},
           {text:"원소마다 1, 2, 3… 순서 번호를 붙여 두고 정렬해 쓴다",correct:false,mc:"index-myth",fb:"번호를 붙이면 삽입 때마다 뒷번호를 전부 고쳐야 한다 — 이사 비용의 재림이다."}]}},
-      {gate:{id:"c4-g-ptr", q:'링크는 <b>포인터</b>다 — 2주차의 <span class="mono">&</span> 와 <span class="mono">*</span>, 확실히 기억하나?', basics:[
+      {gate:{id:"c4-g-ptr", book:"c-ptr", q:'링크는 <b>포인터</b>다 — 2주차의 <span class="mono">&</span> 와 <span class="mono">*</span>, 확실히 기억하나?', basics:[
         {who:"book", say:'"<span class="mono">&</span> 는 <b>주소 연산자</b> — &i 는 변수 i의 주소다. <span class="mono">*</span> 는 <b>역참조(간접 지시) 연산자</b> — 포인터가 가리키는 곳의 값이다."',
          code:["int i, *pi;","pi = &i;    /* pi에 i의 주소를 저장 */","i = 10;     /* 직접 대입 — 아래와 같은 효과 */","*pi = 10;   /* pi가 가리키는 곳(i)에 10 저장 */"]},
         {say:'*pi = 10 은 pi를 바꾸는 게 아니라 pi가 <b>가리키는 곳</b>을 바꾼다 — 이게 핵심이었지.'},
         {who:"book", say:'"아무것도 가리키지 않는 포인터에는 <b>NULL</b>을 넣는다. 검사는 <span class="mono">if (pi == NULL)</span>, 짧게는 <span class="mono">if (!pi)</span>."'}
       ]}},
       {who:"book", say:'"<b>포인터의 위험성</b> — 포인터가 실제로는 어떤 대상도 가리키고 있지 않을 때, 프로그램 범위 밖이나 합당하지 않은 메모리 영역을 참조할 수 있다. 그래서 <b>쓰지 않는 포인터는 NULL로 설정</b>해 두는 것이 바람직하다."'},
-      {gate:{id:"c4-g-alloc", q:'노드는 필요할 때마다 <b>실행 도중에</b> 만들어야 한다는데 — <b>동적 할당</b>이라는 말, 들어 본 적 있나?', basics:[
+      {gate:{id:"c4-g-alloc", book:"c-malloc", q:'노드는 필요할 때마다 <b>실행 도중에</b> 만들어야 한다는데 — <b>동적 할당</b>이라는 말, 들어 본 적 있나?', basics:[
         {who:"book", say:'"처음이라면 여기부터. <span class="mono">int a[100];</span> 처럼 선언으로 잡는 공간은 <b>컴파일할 때 크기가 정해진다</b> — 정적(static) 할당이다. 그런데 리스트의 노드가 몇 개 필요할지는 <b>프로그램을 실행해 봐야</b> 안다. 열 개일 수도, 만 개일 수도. 그래서 실행 도중에 \'지금 하나만 더 주세요\' 하고 그때그때 공간을 빌리는 방법이 필요하다 — 이것이 <b>동적(dynamic) 할당</b>이다."'},
         {say:'방 100개를 미리 지어 놓는 기숙사가 아니라, 손님이 올 때마다 방을 하나씩 내주는 호텔이구나. 안 오면 안 짓고.'}
       ]}},

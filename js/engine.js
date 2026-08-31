@@ -122,15 +122,16 @@ function renderMCQ(container,item,opts){
       [...ch.children].forEach(x=>{x.disabled=true;});
       if(c.correct){
         b.classList.add("correct");
-        fb.appendChild(el('<div class="feedback ok fade">✅ '+(c.fb||item.okfb||"정답.")+(hintUsed?"<br>📖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
+        fb.appendChild(el('<div class="feedback ok fade">✅ '+(c.fb||item.okfb||"정답.")+(hintUsed?"<br>🔖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
       }else{
         b.classList.add("wrong");
         if(!opts.fbPrefix && BookFab.note(c.fb)){ /* 책이 오답을 짚어준다 — 하단 책이 자동으로 펼쳐짐 */
-          fb.appendChild(el('<div class="feedback fade">📖 …낡은 책이 스르륵 펼쳐진다. <span style="color:var(--ink-dim);font-size:12.5px;">(화면 왼쪽 아래)</span></div>'));
+          fb.appendChild(el('<div class="feedback fade">🔖 …책갈피를 끼워 둔 자리가 스르륵 펼쳐진다. <span style="color:var(--ink-dim);font-size:12.5px;">(화면 왼쪽 아래)</span></div>'));
         }else{
-          fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+c.fb+'</div>'));
+          fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'🔖 <i>책의 여백 메모</i> — ')+c.fb+'</div>'));
         }
       }
+      if(!c.correct) bookAidRow(fb,item);   /* 📘 오답→책 배선 (P2) */
       opts.onDone(c.correct,hintUsed,fb);
     };
     ch.appendChild(b);
@@ -182,8 +183,9 @@ function renderParsons(container,item,opts){
     log("answer",{unit:opts.unit, itemId:item.id||"parsons", correct, mc:correct?null:(item.mc||"parsons-order"), hintUsed, elapsedMs:Date.now()-t0, order:order.slice()});
     subBtn.disabled=true; [...src.children].forEach(x=>x.disabled=true);
     asm.querySelectorAll("button").forEach(x=>{ x.disabled=true; x.style.opacity=".25"; });
-    if(correct) fb.appendChild(el('<div class="feedback ok fade">✅ '+(item.okfb||"올바른 순서다.")+(hintUsed?"<br>📖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
-    else fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'📖 <i>책의 여백 메모</i> — ')+(item.fb||"순서가 어긋났다. 각 줄이 무엇을 '읽고' 무엇을 '덮어쓰는지' 따져 보라 — 읽어야 할 값을 먼저 덮으면 길을 잃는다.")+'</div>'));
+    if(correct) fb.appendChild(el('<div class="feedback ok fade">✅ '+(item.okfb||"올바른 순서다.")+(hintUsed?"<br>🔖 힌트를 봤으므로 이번 정답은 연속 기록에 넣지 않는다.":"")+'</div>'));
+    else fb.appendChild(el('<div class="feedback fade">'+(opts.fbPrefix||'🔖 <i>책의 여백 메모</i> — ')+(item.fb||"순서가 어긋났다. 각 줄이 무엇을 '읽고' 무엇을 '덮어쓰는지' 따져 보라 — 읽어야 할 값을 먼저 덮으면 길을 잃는다.")+'</div>'));
+    if(!correct) bookAidRow(fb,item);   /* 📘 오답→책 배선 (P2) — Parsons는 lines가 코드 */
     opts.onDone(correct,hintUsed,fb);
   };
   container.appendChild(asm); container.appendChild(src); container.appendChild(sub); container.appendChild(fb);
@@ -194,12 +196,36 @@ function renderItem(container,item,opts){
   if(item.ptype==="parsons") return renderParsons(container,item,opts);
   return renderMCQ(container,item,opts);
 }
-/* ============ 낡은 책 — 하단 고정 아이콘 (구매 후 상시, 새 메모 = ❗ 뱃지) ============ */
+/* ---- 📘 오답→책 배선 (P2, v0.26.1) ----
+   코드가 있는 문항이 틀렸을 때, 그 코드의 C 문법에 해당하는 쪽집게 C 절 버튼을 피드백에 붙인다.
+   결정 순서: item.book 명시(null이면 차단) → 코드 토큰 스캔(문자열·주석 제거 후, 구체적인 것 우선). */
+function bookRefFromItem(item){
+  if(item&&item.book!==undefined) return item.book||null;
+  const lines=item&&(item.code||item.lines); if(!lines||!lines.length) return null;
+  const src=lines.join("\n").replace(/"(?:[^"\\]|\\.)*"/g,'""').replace(/\/\*[\s\S]*?\*\//g,'');
+  const R=[[/->/,"c-arrow"],[/\bmalloc\b|\bfree\s*\(|\bNULL\b/,"c-malloc"],[/\btypedef\b/,"c-typedef"],
+    [/\bstruct\b/,"c-struct"],[/\]\s*\[/,"c-arr2d"],[/\bint\s*\*|\(\s*\w[\w ]*\*\s*\w+\s*[,)]/,"c-ptr"],
+    [/&(?!&)\s*\w/,"c-addr"],[/%/,"c-op"],[/\bdo\b|\bwhile\b/,"c-while"],[/\bfor\s*\(/,"c-for"],
+    [/\bif\s*\(/,"c-if"],[/\breturn\b/,"c-func"],[/\[/,"c-arr"]];
+  for(const [re,id] of R) if(re.test(src)) return id;
+  return null;
+}
+function bookAidRow(holder,item){
+  try{
+    const ref=bookRefFromItem(item); if(!ref) return;
+    const bi=BookC.info(ref); if(!bi) return;
+    const row=el('<div class="fade" style="margin-top:6px;"><button class="btn ghost" style="padding:4px 12px;font-size:12.5px;">📘 이 코드의 C가 낯설다면 — '+bi.no+' '+bi.title+' ▶</button></div>');
+    row.querySelector("button").onclick=()=>{ log("book_aid",{ref, itemId:(item&&item.id)||"gen"}); BookC.open(ref); };
+    holder.appendChild(row);
+  }catch(e){}
+}
+/* ============ 책갈피 — 여백 메모·단서 수첩, 하단 고정 아이콘 (구매 후 상시, 새 메모 = ❗ 뱃지)
+   v0.29.1 UI 정리: 서사상 낡은 책(📕)과 같은 책이므로 세 번째 「책」이 아니라 책에 끼운 책갈피로 재의미화 ============ */
 const BookFab=(function(){
   let hints=null, unit="", lv=0, used=false, answeredFn=null, mode="hidden";
   let memoText=null, memoRead=false; /* 자습 중 나타나는 이동훈의 여백 메모 */
   const openedUnits=new Set(); /* 유닛별 첫 ❗ 안내는 1회만 */
-  const btn=el('<button id="bookfab" title="낡은 책 — 이동훈의 여백 메모">📖<span class="bang">!</span></button>');
+  const btn=el('<button id="bookfab" title="책갈피 — 이동훈의 여백 메모와 단서 수첩">🔖<span class="bang">!</span></button>');
   const panel=el('<div id="bookfabpanel"></div>');
   document.body.appendChild(btn); document.body.appendChild(panel);
   const bang=btn.querySelector(".bang");
@@ -213,7 +239,7 @@ const BookFab=(function(){
     const box=el('<div class="card fade" style="margin:0;"></div>');
     if(mode==="memo"&&memoText){
       if(!memoRead){ memoRead=true; log("memo_open",{unit}); }
-      box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">📖 이동훈의 여백 메모</div>'));
+      box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">🔖 이동훈의 여백 메모</div>'));
       box.appendChild(el('<div class="bookpanel" style="margin:0;">'+memoText+'</div>'));
     }else if(mode!=="hints"||!hints){
       box.appendChild(el('<div class="bookpanel" style="margin:0;">…여백을 넘겨 봐도, 지금 도움될 메모는 없다.<br><span style="color:var(--ink-dim);font-size:12.5px;">메모는 문제를 만났을 때 빛난다 — 새 메모가 생기면 <b style="color:var(--accent);">!</b> 로 알려준다.</span></div>'));
@@ -222,7 +248,7 @@ const BookFab=(function(){
       const done=answeredFn&&answeredFn();
       if(lv===0&&!done) box.appendChild(el('<div style="font-size:13px;color:var(--ink-dim);">이동훈 선배의 여백 메모가 보인다. <span class="tag">무패널티 · 연속 기록만 제외</span></div>'));
       if(!done&&lv<hints.length){
-        const more=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost">📖 여백을 '+(lv?"더 ":"")+'뒤져본다 ('+lv+'/'+hints.length+')</button></div>');
+        const more=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost">🔖 여백을 '+(lv?"더 ":"")+'뒤져본다 ('+lv+'/'+hints.length+')</button></div>');
         more.querySelector("button").onclick=()=>{ used=true; openedUnits.add(unit); log("hint_open",{unit, level:lv+1}); lv++; render(); refresh(); };
         box.appendChild(more);
       }else if(done){
@@ -249,7 +275,7 @@ const BookFab=(function(){
     if(mode==="hidden") return false;
     panel.innerHTML="";
     const box=el('<div class="card fade" style="margin:0;"></div>');
-    box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">📖 이동훈의 여백 메모 — 틀린 자리에 이렇게 적혀 있다</div>'));
+    box.appendChild(el('<div style="font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;">🔖 이동훈의 여백 메모 — 틀린 자리에 이렇게 적혀 있다</div>'));
     box.appendChild(el('<div class="bookpanel" style="margin:0;">'+t+'</div>'));
     const close=el('<div style="margin-top:10px;text-align:right;"><button class="btn ghost" style="padding:5px 14px;font-size:12.5px;">덮기 ✕</button></div>');
     close.querySelector("button").onclick=()=>{ panel.style.display="none"; };
@@ -267,6 +293,147 @@ const BookFab=(function(){
     used:()=>used
   };
 })();
+
+/* ---- 서가 리더 공장 (P1 리더 + P3a 연습문제, v0.28) ----
+   책 데이터(BOOKC/BOOKDS)로 서가 버튼 + 드로어 리더를 생성. 참조 전용 — 본편 진행·기록·경제와 무관.
+   연습문제: 자가 채점 3요소(문제 코드 + 테스트 main·기대 출력 + 접힌 해답) + 「풀었다」 자기 체크(로컬). */
+const EXDONEKEY="dsgame_bookex";
+function makeBook(BOOK, cfg){
+  if(!BOOK) return { open:()=>{}, info:()=>null };
+  const btn=el('<button id="'+cfg.btnId+'" class="shelfbtn" title="'+BOOK.meta.title+' — '+BOOK.meta.sub+'">'+cfg.icon+'</button>');
+  let back=document.getElementById("bcback");
+  if(!back){ back=el('<div id="bcback"></div>'); document.body.appendChild(back); }
+  const panel=el('<div id="'+cfg.panelId+'" class="bookdrawer"></div>');
+  document.body.appendChild(btn); document.body.appendChild(panel);
+  const secById={}, flat=[];
+  BOOK.parts.forEach(pt=>pt.sections.forEach(s=>{ secById[s.id]=s; flat.push(s); }));
+  function show(){ document.querySelectorAll(".bookdrawer").forEach(p=>{ p.style.display="none"; });
+    back.style.display="block"; back.onclick=hide; panel.style.display="block"; }
+  function hide(){ back.style.display="none"; panel.style.display="none"; }
+  const exStore=()=>{ try{ return JSON.parse(localStorage.getItem(EXDONEKEY)||"{}"); }catch(e){ return {}; } };
+  function wrap(){ panel.innerHTML=""; const box=el('<div class="bccard"></div>'); panel.appendChild(box); return box; }
+  function closeRow(box){
+    const r=el('<div style="margin-top:12px;text-align:right;"><button class="btn ghost" style="padding:5px 14px;font-size:12.5px;">덮기 ✕</button></div>');
+    r.querySelector("button").onclick=hide;
+    box.appendChild(r);
+  }
+  function codebox(lines,label,cls){
+    const w=el('<div style="margin-top:10px;"></div>');
+    if(label) w.appendChild(el('<div style="font-size:11.5px;color:#a89c7d;margin-bottom:3px;">'+label+'</div>'));
+    const cb=el('<div class="codebox'+(cls?" "+cls:"")+'"></div>');
+    lines.forEach(ln=>cb.appendChild(el('<div class="codeline">'+(ln===""?" ":hlC(String(ln)))+'</div>')));
+    w.appendChild(cb); return w;
+  }
+  function renderToc(){
+    const box=wrap();
+    const done=exStore();
+    box.appendChild(el('<div style="font-size:15px;"><b>'+cfg.icon+' '+BOOK.meta.title+'</b> <span style="color:var(--ink-dim);font-size:12.5px;">— '+BOOK.meta.sub+'</span></div>'));
+    if(BOOK.meta.flavor) box.appendChild(el('<div class="bookpanel" style="font-size:12.5px;color:var(--ink-dim);">'+BOOK.meta.flavor+'</div>'));
+    if(BOOK.meta.howto) box.appendChild(el('<div class="bookpanel" style="font-size:12.5px;">'+BOOK.meta.howto+'</div>'));
+    BOOK.parts.forEach(pt=>{
+      box.appendChild(el('<div style="margin-top:12px;font-size:12.5px;color:var(--accent);">'+pt.title+'</div>'));
+      pt.sections.forEach(s=>{
+        let badge="";
+        if(s.ex&&s.ex.length){ const d=s.ex.filter(x=>done[x.id]).length;
+          badge=' <span style="font-size:11.5px;color:'+(d===s.ex.length?'var(--accent2)':'#8a8064')+';">연습 '+d+'/'+s.ex.length+'</span>'; }
+        const row=el('<div class="bctoc" style="padding:4px 2px;cursor:pointer;font-size:13.5px;">'+s.no+' · '+s.title+badge+'</div>');
+        row.onclick=()=>renderSec(s.id);
+        box.appendChild(row);
+      });
+    });
+    closeRow(box);
+  }
+  const LV=["","1단 · 따라 치기","2단 · 빈칸 완성","3단 · 변형 구현","4단 · 자유 구현"];
+  function renderEx(box,s){
+    if(!s.ex||!s.ex.length) return;
+    box.appendChild(el('<div style="margin-top:16px;border-top:1px dashed #4a4230;padding-top:10px;font-size:12.5px;color:var(--accent);">✏ 연습문제 <span style="color:var(--ink-dim);">— 온라인 컴파일러(📘 §0)에서 실행, 기대 출력과 같으면 통과</span></div>'));
+    s.ex.forEach((ex,k)=>{
+      const w=el('<div style="margin-top:12px;"></div>');
+      w.appendChild(el('<div style="font-size:13.5px;"><b>연습 '+(k+1)+' — '+ex.title+'</b> <span class="tag" style="font-size:11px;">'+LV[ex.lv]+'</span></div>'));
+      if(ex.intro) w.appendChild(el('<div style="font-size:13px;color:#d8cfb4;line-height:1.7;margin-top:4px;">'+ex.intro+'</div>'));
+      if(ex.setup) w.appendChild(codebox(ex.setup,"준비 코드 — 맨 위에 그대로"));
+      w.appendChild(codebox(ex.code, ex.lv===1?"코드 — 그대로 입력해 실행":"문제 코드 — TODO를 채워라"));
+      if(ex.main) w.appendChild(codebox(ex.main,"테스트 main — 아래에 이어 붙여 실행"));
+      w.appendChild(codebox(ex.expect,"기대 출력 — 이대로 나오면 통과","expectbox"));
+      if(ex.sol){
+        const sb=el('<div style="margin-top:8px;"><button class="btn ghost" style="padding:4px 12px;font-size:12.5px;">해답 보기 ▼</button></div>');
+        const sw=el('<div style="display:none;"></div>');
+        sw.appendChild(codebox(ex.sol,"해답 — 전 주인의 필체"));
+        let opened=false;
+        sb.querySelector("button").onclick=()=>{
+          if(sw.style.display==="none"){ sw.style.display="block"; sb.querySelector("button").textContent="해답 접기 ▲";
+            if(!opened){ opened=true; log("book_sol",{id:ex.id}); } }
+          else { sw.style.display="none"; sb.querySelector("button").textContent="해답 보기 ▼"; }
+        };
+        w.appendChild(sb); w.appendChild(sw);
+      }
+      const done=!!exStore()[ex.id];
+      const ck=el('<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:'+(done?'var(--accent2)':'var(--ink-dim)')+';cursor:pointer;"><input type="checkbox"'+(done?' checked':'')+'> 풀었다 — 기대 출력 일치 확인함 <span style="opacity:.7;">(자기 기록용)</span></label>');
+      ck.querySelector("input").onchange=(e)=>{
+        const st=exStore(); if(e.target.checked) st[ex.id]=true; else delete st[ex.id];
+        try{ localStorage.setItem(EXDONEKEY,JSON.stringify(st)); }catch(err){}
+        log("book_exercise",{id:ex.id, done:!!e.target.checked});
+        ck.style.color=e.target.checked?'var(--accent2)':'var(--ink-dim)';
+      };
+      w.appendChild(ck);
+      box.appendChild(w);
+    });
+  }
+  function renderSec(id){
+    const s=secById[id]; if(!s){ renderToc(); return; }
+    log("book_section",{book:cfg.tag, id});
+    const box=wrap();
+    const idx=flat.indexOf(s);
+    box.appendChild(el('<div style="display:flex;align-items:baseline;gap:8px;"><b style="font-size:14.5px;">'+s.no+' '+s.title+'</b><span style="margin-left:auto;"><button class="btn ghost bcnav" data-go="toc" style="padding:3px 10px;font-size:12px;">목차</button></span></div>'));
+    (s.body||[]).forEach(b=>{
+      if(typeof b==="string") box.appendChild(el('<div class="bookpanel" style="font-size:13.5px;line-height:1.75;">'+b+'</div>'));
+      else if(b&&b.code) box.appendChild(codebox(b.code,b.label||null));
+    });
+    if(s.uses) box.appendChild(el('<div style="margin-top:10px;font-size:12.5px;color:var(--ink-dim);">🎮 이 게임 어디서 — '+s.uses+'</div>'));
+    if(s.drill){
+      const d=s.drill;
+      const w=el('<div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;"></div>');
+      w.appendChild(el('<div style="font-size:12.5px;color:var(--accent);">✍ 손풀기 <span style="color:var(--ink-dim);">— 무패널티 · 기록과 무관</span></div>'));
+      w.appendChild(el('<div style="font-size:13.5px;margin:7px 0;">'+d.stem+'</div>'));
+      const fb=el('<div></div>');
+      let done=false;
+      shuffle(d.choices.map(c=>({...c}))).forEach(c=>{
+        const b=el('<button class="btn ghost" style="display:block;width:100%;text-align:left;margin-top:6px;font-size:13px;">'+c.text+'</button>');
+        b.onclick=()=>{ if(done&&c.correct===undefined) return;
+          log("book_drill",{id:s.id, ok:!!c.correct});
+          fb.innerHTML='<div class="feedback '+(c.correct?'ok':'')+' fade" style="margin-top:8px;">'+(c.correct?'✅ '+(d.okfb||"정답."):'✗ '+(c.fb||"다시 생각해 보자.")) +'</div>';
+          if(c.correct) done=true;
+        };
+        w.appendChild(b);
+      });
+      w.appendChild(fb); box.appendChild(w);
+    }
+    renderEx(box,s);
+    const nav=el('<div style="margin-top:12px;display:flex;gap:8px;">'+
+      (idx>0?'<button class="btn ghost bcnav" data-go="prev" style="padding:5px 12px;font-size:12.5px;">◀ '+flat[idx-1].no+'</button>':'')+
+      (idx<flat.length-1?'<button class="btn ghost bcnav" data-go="next" style="padding:5px 12px;font-size:12.5px;">'+flat[idx+1].no+' ▶</button>':'')+'</div>');
+    box.appendChild(nav);
+    [...box.querySelectorAll(".bcnav")].forEach(b=>b.onclick=()=>{
+      const go=b.getAttribute("data-go");
+      if(go==="toc") renderToc();
+      else if(go==="prev") renderSec(flat[idx-1].id);
+      else renderSec(flat[idx+1].id);
+    });
+    closeRow(box);
+  }
+  btn.onclick=()=>{
+    if(panel.style.display==="block"){ hide(); return; }
+    log("book_open",{book:cfg.tag});
+    renderToc(); show();
+  };
+  return {
+    open:(id)=>{ log("book_open",{book:cfg.tag, ref:id||null}); if(id&&secById[id]) renderSec(id); else renderToc(); show(); },
+    info:(id)=>secById[id]?{no:secById[id].no, title:secById[id].title}:null
+  };
+}
+const BookDS=makeBook((typeof BOOKDS!=="undefined")?BOOKDS:null,{tag:"DS", btnId:"bookds", panelId:"bookdspanel", icon:"📕"});
+const BookC=makeBook((typeof BOOKC!=="undefined")?BOOKC:null,{tag:"C", btnId:"bookc", panelId:"bookcpanel", icon:"📘"});
+
 function attachBook(card,hints,unit,isAnswered){
   BookFab.hints(hints,unit,isAnswered); /* 문제 화면 — 하단 책 아이콘에 새 메모 장착 (첫 문제엔 ❗) */
   return ()=>BookFab.used();
@@ -285,7 +452,7 @@ function sceneStudy(unitKey, onDone){
   BookFab.info();
   log("study_step",{unit:unitKey, step:"start"});
   stage.innerHTML="";
-  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📖 자습 — '+U.title+'</div><div></div></div>');
+  const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📕 자습 — '+U.title+'</div><div></div></div>');
   stage.appendChild(card);
   const box=card.children[1];
   const queue=U.beats.slice();
@@ -320,6 +487,10 @@ function sceneStudy(unitKey, onDone){
       yes.onclick=()=>{ log("gate",{unit:unitKey,id:b.gate.id,known:true}); g.remove();
         box.appendChild(el('<div class="caption fade" style="min-height:auto;">— 아는 내용, 건너뛴다 —</div>')); next(); };
       no.onclick=()=>{ log("gate",{unit:unitKey,id:b.gate.id,known:false}); g.remove();
+        if(b.gate.book){ try{ const bi=BookC.info(b.gate.book); if(bi){   /* 📘 게이트→책 배선 (P2) */
+          const r=el('<div class="fade" style="margin:2px 0 8px;"><button class="btn ghost" style="padding:4px 12px;font-size:12.5px;">📘 차분히 보고 싶다면 — 쪽집게 C '+bi.no+' '+bi.title+' ▶</button></div>');
+          r.querySelector("button").onclick=()=>{ log("book_aid",{ref:b.gate.book, itemId:b.gate.id}); BookC.open(b.gate.book); };
+          box.appendChild(r); } }catch(e){} }
         for(let i=b.gate.basics.length-1;i>=0;i--) queue.unshift(b.gate.basics[i]); next(); };
       g.appendChild(yes); g.appendChild(no); box.appendChild(g); scrollBottom();
       return;
@@ -330,7 +501,7 @@ function sceneStudy(unitKey, onDone){
       return;
     }
     if(b.memo){
-      box.appendChild(el('<div class="caption fade" style="min-height:auto;">📖 …책 여백에 낡은 손글씨가 보인다. <b style="color:var(--accent);">화면 왼쪽 아래의 책</b>을 펼쳐 보자.</div>'));
+      box.appendChild(el('<div class="caption fade" style="min-height:auto;">🔖 …책 여백에 낡은 손글씨가 보인다. <b style="color:var(--accent);">왼쪽 아래의 책갈피</b>를 펼쳐 보자.</div>'));
       BookFab.memo(b.memo, unitKey);
       contBtn("계속 ▼", next, true);
       return;
@@ -376,7 +547,7 @@ function sceneBigO(){
   saveCP("bigO"); BookFab.hide();
   stage.innerHTML="";
   const card=el('<div class="card fade">'+
-    '<div style="font-size:13px;color:var(--ink-dim);">📖 책의 여백에 이런 메모가 있다</div>'+
+    '<div style="font-size:13px;color:var(--ink-dim);">🔖 책의 여백에 이런 메모가 있다</div>'+
     '<div class="bookpanel" style="margin-top:12px; font-size:15.5px;">"<span class="mono">list[3]</span>이든 <span class="mono">list[999999]</span>든, 주소 계산은 <b>곱셈 한 번, 덧셈 한 번</b>.<br>배열의 인덱스 접근이 크기와 무관하게 <b>항상 같은 시간</b> — 상수 시간, <b>O(1)</b> — 인 이유가 이것이다."</div>'+
     '<div class="dlg" style="margin-top:20px;"><div class="portrait">'+AV("me-proud")+'</div><div class="bubble"><div class="who">나</div><span class="inner">유닛 A 숙달. 그런데 책에서 이상한 걸 봤다. "배열을 함수에 넘기면 원본이 바뀐다"…? C는 복사해서 넘긴다며. 내일 밤, 이걸 파보자.</span></div></div></div>');
   CH.interludes.A.forEach(d=>card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>')));
@@ -587,7 +758,7 @@ function sceneLinkPuzzle(){
   saveCP("linkPuzzle");
   setHUD("목요일","유닛 C"); BookFab.info(); log("study_step",{unit:"C",step:"link-puzzle"});
   stage.innerHTML="";
-    const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📖 자체참조 구조 (self-referential) <span class="tag">조작 미션</span></div>'+
+    const card=el('<div class="card fade"><div style="font-size:13px;color:var(--ink-dim);">📕 자체참조 구조 (self-referential) <span class="tag">조작 미션</span></div>'+
       '<div class="codebox"><div class="codeline">typedef struct list {</div><div class="codeline">  char data;</div><div class="codeline">  struct list *link;  /* 자기 타입을 가리키는 포인터 */</div><div class="codeline">} list;</div></div>'+
       '<div class="caption">멤버 중에 <b>자기 자신과 같은 타입을 가리키는 포인터</b>가 있는 구조. item1, item2, item3의 link를 직접 연결해서 <b>a → b → c → NULL</b> 사슬을 만들어 보자.<br><span style="color:var(--ink-dim);">각 노드의 <span class="mono">link</span> 칸을 클릭한 뒤, 가리킬 노드(또는 NULL)를 클릭.</span></div></div>');
     const links=[null,null,null]; let selecting=-1;
@@ -977,7 +1148,7 @@ function duelScene(back){
     res.forEach(d=>{
       fb.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
       if(d.clue && addClue(d.clue.id,d.clue.text))
-        fb.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+        fb.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 🔖 책갈피에서 언제든 다시 볼 수 있다.</div>'));
     });
     if(correct && D.reward && !S.duelRewarded){ S.duelRewarded=true; S.balance+=D.reward; saveWallet(); $("#hud-money").textContent=money(S.balance);
       fb.appendChild(el('<div class="card fade" style="background:var(--panel2); margin-top:12px;">💰 결투 보너스 +'+money(D.reward)+' → 잔고 <b>'+money(S.balance)+'</b></div>')); }
@@ -1167,6 +1338,7 @@ function exReview(list,i,back){
   const myc=item.choices[x.oi];
   if(myc&&!myc.correct&&myc.fb) card.appendChild(el('<div class="feedback fade">✗ <b>내가 고른 답</b> — '+myc.fb+'</div>'));
   card.appendChild(el('<div class="feedback ok fade">✅ <b>정답</b> — '+(item.okfb||"")+'</div>'));
+  bookAidRow(card,item);   /* 📘 오답 해설→책 배선 (P2) */
   card.appendChild(el('<div style="margin-top:14px;text-align:right;"><button class="btn" id="exrevnext">'+(i===list.length-1?"해설 끝 ▶":"다음 오답 ▶")+'</button></div>'));
   stage.appendChild(card);
   $("#exrevnext").onclick=()=>exReview(list,i+1,back);
@@ -1217,6 +1389,7 @@ function exRxIntro(k){
   card.appendChild(el('<div class="stem">'+src.stem+'</div>'));
   if(myc.fb) card.appendChild(el('<div class="feedback fade">✗ <b>내가 고른 답</b> "'+myc.text+'" — '+myc.fb+'</div>'));
   card.appendChild(el('<div class="feedback ok fade">✅ <b>정답</b> "'+(okc?okc.text:"")+'" — '+(src.okfb||"")+'</div>'));
+  bookAidRow(card,src);   /* 📘 처방 복습→책 배선 (P2) */
   card.appendChild(el('<div style="margin-top:14px;text-align:right;"><button class="btn" id="exdrill">2단계 — 같은 것을 묻는 다른 문제 ▶</button></div>'));
   stage.appendChild(card);
   $("#exdrill").onclick=()=>exRxDrill(k);
@@ -1777,7 +1950,7 @@ function gwInterlude(key,i){
   (CH.interludes[key]||[]).filter(d=>evalCond(d.cond)).forEach(d=>{
     card.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text+'</div></div>'));
     if(d.clue && addClue(d.clue.id,d.clue.text))
-      card.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+      card.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 🔖 책갈피에서 언제든 다시 볼 수 있다.</div>'));
   });
   card.appendChild(el('<div style="margin-top:16px;text-align:right;"><button class="btn" id="ilnext">'+(CH.ilNext&&CH.ilNext[key]||"다음 ▶")+'</button></div>'));
   stage.appendChild(card);
@@ -1891,7 +2064,7 @@ function gwAplus(idx,correctCnt,i){
   function attempt(){
     body.innerHTML="";
     const inst = firstTry ? item : {...item, choices:item.choices?shuffle(item.choices.map(c=>({...c}))):undefined};
-    renderItem(body,inst,{unit:firstTry?"aplus":"aplus-retry",fbPrefix:'📖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
+    renderItem(body,inst,{unit:firstTry?"aplus":"aplus-retry",fbPrefix:'🔖 <i>책의 여백 메모</i> — ',hintUsed:()=>false,onDone:(correct,_,fb)=>{
       if(firstTry){ nc=correctCnt+(correct?1:0); firstTry=false; }
       if(correct){ proceed(fb); return; }
       /* 오답 — 해설을 본 뒤 같은 문제로 이해를 검증할 수 있다 (점수 무관) */
@@ -1912,7 +2085,7 @@ function gwAplus(idx,correctCnt,i){
         if(res){ res.forEach(d=>{
           card2.appendChild(el('<div class="dlg" style="margin-top:12px;"><div class="portrait">'+AV(d.face)+'</div><div class="bubble"><div class="who">'+d.who+'</div>'+d.text.replace('{n}',nc)+'</div></div>'));
           if(d.clue && addClue(d.clue.id,d.clue.text))
-            card2.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 📖 책에서 언제든 다시 볼 수 있다.</div>'));
+            card2.appendChild(el('<div class="fade" style="margin:6px 0 0 60px;font-size:12.5px;color:var(--accent);">🕵️ 단서 수첩에 기록됨 — 하단 🔖 책갈피에서 언제든 다시 볼 수 있다.</div>'));
         }); }
         else card2.appendChild(el('<div class="dlg"><div class="portrait">'+AV(S.aplusSuccess?"doyun-excited":"doyun-happy")+'</div><div class="bubble"><div class="who">도윤</div>'+
           (S.aplusSuccess?"심화 "+nc+"/3… 쌤, 이 정도면 진짜 A+ 각인데요? 월요일 시험 기대하세요."
@@ -2109,7 +2282,7 @@ function c0LessonIntro(){
   setHUD("일주일 뒤","시범수업");
   stage.innerHTML="";
   stage.appendChild(el('<div class="card fade">'+
-    '<div style="font-size:13px;color:var(--ink-dim);">📖 책의 여백, 마지막 메모</div>'+
+    '<div style="font-size:13px;color:var(--ink-dim);">🔖 책의 여백, 마지막 메모</div>'+
     '<div class="bookpanel" style="margin-top:12px;font-size:15px;">"이 자(尺) 하나로 앞으로 배울 모든 구조를 잰다. 배열의 접근은 왜 O(1)인가, 탐색은 왜 O(n)인가 — 전부 이 표기로 돌아온다. — 이동훈"</div>'+
     '<div class="dlg" style="margin-top:20px;"><div class="portrait">'+AV("me-proud")+'</div><div class="bubble"><div class="who">나</div><span class="inner">일주일이 지났다. 들키면 끝이다. 하지만 이번엔… 진짜로 배워왔다.</span></div></div>'+
     '<div style="margin-top:16px;text-align:right;"><button class="btn" id="go">저택으로 ▶</button></div></div>'));

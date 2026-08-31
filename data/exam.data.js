@@ -171,7 +171,7 @@ const EXAMBANK = {
      {text:"삽입은 rear, 삭제는 front에서만 가능하다",correct:false,mc:"queue-confuse",fb:"그것은 보통의 큐다 — 데크는 그 제한을 푼 것이다."},
      {text:"우선순위가 높은 원소가 먼저 삭제된다",correct:false,mc:"pq-confuse",fb:"그것은 우선순위 큐다."}]},
 
-  {id:"X210", ch:"ch02", unit:"C", diff:3, src:"기사",
+  {id:"X210", ch:"ch02", unit:"C", diff:3, src:"기사", book:"c-op",
    stem:'크기 M인 원형 큐의 삽입 연산이다. 빈칸에 들어갈 식은?',
    code:["void enqueue(int item){","  rear = ____________ ;","  queue[rear] = item;","}"],
    okfb:'끝(M-1) 다음이 0으로 이어져야 원형이 된다 — (rear + 1) % M.',
