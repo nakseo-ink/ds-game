@@ -1,10 +1,10 @@
 "use strict";
-/* 챕터 13 데이터 — "해시" = 7장 (신규장 — 표준 커리큘럼 재서술, 지식노트 13 · 제작 규약 v1.5.1 · 주간 루프 공용 러너)
+/* 챕터 13 데이터 — "해시" = 보강주차 (신규장 — 표준 커리큘럼 재서술, 지식노트 13 · 제작 규약 v1.5.1 · 주간 루프 공용 러너)
    어휘(충돌·동거자·오버플로·α) → 해시 함수(제산·폴딩) → 선형 조사(코드 유닛 — 코드 교육 강화 원칙) → 체이닝·총정리.
    서사: 폭풍전야 — 협박범 침묵(도발장 없음 = 설계), 도윤 복선("기말 끝나면 하고 싶은 말"). E2 시한(기말 전) 진행 중.
    15주의 마무리: "찾기"의 완결 — 순차 O(n) → 이진/BST O(log n) → 계산 O(1). */
 const CH13 = {
-  meta: { id:"ch13", week:7, title:"해시", sub:"비교하지 않는 찾기", nextTeaser:"기말고사",
+  meta: { id:"ch13", special:"보강주차", title:"해시", sub:"비교하지 않는 찾기", nextTeaser:"기말고사",
           nextHint:'다음 주는 새 진도가 없대요 — 바로 <b>기말</b>이래요. …그리고 쌤. 그때 문자로 말한 거, 기말 끝나고 꼭 말할 거예요. 각오하고 계세요!' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:15, tutorPts:10, passLine:54 },
@@ -13,18 +13,18 @@ const CH13 = {
   intro: [
     {who:"도윤", face:"doyun", text:'쌤! 오늘 수업에서 <b>해시</b>라는 게 나왔는데요 — 교수님이 「<b>마지막 진도</b>」라고 했어요! 이름을 넣으면 <b>한 번에</b> 튀어나오는 마법의 표라던데… 정렬도 트리도 필요 없대요. 그게 돼요?'},
     {who:"도윤", face:"doyun-worried", text:'근데 마지막 진도라는 말, 좋으면서 무섭네요. …다다음 주면 기말이잖아요.'},
-    {who:"나", face:"me-think", text:'<span class="inner">마지막 진도. 이 집 문을 처음 두드린 날부터 15주 — 찾는 이야기로 시작해(1장의 순차 탐색), 찾는 이야기로 끝난다. 그리고 저쪽의 시한도 같은 달력 위에 있다. …하나씩. 오늘 밤은 마법의 표부터.</span>'},
+    {who:"나", face:"me-think", text:'<span class="inner">마지막 진도. 이 집 문을 처음 두드린 날부터 15주 — 찾는 이야기로 시작해(2주차의 순차 탐색), 찾는 이야기로 끝난다. 그리고 저쪽의 시한도 같은 달력 위에 있다. …하나씩. 오늘 밤은 마법의 표부터.</span>'},
     {who:"나", face:"me", text:'된다 — 그리고 왜 되는지가 이번 주의 전부다. 비교를 잘하는 법(트리)까지 배웠으니, 마지막은 <b>비교를 아예 안 하는 법</b>이다. 월요일 밤 — 마지막 단원의 자습을 시작하자.'}
   ],
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","trial-C","il-C","study-D","trial-D","saturday","sunday"],
   cpl: {
-    "study-A":"7장 · 월 — 해시의 발상 자습","trial-A":"7장 · 월 — 어휘 시련","il-A":"7장 · 월요일 밤",
-    "study-B":"7장 · 화 — 해시 함수 자습","trial-B":"7장 · 화 — 함수 시련","il-B":"7장 · 화요일 밤",
-    "tutor":"7장 · 수 — 과외",
-    "study-C":"7장 · 목 — 선형 조사 자습","trial-C":"7장 · 목 — 조사 시련","il-C":"7장 · 목요일 밤",
-    "study-D":"7장 · 금 — 체이닝·총정리 자습","trial-D":"7장 · 금 — 종합 시련",
-    "saturday":"7장 · 토 — 보충/A+","sunday":"7장 · 월 — 쪽지시험"
+    "study-A":"보강주차 · 월 — 해시의 발상 자습","trial-A":"보강주차 · 월 — 어휘 시련","il-A":"보강주차 · 월요일 밤",
+    "study-B":"보강주차 · 화 — 해시 함수 자습","trial-B":"보강주차 · 화 — 함수 시련","il-B":"보강주차 · 화요일 밤",
+    "tutor":"보강주차 · 수 — 과외",
+    "study-C":"보강주차 · 목 — 선형 조사 자습","trial-C":"보강주차 · 목 — 조사 시련","il-C":"보강주차 · 목요일 밤",
+    "study-D":"보강주차 · 금 — 체이닝·총정리 자습","trial-D":"보강주차 · 금 — 종합 시련",
+    "saturday":"보강주차 · 토 — 보충/A+","sunday":"보강주차 · 월 — 쪽지시험"
   },
 
   trials: {
@@ -42,7 +42,7 @@ const CH13 = {
   study: {
     A: { day:"월요일", label:"유닛 A", title:"해시의 발상 — 주소를 계산한다", doneLabel:"시련 — 해시 어휘 판독기 ▶", beats:[
       {say:'마지막 단원의 첫 밤. 책의 마지막 장을 편다 — 제목이 "찾기의 완결"처럼 읽힌다.', mood:"awkward"},
-      {who:"book", say:'"찾기의 역사를 되짚자. 1장의 <b>순차 탐색</b> — 앞에서부터 하나씩, O(n). 4장(C)의 <b>이진 탐색·탐색 트리</b> — 반씩 버리며, O(log n). 그런데 log n조차 백만 건이면 스무 번의 비교다. 마지막 질문은 이것이다 — <b>비교를 아예 안 할 수는 없나?</b> 있다. 키를 남과 견주는 대신, <b>키 자신에게서 저장 주소를 계산</b>해 내면 된다. 학번 뒷자리로 사물함 번호를 정해 두면, 사물함을 훑을 일이 없는 것과 같다. 이것이 <b>해싱(hashing)</b> — 이상적일 때 탐색은 <b>O(1)</b>, 데이터가 얼마나 많든 계산 한 번이다."'},
+      {who:"book", say:'"찾기의 역사를 되짚자. 2주차의 <b>순차 탐색</b> — 앞에서부터 하나씩, O(n). 9주차의 <b>이진 탐색·탐색 트리</b> — 반씩 버리며, O(log n). 그런데 log n조차 백만 건이면 스무 번의 비교다. 마지막 질문은 이것이다 — <b>비교를 아예 안 할 수는 없나?</b> 있다. 키를 남과 견주는 대신, <b>키 자신에게서 저장 주소를 계산</b>해 내면 된다. 학번 뒷자리로 사물함 번호를 정해 두면, 사물함을 훑을 일이 없는 것과 같다. 이것이 <b>해싱(hashing)</b> — 이상적일 때 탐색은 <b>O(1)</b>, 데이터가 얼마나 많든 계산 한 번이다."'},
       {check:{id:"c13A-1", stem:'해싱의 탐색이 (이상적일 때) <b>O(1)</b>일 수 있는 근본 이유는?',
         okfb:'순차·이진·트리는 전부 "비교"를 반복한다 — 해싱은 비교 대신 h(k) 계산 한 번으로 주소에 직행한다.',
         choices:[
@@ -59,7 +59,7 @@ const CH13 = {
           {text:"충돌과 오버플로는 완전히 같은 현상을 부르는 두 이름이다",correct:false,mc:"same-myth",fb:"슬롯이 여러 개면 다르다 — 충돌하고도 넣을 수 있는 경우가 있다."},
           {text:"오버플로는 해시 값이 표의 주소 범위를 벗어나는 오류다",correct:false,mc:"range-myth",fb:"mod M이 범위를 보장한다 — 오버플로는 저장 공간의 이야기다."},
           {text:"충돌은 같은 키가 두 번 삽입될 때 일어난다",correct:false,mc:"dup-confuse",fb:"키가 다른데 주소가 같은 것이 충돌이다."}]}},
-      {who:"book", say:'"표가 얼마나 찼는지를 재는 눈금 하나 — <b>적재 밀도(loading density), 적재율 α = n / (s·b)</b> (n = 든 레코드 수, s = 버킷당 슬롯, b = 버킷 수). 버킷 25개 × 슬롯 2개짜리 표에 레코드 40개면 α = 40/50 = 0.8. α가 낮으면 충돌이 드물어 O(1)에 가깝고, α가 높아질수록 충돌이 잦아진다 — <b>해시 테이블의 성능을 좌우하는 핵심 지표</b>이니 계산에 익숙해지자. 그리고 전제 하나: 키의 가짓수가 테이블보다 많은 이상 <b>충돌을 완전히 없애는 함수는 없다</b> — 6장의 그 문장이 여기서도 참이다: 만능은 없다. 충돌을 줄이는 함수의 선택과, 충돌을 처리하는 방법이 필요할 뿐이다."'},
+      {who:"book", say:'"표가 얼마나 찼는지를 재는 눈금 하나 — <b>적재 밀도(loading density), 적재율 α = n / (s·b)</b> (n = 든 레코드 수, s = 버킷당 슬롯, b = 버킷 수). 버킷 25개 × 슬롯 2개짜리 표에 레코드 40개면 α = 40/50 = 0.8. α가 낮으면 충돌이 드물어 O(1)에 가깝고, α가 높아질수록 충돌이 잦아진다 — <b>해시 테이블의 성능을 좌우하는 핵심 지표</b>이니 계산에 익숙해지자. 그리고 전제 하나: 키의 가짓수가 테이블보다 많은 이상 <b>충돌을 완전히 없애는 함수는 없다</b> — 13주차의 그 문장이 여기서도 참이다: 만능은 없다. 충돌을 줄이는 함수의 선택과, 충돌을 처리하는 방법이 필요할 뿐이다."'},
       {check:{id:"c13A-3", stem:'버킷 25개, 버킷당 슬롯 2개인 해시 테이블에 레코드 40개 — <b>적재율 α</b>는?', mono:true,
         okfb:'α = n/(s·b) = 40/(2×25) = 0.8 — 자리 50개 중 40개가 찼다.',
         choices:[
@@ -71,7 +71,7 @@ const CH13 = {
 
     B: { day:"화요일", label:"유닛 B", title:"해시 함수 — 주소를 만드는 법", doneLabel:"시련 — 주소 계산기 ▶", beats:[
       {say:'해싱의 핵심 — 주소를 만드는 함수. 함수의 품질이 해시 테이블 전체의 성능을 좌우한다고 한다.', mood:"proud"},
-      {who:"book", say:'"<b>좋은 해시 함수</b>의 조건은 둘뿐이다. ① <b>계산이 쉬울 것</b> — 주소 계산이 지나치게 오래 걸리면 해싱의 이점 자체가 사라진다. ② 주소를 <b>고르게 흩을 것</b> — 키들이 소수의 버킷에 몰리면 그곳에서 충돌이 집중되어 성능이 무너진다. 6장(B)에서 본 퀵 정렬의 「쏠린 분할」과 같은 문제다 — 고른 분배가 성능의 원천이라는 것."'},
+      {who:"book", say:'"<b>좋은 해시 함수</b>의 조건은 둘뿐이다. ① <b>계산이 쉬울 것</b> — 주소 계산이 지나치게 오래 걸리면 해싱의 이점 자체가 사라진다. ② 주소를 <b>고르게 흩을 것</b> — 키들이 소수의 버킷에 몰리면 그곳에서 충돌이 집중되어 성능이 무너진다. 14주차에서 본 퀵 정렬의 「쏠린 분할」과 같은 문제다 — 고른 분배가 성능의 원천이라는 것."'},
       {check:{id:"c13B-1", stem:'<b>좋은 해시 함수</b>의 두 조건은?',
         okfb:'계산이 쉬울 것 + 고르게 흩을 것 — 쉬워야 O(1)이 의미 있고, 골라야 충돌이 적다.',
         choices:[
@@ -151,7 +151,7 @@ const CH13 = {
 
     D: { day:"금요일", label:"유닛 D", title:"체이닝, 그리고 찾기의 완성", doneLabel:"시련 — 해시 판정기 ▶", beats:[
       {say:'마지막 자습의 마지막 유닛. 충돌 해결의 두 번째 방법 — 이번에는 테이블 밖에 저장한다.', mood:"proud"},
-      {who:"book", say:'"충돌 해결책 ② — <b>체이닝(chaining)</b>: 버킷마다 <b>연결 리스트(체인)</b>를 두고, 동거자들을 그 체인에 차례로 <b>연결한다</b>. 3장의 연결 리스트가 마지막 장에서 다시 등장하는 순간이다. 새 키는 홈 버킷 체인의 <b>맨 앞에 삽입</b>한다 — 리스트 맨 앞 삽입은 O(1)이었다(3장). 다른 버킷의 칸을 차지하지 않으므로 <b>군집이 생기지 않고</b>, 레코드가 테이블 외부의 연결 리스트에 저장되므로 <b>오버플로도 발생하지 않는다</b> — 체인이 길어질 뿐이다."'},
+      {who:"book", say:'"충돌 해결책 ② — <b>체이닝(chaining)</b>: 버킷마다 <b>연결 리스트(체인)</b>를 두고, 동거자들을 그 체인에 차례로 <b>연결한다</b>. 5주차의 연결 리스트가 마지막 장에서 다시 등장하는 순간이다. 새 키는 홈 버킷 체인의 <b>맨 앞에 삽입</b>한다 — 리스트 맨 앞 삽입은 O(1)이었다(5주차). 다른 버킷의 칸을 차지하지 않으므로 <b>군집이 생기지 않고</b>, 레코드가 테이블 외부의 연결 리스트에 저장되므로 <b>오버플로도 발생하지 않는다</b> — 체인이 길어질 뿐이다."'},
       {steps:{code:["빈 체이닝 표 — M = 5, h(k) = k mod 5","25, 31, 12 삽입 — 각자의 버킷에","55 삽입 — h(55) = 0, 25와 충돌 → 체인 맨 앞에","41 삽입 — h(41) = 1, 31과 충돌 → 체인 맨 앞에"],
         frames:[
           {hl:0, html:'<div class="mono fade" style="line-height:2.1;font-size:14.5px;padding:6px 2px;">ht[0] → ·<br>ht[1] → ·<br>ht[2] → ·<br>ht[3] → ·<br>ht[4] → ·</div>', cap:'버킷 5개 — 각 칸에는 이제 값이 아니라 <b>체인의 머리(head 포인터)</b>가 들어 있다. · 는 NULL.'},
@@ -166,7 +166,7 @@ const CH13 = {
           {text:"34, 19",correct:false,mc:"wrong-bucket",fb:"34 mod 5 = 4, 19 mod 5 = 4 — 둘은 4번 체인의 동거자다."},
           {text:"41",correct:false,mc:"wrong-bucket2",fb:"41 mod 5 = 1 — 연결되는 체인이 다르다."},
           {text:"없음",correct:false,mc:"none-slip",fb:"12 mod 5를 계산해 보라 — 27과 같은 2다."}]}},
-      {who:"book", say:'"두 해결책의 비교표 — 시험에 자주 나오는 한 장이다.<br><br><table style="border-collapse:collapse;font-size:13px;width:100%;"><tr style="color:var(--accent);"><th style="border:1px solid var(--line);padding:5px 7px;"></th><th style="border:1px solid var(--line);padding:5px 7px;">개방 주소(선형 조사)</th><th style="border:1px solid var(--line);padding:5px 7px;">체이닝</th></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">저장 위치</td><td style="border:1px solid var(--line);padding:5px 7px;">테이블 내부(배열 하나)</td><td style="border:1px solid var(--line);padding:5px 7px;">테이블 외부(연결 리스트)</td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">추가 공간</td><td style="border:1px solid var(--line);padding:5px 7px;"><b>없음</b></td><td style="border:1px solid var(--line);padding:5px 7px;">링크 포인터</td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">군집</td><td style="border:1px solid var(--line);padding:5px 7px;"><b style="color:var(--accent);">있음</b></td><td style="border:1px solid var(--line);padding:5px 7px;"><b>없음</b></td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">α의 한계</td><td style="border:1px solid var(--line);padding:5px 7px;">1 미만이어야</td><td style="border:1px solid var(--line);padding:5px 7px;"><b>1 넘어도 동작</b></td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">삭제</td><td style="border:1px solid var(--line);padding:5px 7px;">표시 삭제 필요</td><td style="border:1px solid var(--line);padding:5px 7px;">노드 제거(3장)</td></tr></table>"'},
+      {who:"book", say:'"두 해결책의 비교표 — 시험에 자주 나오는 한 장이다.<br><br><table style="border-collapse:collapse;font-size:13px;width:100%;"><tr style="color:var(--accent);"><th style="border:1px solid var(--line);padding:5px 7px;"></th><th style="border:1px solid var(--line);padding:5px 7px;">개방 주소(선형 조사)</th><th style="border:1px solid var(--line);padding:5px 7px;">체이닝</th></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">저장 위치</td><td style="border:1px solid var(--line);padding:5px 7px;">테이블 내부(배열 하나)</td><td style="border:1px solid var(--line);padding:5px 7px;">테이블 외부(연결 리스트)</td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">추가 공간</td><td style="border:1px solid var(--line);padding:5px 7px;"><b>없음</b></td><td style="border:1px solid var(--line);padding:5px 7px;">링크 포인터</td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">군집</td><td style="border:1px solid var(--line);padding:5px 7px;"><b style="color:var(--accent);">있음</b></td><td style="border:1px solid var(--line);padding:5px 7px;"><b>없음</b></td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">α의 한계</td><td style="border:1px solid var(--line);padding:5px 7px;">1 미만이어야</td><td style="border:1px solid var(--line);padding:5px 7px;"><b>1 넘어도 동작</b></td></tr><tr><td style="border:1px solid var(--line);padding:5px 7px;">삭제</td><td style="border:1px solid var(--line);padding:5px 7px;">표시 삭제 필요</td><td style="border:1px solid var(--line);padding:5px 7px;">노드 제거(5주차)</td></tr></table>"'},
       {check:{id:"c13D-2", stem:'적재율 <b>α가 1을 넘어도</b>(레코드 수 &gt; 버킷 수) 동작할 수 있는 쪽과 그 이유는?',
         okfb:'개방 주소법의 저장 공간은 테이블 안의 빈 칸이 전부라 α<1이 강제된다 — 체이닝은 레코드를 테이블 외부의 체인에 저장하므로 α>1에서도 (느려질 뿐) 동작한다.',
         choices:[
@@ -174,7 +174,7 @@ const CH13 = {
           {text:"개방 주소 — 조사를 계속하면 언젠가 빈 칸이 나온다",correct:false,mc:"probe-myth",fb:"α=1이면 빈 칸이 없다 — 조사가 끝나지 않는다."},
           {text:"둘 다 — 해시 테이블은 원리상 가득 차지 않는다",correct:false,mc:"both-myth",fb:"개방 주소법의 테이블은 가득 찰 수 있다 — 그 순간 더 넣을 수 없다."},
           {text:"둘 다 아니다 — α는 정의상 1을 넘을 수 없다",correct:false,mc:"def-myth",fb:"α = n/(s·b)는 체이닝에서 1을 넘을 수 있다 — 외부 체인 덕분이다."}]}},
-      {who:"book", say:'"성능을 정확하게 마무리하자. 해시의 <b>평균 O(1)</b>은 무조건 성립하는 것이 아니라 <b>조건부</b>다 — 조건은 둘: <b>주소를 고르게 흩는 함수</b>, 그리고 <b>낮은 α</b>. α가 높아지면 조사 횟수가 늘고 체인이 길어진다. 최악의 경우는? 함수가 분포에 실패해 모든 키가 한 곳에 몰리면 — 체인 하나짜리 연결 리스트, <b>O(n)</b>이다. 그리고 대가 하나 — 해시는 <b>순서를 버린 구조</b>다: 「70~90점을 점수 순서로」 같은 범위·순서 작업은 못 한다. 그것이 필요하면 중위 순회가 되는 <b>탐색 트리</b>가 답이다(4장(C)). 15주의 마지막 문장도 결국 같은 문장이다 — <b>만능은 없다. 질문에 맞는 구조를 고르는 눈</b>, 그것이 이 과목의 전부다."'},
+      {who:"book", say:'"성능을 정확하게 마무리하자. 해시의 <b>평균 O(1)</b>은 무조건 성립하는 것이 아니라 <b>조건부</b>다 — 조건은 둘: <b>주소를 고르게 흩는 함수</b>, 그리고 <b>낮은 α</b>. α가 높아지면 조사 횟수가 늘고 체인이 길어진다. 최악의 경우는? 함수가 분포에 실패해 모든 키가 한 곳에 몰리면 — 체인 하나짜리 연결 리스트, <b>O(n)</b>이다. 그리고 대가 하나 — 해시는 <b>순서를 버린 구조</b>다: 「70~90점을 점수 순서로」 같은 범위·순서 작업은 못 한다. 그것이 필요하면 중위 순회가 되는 <b>탐색 트리</b>가 답이다(9주차). 15주의 마지막 문장도 결국 같은 문장이다 — <b>만능은 없다. 질문에 맞는 구조를 고르는 눈</b>, 그것이 이 과목의 전부다."'},
       {check:{id:"c13D-3", stem:'"70점 이상 90점 이하를 <b>점수 순서대로</b>" — 이 질문이 잦은 시스템이 골라야 할 구조는?',
         okfb:'해시의 O(1)은 순서를 포기한 대가 — 범위·순서 작업은 중위 순회가 되는 탐색 트리의 몫이다.',
         choices:[
@@ -182,7 +182,7 @@ const CH13 = {
           {text:"해시 테이블 — 각 점수를 O(1)에 바로 찾으면 된다",correct:false,mc:"hash-slip",fb:"범위의 값을 전부 두드려야 하고 순서대로 나오지도 않는다."},
           {text:"어느 쪽이든 같다 — 꺼내는 비용은 동일하다",correct:false,mc:"same-myth",fb:"구조의 선택이 가능한 질문의 종류를 정한다."},
           {text:"정렬 안 한 배열 — 어차피 전부 훑을 것이므로",correct:false,mc:"giveup-myth",fb:"O(n) 전수 조사로 돌아갈 이유가 없다 — 더 나은 답이 있다."}]}},
-      {who:"book", say:'"마지막 페이지. 네가 매일 쓰는 것들의 정체를 밝히며 끝내자 — 파이썬의 dict와 자바스크립트의 객체, 게임 인벤토리의 즉시 검색, 데이터베이스 인덱스의 큰 축 — 전부 <b>해시 테이블</b>이다. 6장(A)의 sort() 논쟁을 기억하나: 「그 한 줄 안에서 무엇이 도는지 아는 사람」이 되는 것 — 이제 찾기의 한 줄에 대해서도 너는 그 사람이 됐다. 배열과 포인터에서 시작해 리스트·스택·큐·트리·그래프·정렬·해시 — <b>15주의 지도가 완성됐다.</b> 남은 것은 증명(기말)뿐이다."'}
+      {who:"book", say:'"마지막 페이지. 네가 매일 쓰는 것들의 정체를 밝히며 끝내자 — 파이썬의 dict와 자바스크립트의 객체, 게임 인벤토리의 즉시 검색, 데이터베이스 인덱스의 큰 축 — 전부 <b>해시 테이블</b>이다. 13주차의 sort() 논쟁을 기억하나: 「그 한 줄 안에서 무엇이 도는지 아는 사람」이 되는 것 — 이제 찾기의 한 줄에 대해서도 너는 그 사람이 됐다. 배열과 포인터에서 시작해 리스트·스택·큐·트리·그래프·정렬·해시 — <b>15주의 지도가 완성됐다.</b> 남은 것은 증명(기말)뿐이다."'}
     ]}
   },
 
@@ -196,7 +196,7 @@ const CH13 = {
     C:["【조사】 h(k)부터 +1씩 조사해 처음 만나는 빈 칸에 저장 — 끝을 넘으면 % M에 의해 처음으로 되돌아간다. 탐색은 같은 경로를 따라가며 확인.",
        "【증명】 빈 칸 = 없다: 있었다면 삽입 경로에 의해 빈 칸보다 먼저 그 키가 나타났을 것. (그래서 삭제는 표시 삭제 — 심화)",
        "【군집】 값이 채워진 칸들의 연속 구간 — 구간이 넓을수록 그 위로 해싱될 확률과 조사 거리가 함께 늘어난다. 완화: 이차 조사·이중 해싱(심화)."],
-    D:["【체이닝】 버킷마다 연결 리스트(체인) — 동거자를 체인 맨 앞에 O(1)로 삽입한다(3장). 군집 없음, 오버플로 없음, α>1 가능.",
+    D:["【체이닝】 버킷마다 연결 리스트(체인) — 동거자를 체인 맨 앞에 O(1)로 삽입한다(5주차). 군집 없음, 오버플로 없음, α>1 가능.",
        "【비교】 개방 주소: 테이블 내부·추가 공간 없음·군집 있음·α<1·표시 삭제 / 체이닝: 테이블 외부·링크 포인터 필요·군집 없음·α 제한 없음·노드 제거.",
        "【성능】 평균 O(1)은 조건부(좋은 함수 + 낮은 α), 최악 O(n)(모든 키가 한 곳에). 순서·범위 작업은 불가 — 그것은 트리의 몫."]
   },
@@ -272,7 +272,7 @@ const CH13 = {
        {text:"17",correct:false,mc:"digitsum-slip",fb:"자릿수 합이 아니라 조각의 합이다."},
        {text:"61",correct:false,mc:"near-slip",fb:"24 + 35 + 12를 다시 더해 보라."}]},
     {id:"P08", unit:"B", stem:'해시 함수가 "주소를 <b>고르게</b> 흩어야" 하는 이유를 가장 정확히 말한 것은?',
-     okfb:'몰린 버킷들에서 충돌이 집중된다 — 조사와 체인이 길어져 O(1)이 무너진다. 6장(B) 퀵 정렬의 쏠린 분할과 같은 문제다.',
+     okfb:'몰린 버킷들에서 충돌이 집중된다 — 조사와 체인이 길어져 O(1)이 무너진다. 14주차 퀵 정렬의 쏠린 분할과 같은 문제다.',
      choices:[
        {text:"몰린 버킷에서 충돌이 쏟아져 성능이 무너지므로",correct:true},
        {text:"고르지 않으면 일부 키의 주소 계산이 실패하므로",correct:false,mc:"fail-myth",fb:"계산은 항상 성공한다 — 문제는 겹침의 빈도다."},
@@ -309,7 +309,7 @@ const CH13 = {
        {text:"군집 근처의 해시 값이 더 자주 계산되어 몰리기 때문에",correct:false,mc:"fn-myth",fb:"h(k)의 분포는 변하지 않는다 — 저장되는 위치가 몰리는 것이다."},
        {text:"운영체제가 군집을 메모리 한 페이지에 모으기 때문에",correct:false,mc:"hw-myth",fb:"하드웨어가 아니라 조사 방식이 만드는 현상이다."}]},
     {id:"P13", unit:"D", stem:'체이닝에서 새 동거자를 체인의 <b>맨 앞</b>에 삽입하는 이유는?',
-     okfb:'리스트 맨 앞 삽입은 O(1)(3장) — 체인의 끝까지 이동할 필요가 없다.',
+     okfb:'리스트 맨 앞 삽입은 O(1)(5주차) — 체인의 끝까지 이동할 필요가 없다.',
      choices:[
        {text:"맨 앞 삽입은 체인 길이와 무관한 O(1)이므로",correct:true},
        {text:"최근 키가 항상 가장 자주 탐색되기 때문에",correct:false,mc:"lru-myth",fb:"그런 보장은 없다 — 이유는 삽입 비용이다."},
@@ -321,7 +321,7 @@ const CH13 = {
        {text:"레코드마다 링크 포인터의 추가 공간이 든다",correct:true},
        {text:"군집이 개방 주소보다 훨씬 심하게 생긴다",correct:false,mc:"cluster-flip",fb:"체이닝에는 군집이 없다 — 군집은 개방 주소법의 문제다."},
        {text:"적재율이 1을 넘는 순간 동작을 멈춘다",correct:false,mc:"alpha-flip",fb:"반대다 — α>1에서도 도는 쪽이 체이닝이다."},
-       {text:"삭제가 표시 삭제로만 가능해진다",correct:false,mc:"delete-flip",fb:"표시 삭제는 개방 주소법의 문제 — 체이닝은 노드를 제거하면 된다(3장)."}]},
+       {text:"삭제가 표시 삭제로만 가능해진다",correct:false,mc:"delete-flip",fb:"표시 삭제는 개방 주소법의 문제 — 체이닝은 노드를 제거하면 된다(5주차)."}]},
     {id:"P15", unit:"D", ptype:"parsons",
      stem:'선형 조사 <b>탐색</b> 코드를 올바른 순서로 조립하라. (홈 주소에서 시작 → 빈 칸 전까지: 확인이 이동보다 먼저 → 실패 반환)',
      lines:["int hash_search(int k){","    int i = h(k);","    while(ht[i] != EMPTY){","        if(ht[i] == k) return i;","        i = (i + 1) % M;  }","    return -1;","}"],

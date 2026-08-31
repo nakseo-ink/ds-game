@@ -43,10 +43,10 @@ function evalCond(c){
   return true;
 }
 /* ---- 장 번호 표기 — "N장" + 파트(A/B/C). 시험 챕터는 장 번호 없이 특수 기호(meta.special="※") ---- */
-const chNum=C=>C.meta.special?C.meta.special:(C.meta.week+"장"+(C.meta.part?"("+C.meta.part+")":""));
+const chNum=C=>C.meta.special?C.meta.special:(C.meta.week+"주차");  /* 주차 체계 (감수 확정 2026-08-31): 오리엔테이션(1주차) → 2~7주차 → ※중간(8주차) → 9~14주차 → 보강주차(해시) → ※기말(15주차) */
 /* ---- 진행 저장 (이어하기 · 진도 코드) ---- */
 const SAVEKEY="dsgame_save";
-const CH0DONEKEY="dsgame_ch0done"; /* 0장 완료 — 타이틀 기본 버튼을 1장으로 */
+const CH0DONEKEY="dsgame_ch0done"; /* 오리엔테이션 완료 — 타이틀 기본 버튼을 2주차으로 */
 let saveData=JSON.parse(localStorage.getItem(SAVEKEY)||"null");
 function saveCP(cp){
   saveData={v:1, cp, ch:CURCH,
@@ -616,14 +616,14 @@ function sceneLinkPuzzle(){
       const goalOK = links[0]===1&&links[1]===2&&links[2]==="NULL";
       log("link_check",{unit:"C", links:links.map(String), ok:goalOK});
       if(goalOK){
-        warn.appendChild(el('<div class="feedback ok fade">✅ <span class="mono">item1.link=&item2; item2.link=&item3; item3.link=NULL;</span> — a→b→c 사슬 완성. 이것이 3장에서 만날 <b>연결 리스트</b>의 씨앗이다.</div>'));
+        warn.appendChild(el('<div class="feedback ok fade">✅ <span class="mono">item1.link=&item2; item2.link=&item3; item3.link=NULL;</span> — a→b→c 사슬 완성. 이것이 5주차에서 만날 <b>연결 리스트</b>의 씨앗이다.</div>'));
         warn.appendChild(nextBtnRow("시련 시작 ▶",sceneTrialC));
       }else{
         const visited=new Set(); let cur=0;
         while(typeof cur==="number"&&!visited.has(cur)){ visited.add(cur); cur=links[cur]; }
         const orphans=NAMES.filter((_,i)=>!visited.has(i));
         if(orphans.length&&visited.size>0)
-          warn.appendChild(el('<div class="warn fade">⚠ '+orphans.join(", ")+'… 어디에서도 가리켜지지 않는다. 지금은 변수라서 괜찮지만, 만약 <span class="mono">malloc</span>으로 만든 노드였다면 — 찾아갈 방법이 영영 사라진다. <i>이 이야기는 3장에서.</i> 다시 연결해 보자.</div>'));
+          warn.appendChild(el('<div class="warn fade">⚠ '+orphans.join(", ")+'… 어디에서도 가리켜지지 않는다. 지금은 변수라서 괜찮지만, 만약 <span class="mono">malloc</span>으로 만든 노드였다면 — 찾아갈 방법이 영영 사라진다. <i>이 이야기는 5주차에서.</i> 다시 연결해 보자.</div>'));
         else warn.appendChild(el('<div class="warn fade">⚠ 목표는 a → b → c → NULL. 사슬을 다시 살펴보자. (link가 ?로 남아 있으면 아직 미연결)</div>'));
       }
     };
@@ -1557,7 +1557,7 @@ function treeVizEl(v){
   if(v.name) w.insertBefore(el('<div style="font-size:12.5px;color:var(--accent);font-weight:700;margin-bottom:2px;">'+v.name+'</div>'),w.firstChild);
   return w;
 }
-/* ---- 위젯: 그래프 (5장~) — 고정 좌표 정점 + 간선(무방향/방향·강조·가중치 라벨)
+/* ---- 위젯: 그래프 (10주차~) — 고정 좌표 정점 + 간선(무방향/방향·강조·가중치 라벨)
    v={type:"graph", nodes:[{id,x,y,hl,dim,tag}], edges:[{a,b,dir,hl,dim,cut,lab,curve}]}
    좌표는 임의 단위 px — 경계에 여백을 붙여 viewBox 계산. dir=true면 a→b 화살표. curve=1/-1 곡선(쌍방 간선용). */
 function graphVizEl(v){
@@ -2160,7 +2160,7 @@ function c0Contract(){
 }
 function c0Epilogue(){
   setHUD("며칠 뒤","에필로그"); BookFab.hide();
-  c0Dlg(CH00.epilogue,{cp:"epilogue", header:"🌙 에필로그", last:"오리엔테이션 클리어 — 1장 시작 ▶", next:c0Finish});
+  c0Dlg(CH00.epilogue,{cp:"epilogue", header:"🌙 에필로그", last:"오리엔테이션 클리어 — 2주차 시작 ▶", next:c0Finish});
 }
 function c0Finish(){
   localStorage.setItem(CH0DONEKEY,"1");
@@ -2177,9 +2177,9 @@ const CPMAP0={
   "trialG5":()=>c0TrialG5(), "lesson":()=>c0LessonIntro(), "contract":()=>c0Contract(), "epilogue":()=>c0Epilogue()
 };
 const CPLABEL0={
-  "intro":"0장 · 프롤로그", "interview":"0장 · 면접", "bookshop":"0장 · 보수동 책방골목",
-  "study-A":"0장 · 유닛 A 왜 배우나", "study-B":"0장 · 유닛 B 알고리즘의 뜻", "study-C":"0장 · 유닛 C 전체 지도", "study-D":"0장 · 유닛 D Big-O",
-  "trialG5":"0장 · Big-O 시련", "lesson":"0장 · 시범수업", "contract":"0장 · 계약", "epilogue":"0장 · 에필로그"
+  "intro":"오리엔테이션 · 프롤로그", "interview":"오리엔테이션 · 면접", "bookshop":"오리엔테이션 · 보수동 책방골목",
+  "study-A":"오리엔테이션 · 유닛 A 왜 배우나", "study-B":"오리엔테이션 · 유닛 B 알고리즘의 뜻", "study-C":"오리엔테이션 · 유닛 C 전체 지도", "study-D":"오리엔테이션 · 유닛 D Big-O",
+  "trialG5":"오리엔테이션 · Big-O 시련", "lesson":"오리엔테이션 · 시범수업", "contract":"오리엔테이션 · 계약", "epilogue":"오리엔테이션 · 에필로그"
 };
 
 /* ================================================================ 타이틀·인트로 ================ */
@@ -2256,7 +2256,7 @@ function sceneTitle(){
   const clearTag=id=>wallet.cleared&&wallet.cleared[id]?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':'';
   const chLabel=C=>chNum(C)+' · '+C.meta.title+clearTag(C.meta.id); /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
   const CH_MENU=[
-    {id:"ch00", label:'0장 · 오리엔테이션'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
+    {id:"ch00", label:'1주차 · 오리엔테이션'+(c0done?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':''), go:()=>c0Start()},
     {id:"ch01", label:chLabel(CH01), go:()=>{ setChapter(CH01); log("chapter_start",{}); sceneIntro(); }}
   ];
   if(typeof CH02!=="undefined") CH_MENU.push({id:"ch02", label:chLabel(CH02), go:()=>{ setChapter(CH02); gwInit(); log("chapter_start",{}); sceneIntro(); }});
@@ -2264,9 +2264,9 @@ function sceneTitle(){
   if(typeof CH04!=="undefined") CH_MENU.push({id:"ch04", label:chLabel(CH04), go:()=>{ setChapter(CH04); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH05!=="undefined") CH_MENU.push({id:"ch05", label:chLabel(CH05), go:()=>{ setChapter(CH05); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH06!=="undefined") CH_MENU.push({id:"ch06", label:chLabel(CH06), go:()=>{ setChapter(CH06); gwInit(); log("chapter_start",{}); sceneIntro(); }});
-  /* 시험 챕터 — 장 번호 없음(※), 4장(B)와 4장(C) 사이. 스타일도 관문답게 구분 */
+  /* 시험 챕터 — 장 번호 없음(※), 7주차와 9주차 사이. 스타일도 관문답게 구분 */
   if(typeof CHM!=="undefined") CH_MENU.push({id:"chM", exam:true,
-    label:CHM.meta.special+' '+CHM.meta.title+(wallet.examBest&&wallet.examBest.chM!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chM?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chM+'점</span>':''),
+    label:CHM.meta.week+'주차 '+CHM.meta.special+' '+CHM.meta.title+(wallet.examBest&&wallet.examBest.chM!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chM?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chM+'점</span>':''),
     go:()=>{ setChapter(CHM); log("chapter_start",{}); exStart(); }});
   if(typeof CH07!=="undefined") CH_MENU.push({id:"ch07", label:chLabel(CH07), go:()=>{ setChapter(CH07); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH08!=="undefined") CH_MENU.push({id:"ch08", label:chLabel(CH08), go:()=>{ setChapter(CH08); gwInit(); log("chapter_start",{}); sceneIntro(); }});
@@ -2275,9 +2275,9 @@ function sceneTitle(){
   if(typeof CH11!=="undefined") CH_MENU.push({id:"ch11", label:chLabel(CH11), go:()=>{ setChapter(CH11); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH12!=="undefined") CH_MENU.push({id:"ch12", label:chLabel(CH12), go:()=>{ setChapter(CH12); gwInit(); log("chapter_start",{}); sceneIntro(); }});
   if(typeof CH13!=="undefined") CH_MENU.push({id:"ch13", label:chLabel(CH13), go:()=>{ setChapter(CH13); gwInit(); log("chapter_start",{}); sceneIntro(); }});
-  /* 기말고사 — 마지막 관문 (※, 7장 뒤) */
+  /* 기말고사 — 마지막 관문 (※, 보강주차 뒤) */
   if(typeof CHF!=="undefined") CH_MENU.push({id:"chF", exam:true,
-    label:CHF.meta.special+' '+CHF.meta.title+(wallet.examBest&&wallet.examBest.chF!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chF?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chF+'점</span>':''),
+    label:CHF.meta.week+'주차 '+CHF.meta.special+' '+CHF.meta.title+(wallet.examBest&&wallet.examBest.chF!==undefined?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">'+(wallet.cleared&&wallet.cleared.chF?'클리어 ✓ · ':'')+'최고 '+wallet.examBest.chF+'점</span>':''),
     go:()=>{ setChapter(CHF); log("chapter_start",{}); exStart(); }});
   const rec = sv ? null : (c0done ? "ch01" : "ch00"); /* 이어하기가 없을 때만 추천 챕터 강조 */
   const chl=$("#chlist");

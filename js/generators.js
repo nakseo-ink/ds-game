@@ -1243,7 +1243,7 @@ function genAP4ch(idx){
     {stem:"연결 리스트에서 <b>값으로 노드를 찾는(탐색)</b> 비용", ans:"O(n)",
      why:"첫 노드부터 링크를 타고 하나씩 — 최악이면 끝까지 간다.", w:"O(1)", wmc:"address-calc-myth", wfb:"리스트에는 a[k] 같은 주소 계산이 없다 — 타고 가야 한다."},
     {stem:"배열에서 <b>인덱스로 원소에 접근</b>(a[k])하는 비용", ans:"O(1)",
-     why:"시작 주소 + k×원소 크기 — 주소 계산 한 번(1장).", w:"O(n)", wmc:"traverse-mix", wfb:"배열은 세지 않고 계산한다 — 순차 사상의 힘이다."},
+     why:"시작 주소 + k×원소 크기 — 주소 계산 한 번(2주차).", w:"O(n)", wmc:"traverse-mix", wfb:"배열은 세지 않고 계산한다 — 순차 사상의 힘이다."},
     {stem:"원소 n개짜리 <b>배열의 맨 앞에 삽입</b>하는 비용", ans:"O(n)",
      why:"기존 원소 n개가 전부 한 칸씩 밀린다.", w:"O(1)", wmc:"shift-blind", wfb:"자리를 비우는 이동이 원소 수만큼 든다."}];
   const c=pick(CASES);
@@ -1254,11 +1254,11 @@ function genAP4ch(idx){
     choices:shuffle([
       {text:c.ans,correct:true},
       {text:c.w,correct:false,mc:c.wmc,fb:c.wfb},
-      {text:others[0],correct:false,mc:"logn-lure",fb:"이진 탐색(1장)의 곡선이다 — 여기서는 등장할 이유가 없다."},
+      {text:others[0],correct:false,mc:"logn-lure",fb:"이진 탐색(2주차)의 곡선이다 — 여기서는 등장할 이유가 없다."},
       {text:others[1],correct:false,mc:"square-lure",fb:"이중 반복의 곡선이다 — 한 번의 삽입/접근에는 과하다."}])};
 }
 
-/* ================= 4장(A) 트리 — G17~G20 + AP5 ================= */
+/* ================= 6주차 트리 — G17~G20 + AP5 ================= */
 /* ---- 트리 유틸 ---- */
 function t5Build(spec,parent,depth){
   const n={v:spec[0], c:[], parent:parent||null, depth:depth||1};
@@ -1516,7 +1516,7 @@ function genG20(){
     choices:g2Fill(cands,{text:String(ans),correct:true},4)};
 }
 
-/* --- AP5. 4장(A) 심화 (도발장) --- */
+/* --- AP5. 6주차 심화 (도발장) --- */
 function genAP5ch(idx){
   if(idx===0){
     const root=t5Build(pick([T5SHAPES[3],T5SHAPES[4],T5SHAPES[2]]));
@@ -1560,7 +1560,7 @@ function genAP5ch(idx){
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
 
-/* ================= 4장(B) 트리 순회 — G21~G24 + AP6 ================= */
+/* ================= 7주차 트리 순회 — G21~G24 + AP6 ================= */
 /* ---- 이진 트리 유틸 ---- */
 function t6Shape(){
   const S=[
@@ -1760,12 +1760,12 @@ function genG24(){
     {text:exPost(t).split(" ").reverse().join(" "),correct:false,mc:"reverse-mix",fb:"통째로 뒤집은 것 — 후위는 '왼쪽, 오른쪽, 자신' 순서다."}
   ].filter(c=>c.text!==ans);
   return {id:"G24",qtype,params:{ans},viz, mono:true,
-    stem:'그림의 수식 트리를 <b>후위 순회</b>로 출력하면? — 2장(B) 계산기에 넣던 바로 그 표기가 나온다.',
+    stem:'그림의 수식 트리를 <b>후위 순회</b>로 출력하면? — 4주차 계산기에 넣던 바로 그 표기가 나온다.',
     okfb:'왼쪽 서브트리, 오른쪽 서브트리, 자신 — '+ans+'.',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
 
-/* --- AP6. 4장(B) 심화 (도발장 2) --- */
+/* --- AP6. 7주차 심화 (도발장 2) --- */
 function genAP6ch(idx){
   if(idx===0){
     /* 전위+중위 → 오른쪽 서브트리의 루트 역산 */
@@ -1810,7 +1810,7 @@ function genAP6ch(idx){
   while(t.l.leaf&&t.r.leaf) t=t6Expr();   /* 2연산 이상 */
   const ans=exPre(t);
   const cands=[
-    {text:exPost(t),correct:false,mc:"postfix-mix",fb:"그것은 후위(3장 계산기용) — 전위는 연산자가 '먼저' 온다."},
+    {text:exPost(t),correct:false,mc:"postfix-mix",fb:"그것은 후위(5주차 계산기용) — 전위는 연산자가 '먼저' 온다."},
     {text:exIn(t).replace(/[()]/g,""),correct:false,mc:"infix-mix",fb:"중위 나열이다 — 전위 순회는 자신, 왼쪽, 오른쪽."},
     {text:exPre(t).split(" ").reverse().join(" "),correct:false,mc:"reverse-mix",fb:"뒤집힌 순서 — 전위는 루트부터 시작한다."}
   ].filter(c=>c.text!==ans);
@@ -1820,7 +1820,7 @@ function genAP6ch(idx){
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
 
-/* ================= 4장(C) 히프·BST — G25~G28 + AP7 ================= */
+/* ================= 9주차 히프·BST — G25~G28 + AP7 ================= */
 /* ---- 히프 유틸 (1번 인덱스 배열) ---- */
 function h7Vals(n){ return shuffle([12,25,31,44,57,63,78,86,91,17,38,72].slice()).slice(0,n); }
 function h7Insert(heap,v){ /* heap: [null,...] 1-기준, 제자리 수정 */
@@ -1917,7 +1917,7 @@ function genG25(){
     ].filter(c=>c.text!==ans);
     return {id:"G25",qtype,params:{i,ans},viz:h7Viz(h,i,true),
       stem:'그림의 max 히프(노드 옆 숫자 = 배열 인덱스)에서 <b>'+i+'번 노드의 부모</b>에 저장된 값은?',
-      okfb:'부모 인덱스 = '+i+'/2 = '+Math.floor(i/2)+' — 값은 '+ans+'. (4장(A)의 공식이 히프의 기본 동작이 된다.)',
+      okfb:'부모 인덱스 = '+i+'/2 = '+Math.floor(i/2)+' — 값은 '+ans+'. (6주차의 공식이 히프의 기본 동작이 된다.)',
       choices:g2Fill(cands,{text:ans,correct:true},4)};
   }
   /* minmax — min 히프 or max 히프 제시 후 판별 */
@@ -2135,7 +2135,7 @@ function genG28(){
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
 
-/* --- AP7. 4장(C) 심화 (도발장 3) --- */
+/* --- AP7. 9주차 심화 (도발장 3) --- */
 function genAP7ch(idx){
   if(idx===0){ /* 연속 두 번 삽입 */
     const h=h7Build(5);
@@ -2203,7 +2203,7 @@ function genAP7ch(idx){
 }
 
 /* ================================================================
-   5장(A) 그래프와 표현 — G29 정의·집합 / G30 용어 / G31 인접 행렬 / G32 인접 리스트 / AP8 심화
+   10주차 그래프와 표현 — G29 정의·집합 / G30 용어 / G31 인접 행렬 / G32 인접 리스트 / AP8 심화
    params: edges="a-b,..."(무방향) 또는 dedges="a>b,..."(방향) + ans(표시 문자열) — 테스트 독립 재검산용
    ================================================================ */
 const G8LAY={ 4:[[90,40],[26,124],[154,124],[90,206]],
@@ -2313,7 +2313,7 @@ function genG29(){
       : "간선 수가 정점 수 − 1이고 전부 이어져 있는지 확인하라."}));
   cands.push({text:"정점 수가 "+(n%2?"홀수라":"짝수라")+" 트리가 아니다",correct:false,mc:"parity-myth",fb:"트리 판정에 정점 수의 홀짝은 무관하다."});
   return {id:"G29",qtype,params:{n,edges:g8EdgeStr(E),kind,ans},viz:g8Viz(n,E),
-    stem:'4장에서 "트리는 그래프의 특별한 경우"라 했다. 그림 그래프는 <b>트리인가?</b>',
+    stem:'6주차에서 "트리는 그래프의 특별한 경우"라 했다. 그림 그래프는 <b>트리인가?</b>',
     okfb: kind==="tree"? "간선 "+E.length+"개 = 정점 − 1, 전부 연결 — 트리다."
       : kind==="cycle"? "간선이 정점 − 1보다 많다 — 어딘가 되돌아오는 길(사이클)이 생겼다."
       : "두 덩어리로 나뉘어 있다 — 연결이 아니면 트리가 아니다.",
@@ -2500,14 +2500,14 @@ function genG32(){
   const cands= dense?
     [{text:"인접 리스트 — 간선이 드물어 빈칸 낭비가 없어서",correct:false,mc:"density-swap",fb:"이 그래프는 간선이 많다(밀집) — 행렬의 칸이 놀지 않는다."},
      {text:"인접 행렬 — 정점이 많으면 무조건 행렬이라서",correct:false,mc:"no-reason",fb:"기준은 정점 수가 아니라 간선의 밀도다."},
-     {text:"어느 쪽이든 성능이 완전히 같다",correct:false,mc:"same-myth",fb:"존재 확인·이웃 순회·메모리가 서로 다르다 — 1장 희소 행렬과 같은 선택 문제다."}]
+     {text:"어느 쪽이든 성능이 완전히 같다",correct:false,mc:"same-myth",fb:"존재 확인·이웃 순회·메모리가 서로 다르다 — 2주차 희소 행렬과 같은 선택 문제다."}]
    :[{text:"인접 행렬 — 간선이 많고 존재 확인이 O(1)이라",correct:false,mc:"density-swap",fb:"이 그래프는 간선이 드물다(희소) — 행렬 "+nBig.toLocaleString()+"² 칸 대부분이 0으로 논다."},
      {text:"인접 리스트 — 정점이 많으면 무조건 리스트라서",correct:false,mc:"no-reason",fb:"기준은 정점 수가 아니라 간선의 밀도다."},
      {text:"어느 쪽이든 메모리가 완전히 같다",correct:false,mc:"same-myth",fb:"행렬은 n² 칸을 항상 확보한다 — 희소하면 낭비다."}];
   return {id:"G32",qtype,params:{dense:dense?1:0,ans},
     stem:'정점 '+nBig.toLocaleString()+'개의 무방향 그래프가 있다. <b>'+eCnt+'</b>이다. 저장 구조로 알맞은 것은?',
     okfb: dense? '밀집 그래프 — 행렬의 칸이 대부분 쓰이고, 두 정점의 연결 확인이 즉시 된다.'
-      : '희소 그래프 — 1장 희소 행렬의 교훈 그대로, 있는 것만 저장하는 리스트가 이득이다.',
+      : '희소 그래프 — 2주차 희소 행렬의 교훈 그대로, 있는 것만 저장하는 리스트가 이득이다.',
     choices:g2Fill(cands,{text:ans,correct:true},4)};
 }
 
@@ -2559,7 +2559,7 @@ function genAP8ch(idx){
 }
 
 /* ================================================================
-   5장(B) 그래프 탐색 — G33 DFS 절차 / G34 DFS 코드 / G35 BFS / G36 응용 / AP9 심화
+   11주차 그래프 탐색 — G33 DFS 절차 / G34 DFS 코드 / G35 BFS / G36 응용 / AP9 심화
    규약: 인접 리스트 오름차순(작은 번호부터). params: edges + ans — 독립 재검산용
    ================================================================ */
 function g9Adj(n,E){ const L=Array.from({length:n},()=>[]);
@@ -2594,7 +2594,7 @@ function genG33(){
     ];
     return {id:"G33",qtype,params:{ans},
       stem:'깊이 우선 탐색 도중, 현재 정점의 인접 정점이 <b>모두 방문된 상태</b>(막다른 곳)가 되었다. 다음에 하는 일은?',
-      okfb:'2장(B) 미로의 백트래킹 그대로 — 스택에 기억해 둔 직전 갈림길로 되돌아가 남은 길을 잇는다.',
+      okfb:'4주차 미로의 백트래킹 그대로 — 스택에 기억해 둔 직전 갈림길로 되돌아가 남은 길을 잇는다.',
       choices:g2Fill(cands,{text:ans,correct:true},4)};
   }
   let n,E,d,b,guard=30;
@@ -2684,7 +2684,7 @@ function genG35(){
       {text:"출구를 더 이상 찾을 수 없게 된다",correct:false,mc:"fail-myth",fb:"큐로도 출구는 찾는다 — 오히려 가까운 출구를 먼저 만난다."}
     ];
     return {id:"G35",qtype,params:{ans},
-      stem:'2장(B)의 미로 탐색에서 「가 볼 곳」의 저장 구조를 <b>스택 대신 큐</b>로 바꾸면 탐색은 어떻게 달라지는가?',
+      stem:'4주차의 미로 탐색에서 「가 볼 곳」의 저장 구조를 <b>스택 대신 큐</b>로 바꾸면 탐색은 어떻게 달라지는가?',
       okfb:'큐는 먼저 넣은 곳부터 꺼낸다 — 출발 주변을 골고루 넓혀 가는 너비 우선이 된다. 미로의 칸을 정점으로 보면 지금 배우는 BFS 그대로다.',
       choices:g2Fill(cands,{text:ans,correct:true},4)};
   }
@@ -2775,7 +2775,7 @@ function genG36(){
     const ans=String(nn-1);
     const cands=[
       {text:String(E.length),correct:false,mc:"all-edges",fb:"신장 트리는 탐색이 실제로 '사용한' 간선만 남긴다 — 전부가 아니다."},
-      {text:String(nn),correct:false,mc:"vertex-confuse",fb:"트리의 간선은 정점 수보다 하나 적다(4장)."},
+      {text:String(nn),correct:false,mc:"vertex-confuse",fb:"트리의 간선은 정점 수보다 하나 적다(6주차)."},
       {text:String(nn-2),correct:false,mc:"count-slip",fb:"정점 "+nn+"개를 모두 이으려면 최소 "+(nn-1)+"개가 필요하다."}
     ];
     return {id:"G36",qtype,params:{n:nn,edges:g8EdgeStr(E),ans},viz:g8Viz(nn,E),
@@ -2853,7 +2853,7 @@ function genAP9ch(idx){
 }
 
 /* ================================================================
-   5장(C) 가중치 그래프 — G37 MST 기초 / G38 Kruskal / G39 Prim / G40 Dijkstra / AP10 심화(union-find·Floyd·위상 정렬)
+   12주차 가중치 그래프 — G37 MST 기초 / G38 Kruskal / G39 Prim / G40 Dijkstra / AP10 심화(union-find·Floyd·위상 정렬)
    params: edges="a-b:w,..."(무방향 가중치) 또는 dedges="a>b:w,..."(방향 가중치) + ans — 테스트 독립 재검산용
    ================================================================ */
 function gwDistinct(k){
@@ -3220,7 +3220,7 @@ function genAP10ch(idx){
 }
 
 /* ================================================================
-   6장(A) 단순 정렬 — G41 어휘·안정성 / G42 선택 / G43 버블 / G44 삽입 / AP11 심화(셸·이동 계수·안정성 실전)
+   13주차 단순 정렬 — G41 어휘·안정성 / G42 선택 / G43 버블 / G44 삽입 / AP11 심화(셸·이동 계수·안정성 실전)
    params: arr="26,5,..."(배열) + ans — 테스트 독립 재검산용(자체 정렬 시뮬)
    ================================================================ */
 function srArr(n){
@@ -3558,7 +3558,7 @@ function genAP11ch(idx){
     ],{text:ans,correct:true},4)};
 }
 
-/* ================= 6장(B) 고급 정렬 — G45~G48 + AP12 ================= */
+/* ================= 14주차 고급 정렬 — G45~G48 + AP12 ================= */
 /* --- 시뮬 유틸: 퀵 분할 / 합병 패스 / 히프 --- */
 function srQuick1(a){
   /* 교재 quicksort의 첫 분할 한 번 — 전체 배열, pivot=a[0]. {arr, j(피봇 최종 자리), preswap(마지막 SWAP 직전 상태), swaps} */
@@ -3924,7 +3924,7 @@ function genAP12ch(idx){
       {text:others[2],correct:false,mc:"table-slip3",fb:"요구 조건을 표의 행과 정확히 맞춰 보라."}]};
 }
 
-/* ================= 7장 해시 — G49~G52 + AP13 ================= */
+/* ================= 보강주차 해시 — G49~G52 + AP13 ================= */
 /* --- 시뮬 유틸: 선형 조사 --- */
 function hsInsertAll(keys,M){
   /* 선형 조사 삽입 시뮬 — table(빈칸 null)과 각 키의 {home,pos,visits(방문 칸 수)} */
@@ -4236,6 +4236,6 @@ function genAP13ch(idx){
     choices:[
       {text:ans,correct:true},
       {text:"단 1회의 비교 — 버킷의 주소 계산은 변함없이 한 번이면 되므로",correct:false,mc:"always-o1-myth",fb:"버킷까지는 한 번 — 그 안의 체인에 연결된 "+n.toLocaleString()+"개가 문제다."},
-      {text:"약 log₂"+n.toLocaleString()+"회 — 체인은 이진 탐색이 가능하므로",correct:false,mc:"bst-myth",fb:"연결 리스트는 이진 탐색이 불가능하다(3장) — 순차 탐색뿐이다."},
+      {text:"약 log₂"+n.toLocaleString()+"회 — 체인은 이진 탐색이 가능하므로",correct:false,mc:"bst-myth",fb:"연결 리스트는 이진 탐색이 불가능하다(5주차) — 순차 탐색뿐이다."},
       {text:"0회 — 모든 키의 주소를 이미 알고 있으므로",correct:false,mc:"zero-myth",fb:"주소를 알아도 체인 안에서 키 비교는 해야 한다."}]};
 }

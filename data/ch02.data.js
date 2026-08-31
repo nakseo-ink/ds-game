@@ -1,8 +1,8 @@
 "use strict";
-/* 챕터 2 데이터 — "스택과 큐" = 2장(A) (강의 3장 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
+/* 챕터 2 데이터 — "스택과 큐" = 3주차 (강의 3장 · 제작 규약 v1.1 · 주간 루프 공용 러너 사용)
    연산명은 표준(push/pop/enqueue/dequeue), 교재 명칭(add/delete/addq/deleteq) 병기. */
 const CH02 = {
-  meta: { id:"ch02", week:2, part:"A", title:"스택과 큐", sub:"쌓는 통, 늘어서는 줄", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
+  meta: { id:"ch02", week:3, title:"스택과 큐", sub:"쌓는 통, 늘어서는 줄", nextTeaser:"스택이 계산기가 되는 법", nextHint:'교수님이 다음 주엔 컴퓨터가 수식을 뒤집어 읽는 법을 가르친대요. 식을 뒤집는다니, 무슨 소리죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:20, tutorPts:10, passLine:54 },   /* 3유닛 × 20 + 과외 30 = 90 만점 */
   apGen: "AP2",
@@ -15,11 +15,11 @@ const CH02 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","mission","trial-C","il-C","saturday","sunday"],
   cpl: {
-    "study-A":"2장(A) · 월 — 스택 자습","trial-A":"2장(A) · 월 — 스택 시련","il-A":"2장(A) · 월요일 밤",
-    "study-B":"2장(A) · 화 — 큐 자습","trial-B":"2장(A) · 화 — 큐 시련","il-B":"2장(A) · 화요일 밤",
-    "tutor":"2장(A) · 수 — 과외",
-    "study-C":"2장(A) · 목 — 원형 큐 자습","mission":"2장(A) · 목 — 조작 미션","trial-C":"2장(A) · 목 — 원형 큐 시련","il-C":"2장(A) · 목요일 밤",
-    "saturday":"2장(A) · 토 — 보충/A+","sunday":"2장(A) · 월 — 쪽지시험"
+    "study-A":"3주차 · 월 — 스택 자습","trial-A":"3주차 · 월 — 스택 시련","il-A":"3주차 · 월요일 밤",
+    "study-B":"3주차 · 화 — 큐 자습","trial-B":"3주차 · 화 — 큐 시련","il-B":"3주차 · 화요일 밤",
+    "tutor":"3주차 · 수 — 과외",
+    "study-C":"3주차 · 목 — 원형 큐 자습","mission":"3주차 · 목 — 조작 미션","trial-C":"3주차 · 목 — 원형 큐 시련","il-C":"3주차 · 목요일 밤",
+    "saturday":"3주차 · 토 — 보충/A+","sunday":"3주차 · 월 — 쪽지시험"
   },
 
   trials: {
@@ -42,7 +42,7 @@ const CH02 = {
       {who:"book", say:'"구현은 1차원 배열이다. 최하위 원소는 stack[0], 변수 <b>top</b>은 최상위 원소의 인덱스. <b>초기값 top = -1 이 곧 공백 스택</b>이다."',
        code:["#define MAX_STACK_SIZE 100","typedef struct {","    int key;","    /* 다른 필드 */","} element;","element stack[MAX_STACK_SIZE];","int top = -1;   /* 비어 있음 */"]},
       {gate:{id:"c2-g-typedef", q:'잠깐 — <span class="mono">typedef struct</span>… 지난주에 봤는데, 확실히 기억나나?', basics:[
-        {who:"book", say:'"typedef struct { … } element; — 구조체에 <b>element라는 별칭</b>을 붙인 것이다. 이제 element 한 단어로 이 구조체 타입을 쓸 수 있다. (1장 유닛 C)"'},
+        {who:"book", say:'"typedef struct { … } element; — 구조체에 <b>element라는 별칭</b>을 붙인 것이다. 이제 element 한 단어로 이 구조체 타입을 쓸 수 있다. (2주차 유닛 C)"'},
         {say:'아, 그 별칭. int처럼 쓸 수 있게 이름을 만들어 둔 거였지.'}
       ]}},
       {who:"book", say:'"<b>삽입 — push</b>. (이 책은 함수 이름을 add라고 쓰지만, 표준 명칭은 push다 — 같은 함수다.)"',
@@ -212,7 +212,7 @@ const CH02 = {
      choices:[
       {text:'"포화 검사가 rear만 보거든 — rear가 끝 칸에 닿으면 앞이 비어 있어도 가득으로 판정해. 빈 앞칸을 다시 쓰려면 전체를 왼쪽으로 옮겨야 하는데 그 이사가 비싸. 그래서 이걸 고치는 방법이 있는데… 내일 공부해서 알려줄게."', correct:true, fb:'…쌤, "내일 알려줄게" 그거 제5조 위반 아니에요? (웃음) 농담이에요 — 뭐가 문제인지는 확실히 알겠어요. 내일 기대할게요.'},
       {text:'"그건 이 교재가 잘못 만든 거야. 제대로 된 큐라면 빈 칸이 생기는 순간 알아서 앞으로 당겨 채우게 돼 있거든. 오래된 책이라 요즘 방식이 반영 안 된 거니까, 그 부분은 그냥 넘어가고 요즘 책으로 다시 보는 게 낫겠다."', correct:false, mc:"no-reason", fb:'또 교재 탓;; 지난번에도 그러다 저한테 혼나셨잖아요.'},
-      {text:'"컴퓨터 메모리는 한 번 지나간 칸을 다시 못 쓰게 돼 있어. 배열 칸도 마찬가지라 한 번 비운 자리는 버리는 게 하드웨어의 규칙이야. 그래서 앞이 비어 있어도 가득이라고 하는 거지."', correct:false, mc:"hw-myth", fb:'1장에서 배열 칸에 값 덮어쓰기 잘만 했잖아요? 규칙이라기엔 이상한데요.'}]}
+      {text:'"컴퓨터 메모리는 한 번 지나간 칸을 다시 못 쓰게 돼 있어. 배열 칸도 마찬가지라 한 번 비운 자리는 버리는 게 하드웨어의 규칙이야. 그래서 앞이 비어 있어도 가득이라고 하는 거지."', correct:false, mc:"hw-myth", fb:'2주차에서 배열 칸에 값 덮어쓰기 잘만 했잖아요? 규칙이라기엔 이상한데요.'}]}
   ],
 
   /* ================= 저작형 문항 풀 (21문) — 시련에 40% 혼합 ================= */

@@ -1,5 +1,5 @@
 "use strict";
-/* 챕터 10 데이터 — "가중치 그래프" = 5장(C) (강의 6장 38~53매 · 제작 규약 v1.4 · 아크 v1.6 · 주간 루프 공용 러너 사용)
+/* 챕터 10 데이터 — "가중치 그래프" = 12주차 (강의 6장 38~53매 · 제작 규약 v1.4 · 아크 v1.6 · 주간 루프 공용 러너 사용)
    가중치·MST 문제(greedy·제한 3조건) → Kruskal(+union-find 개념) → Prim → Dijkstra.
    서사: 옛 프린트 복선(화) + 문자 5(순수 압박·초조) + 도발장 6(최후의 카드) → 단서 ⑤(주인공 자력 대조, 승패 무관 등록).
    교재 공용 그래프 T3(무방향 가중치, 표준 예제): 정점 0~6, 간선 (0,1,28)(0,5,10)(1,2,16)(1,6,14)(2,3,12)(3,4,22)(3,6,18)(4,5,25)(4,6,24)
@@ -7,7 +7,7 @@
    T4(방향 가중치, 원본 45·50매): 0→1:50 0→2:10 0→4:45 1→2:15 1→4:10 2→0:20 2→3:15 3→1:20 3→4:35 4→2:30 5→3:3
    — Dijkstra(0): v2(10)→v3(25)→v1(45)→v4(45) 확정, 최종 [0,45,10,25,45,∞]. */
 const CH10 = {
-  meta: { id:"ch10", week:5, part:"C", title:"가중치 그래프", sub:"가장 싸게 잇고, 가장 짧게 간다", nextTeaser:"정렬",
+  meta: { id:"ch10", week:12, title:"가중치 그래프", sub:"가장 싸게 잇고, 가장 짧게 간다", nextTeaser:"정렬",
           nextHint:'교수님이 다음 주부터는 <b>정렬</b>이래요. 데이터를 크기 순서로 줄 세우는 방법이 한두 가지가 아니라던데 — 뭔가 총정리 느낌이에요.' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:15, tutorPts:10, passLine:54 },
@@ -22,12 +22,12 @@ const CH10 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","trial-C","il-C","study-D","trial-D","saturday","sunday"],
   cpl: {
-    "study-A":"5장(C) · 월 — MST 문제 자습","trial-A":"5장(C) · 월 — MST 시련","il-A":"5장(C) · 월요일 밤",
-    "study-B":"5장(C) · 화 — Kruskal 자습","trial-B":"5장(C) · 화 — Kruskal 시련","il-B":"5장(C) · 화요일 밤",
-    "tutor":"5장(C) · 수 — 과외",
-    "study-C":"5장(C) · 목 — Prim 자습","trial-C":"5장(C) · 목 — Prim 시련","il-C":"5장(C) · 목요일 밤",
-    "study-D":"5장(C) · 금 — Dijkstra 자습","trial-D":"5장(C) · 금 — Dijkstra 시련",
-    "saturday":"5장(C) · 토 — 보충/A+","sunday":"5장(C) · 월 — 쪽지시험"
+    "study-A":"12주차 · 월 — MST 문제 자습","trial-A":"12주차 · 월 — MST 시련","il-A":"12주차 · 월요일 밤",
+    "study-B":"12주차 · 화 — Kruskal 자습","trial-B":"12주차 · 화 — Kruskal 시련","il-B":"12주차 · 화요일 밤",
+    "tutor":"12주차 · 수 — 과외",
+    "study-C":"12주차 · 목 — Prim 자습","trial-C":"12주차 · 목 — Prim 시련","il-C":"12주차 · 목요일 밤",
+    "study-D":"12주차 · 금 — Dijkstra 자습","trial-D":"12주차 · 금 — Dijkstra 시련",
+    "saturday":"12주차 · 토 — 보충/A+","sunday":"12주차 · 월 — 쪽지시험"
   },
 
   trials: {

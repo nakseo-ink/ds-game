@@ -1,8 +1,8 @@
 "use strict";
-/* 챕터 4 데이터 — "리스트" = 3장 (강의 4장 · 제작 규약 v1.2 · 주간 루프 공용 러너 사용)
+/* 챕터 4 데이터 — "리스트" = 5주차 (강의 4장 · 제작 규약 v1.2 · 주간 루프 공용 러너 사용)
    순차 표현의 문제 → 포인터·malloc/free → 단순 연결 리스트(만들기·삽입) → 삭제·순회 → 이중 연결 원형 리스트. */
 const CH04 = {
-  meta: { id:"ch04", week:3, title:"리스트", sub:"흩어져도 이어진다", nextTeaser:"트리", nextHint:'교수님이 칠판에 <b>가계도</b>랑 <b>토너먼트 대진표</b>를 그리셨대요… 자료구조 수업 맞죠?' },
+  meta: { id:"ch04", week:5, title:"리스트", sub:"흩어져도 이어진다", nextTeaser:"트리", nextHint:'교수님이 칠판에 <b>가계도</b>랑 <b>토너먼트 대진표</b>를 그리셨대요… 자료구조 수업 맞죠?' },
   economy: { payPerPoint:1000, aplusBonus:200000 },
   exam: { unitPts:15, tutorPts:10, passLine:54 },   /* 4유닛 × 15 + 과외 30 = 90 만점 */
   apGen: "AP4",
@@ -15,12 +15,12 @@ const CH04 = {
 
   flow: ["study-A","trial-A","il-A","study-B","trial-B","il-B","tutor","study-C","trial-C","il-C","study-D","trial-D","saturday","sunday"],
   cpl: {
-    "study-A":"3장 · 월 — 배열의 한계 자습","trial-A":"3장 · 월 — 이사 비용 시련","il-A":"3장 · 월요일 밤",
-    "study-B":"3장 · 화 — 연결 리스트 자습","trial-B":"3장 · 화 — 삽입 시련","il-B":"3장 · 화요일 밤",
-    "tutor":"3장 · 수 — 과외",
-    "study-C":"3장 · 목 — 삭제와 순회 자습","trial-C":"3장 · 목 — 삭제 시련","il-C":"3장 · 목요일 밤",
-    "study-D":"3장 · 금 — 이중 연결 자습","trial-D":"3장 · 금 — 이중 연결 시련",
-    "saturday":"3장 · 토 — 보충/A+","sunday":"3장 · 월 — 쪽지시험"
+    "study-A":"5주차 · 월 — 배열의 한계 자습","trial-A":"5주차 · 월 — 이사 비용 시련","il-A":"5주차 · 월요일 밤",
+    "study-B":"5주차 · 화 — 연결 리스트 자습","trial-B":"5주차 · 화 — 삽입 시련","il-B":"5주차 · 화요일 밤",
+    "tutor":"5주차 · 수 — 과외",
+    "study-C":"5주차 · 목 — 삭제와 순회 자습","trial-C":"5주차 · 목 — 삭제 시련","il-C":"5주차 · 목요일 밤",
+    "study-D":"5주차 · 금 — 이중 연결 자습","trial-D":"5주차 · 금 — 이중 연결 시련",
+    "saturday":"5주차 · 토 — 보충/A+","sunday":"5주차 · 월 — 쪽지시험"
   },
 
   trials: {
@@ -57,7 +57,7 @@ const CH04 = {
           {text:"원소들을 기억장소에 주소 순서대로 나란히 배치해 둔다",correct:false,mc:"seq-myth",fb:"그건 순차적 사상 — 배열로 되돌아가는 길이다."},
           {text:"운영체제가 원소들의 순서를 표로 만들어 관리해 준다",correct:false,mc:"os-myth",fb:"순서는 자료구조 스스로 지킨다 — 노드 안의 링크가 그 장치다."},
           {text:"원소마다 1, 2, 3… 순서 번호를 붙여 두고 정렬해 쓴다",correct:false,mc:"index-myth",fb:"번호를 붙이면 삽입 때마다 뒷번호를 전부 고쳐야 한다 — 이사 비용의 재림이다."}]}},
-      {gate:{id:"c4-g-ptr", q:'링크는 <b>포인터</b>다 — 1장의 <span class="mono">&</span> 와 <span class="mono">*</span>, 확실히 기억하나?', basics:[
+      {gate:{id:"c4-g-ptr", q:'링크는 <b>포인터</b>다 — 2주차의 <span class="mono">&</span> 와 <span class="mono">*</span>, 확실히 기억하나?', basics:[
         {who:"book", say:'"<span class="mono">&</span> 는 <b>주소 연산자</b> — &i 는 변수 i의 주소다. <span class="mono">*</span> 는 <b>역참조(간접 지시) 연산자</b> — 포인터가 가리키는 곳의 값이다."',
          code:["int i, *pi;","pi = &i;    /* pi에 i의 주소를 저장 */","i = 10;     /* 직접 대입 — 아래와 같은 효과 */","*pi = 10;   /* pi가 가리키는 곳(i)에 10 저장 */"]},
         {say:'*pi = 10 은 pi를 바꾸는 게 아니라 pi가 <b>가리키는 곳</b>을 바꾼다 — 이게 핵심이었지.'},
@@ -72,7 +72,7 @@ const CH04 = {
       {gate:{id:"c4-g-mem", q:'힙이라는 <b>영역</b> 이야기가 나왔다 — 프로그램이 쓰는 메모리 공간이 <b>몇 개의 구역으로 나뉘는지</b>, 들어 본 적 있나?', basics:[
         {who:"book", say:'"프로그램이 실행되면 메모리는 크게 <b>네 구역</b>으로 나뉘어 쓰인다. 지금 중요한 대비는 마지막 두 줄 — <b>스택 영역과 힙 영역</b>이다."',
          table:'<table class="trip"><tr><th>영역</th><th>담는 것</th><th>언제까지 사는가</th></tr><tr><td><b>프로그램(코드) 영역</b></td><td>컴파일된 명령어들</td><td>실행 내내 고정</td></tr><tr><td><b>데이터 영역</b></td><td>전역 변수·static 변수</td><td>실행 내내 유지</td></tr><tr><td><b>스택 영역</b></td><td>지역 변수·함수 호출 정보</td><td><b>함수가 끝나면 자동 회수</b></td></tr><tr><td><b>힙 영역</b></td><td><b>malloc으로 빌린 공간</b></td><td><b>free할 때까지 — 관리는 프로그래머 몫</b></td></tr></table>'},
-        {who:"book", say:'"이름 조심 — 여기서의 <b>스택 영역</b>은 함수 호출이 쌓이는 메모리 구역의 이름이다. 2장에서 만든 자료구조 스택과 <b>쌓이는 원리(LIFO)는 같지만 별개</b>다. 함수가 호출되면 그 함수의 지역 변수들이 스택 영역에 쌓였다가, 함수가 return하면 통째로 걷힌다."'}
+        {who:"book", say:'"이름 조심 — 여기서의 <b>스택 영역</b>은 함수 호출이 쌓이는 메모리 구역의 이름이다. 3주차에서 만든 자료구조 스택과 <b>쌓이는 원리(LIFO)는 같지만 별개</b>다. 함수가 호출되면 그 함수의 지역 변수들이 스택 영역에 쌓였다가, 함수가 return하면 통째로 걷힌다."'}
       ]}},
       {say:'그래서구나 — 지역 변수는 함수가 끝나면 스택 영역에서 사라진다. 그런데 노드는 <b>함수가 끝나도 리스트에 남아야</b> 한다. 그러니 함수보다 오래 사는 힙에 지을 수밖에.', mood:"proud"},
       {check:{id:"c4A-4", stem:'함수 안의 지역 변수 <span class="mono">int i</span> 와, <span class="mono">malloc</span>으로 빌린 노드의 공간 — 각각 어느 영역에 놓이는가?', mono:true,
@@ -99,7 +99,7 @@ const CH04 = {
       {say:'어제 배운 포인터와 malloc이 오늘의 도구다. 이제 흩어져 있는 노드들을 <b>화살표(링크)</b>로 이어서, 진짜 연결 리스트를 만들어 보자.'},
       {who:"book", say:'"<b>단순 연결 리스트</b> — 화살표로 표시된 링크를 가진 노드들의 순열이다. 노드 하나는 <b>값 칸</b>과 <b>링크 칸(●)</b>으로 되어 있고, 링크가 다음 노드를 가리킨다. <b>첫번째 노드를 가리키는 포인터의 이름이 곧 리스트의 이름</b>이 된다 — 이 리스트의 이름은 ptr다. 그림의 화살표는 주소값을 일일이 쓰지 않고 \'가리킨다\'는 사실만 나타낸 것이다. 기억할 것 둘: (1) 노드들은 <b>순차적 위치에 있지 않다</b> — 메모리 여기저기에 흩어져 있다. (2) 노드들의 위치는 <b>실행할 때마다 바뀔 수 있다</b>."',
        viz:{type:"list",name:"ptr",nodes:[{v:"bat"},{v:"cat"},{v:"sat"},{v:"vat"}]}},
-      {who:"book", say:'"노드를 C로 선언하자 — 두 줄을 천천히 읽는 게 이번 장의 첫 고비다. 1행: list_node 구조체를 가리키는 포인터 타입에 <b>list_pointer</b>라는 별칭을 붙인다(1장의 typedef). 2행: 노드는 <b>데이터 필드</b>(data)와, <b>자기와 같은 타입의 노드를 가리키는 링크 필드</b>(link)로 이루어진다 — 1장에서 이름만 익혀 둔 <b>자체 참조 구조</b>가 드디어 본업을 시작한다. 다음 노드도 같은 모양이니, 링크의 타입은 자기 자신일 수밖에."',
+      {who:"book", say:'"노드를 C로 선언하자 — 두 줄을 천천히 읽는 게 이번 장의 첫 고비다. 1행: list_node 구조체를 가리키는 포인터 타입에 <b>list_pointer</b>라는 별칭을 붙인다(2주차의 typedef). 2행: 노드는 <b>데이터 필드</b>(data)와, <b>자기와 같은 타입의 노드를 가리키는 링크 필드</b>(link)로 이루어진다 — 2주차에서 이름만 익혀 둔 <b>자체 참조 구조</b>가 드디어 본업을 시작한다. 다음 노드도 같은 모양이니, 링크의 타입은 자기 자신일 수밖에."',
        code:["typedef struct list_node *list_pointer;  /* '노드를 가리키는 포인터' 타입 */","typedef struct list_node {","    char data[4];        /* \"bat\" + '\\0' — 4바이트 */","    list_pointer link;   /* 다음 노드를 가리킴 — 자체 참조 */","};","list_pointer ptr = NULL;  /* 아직 노드가 없다 — 공백 리스트 */"]},
       {who:"book", say:'"공백 리스트 검사는 매크로 한 줄 — <span class="mono">#define IS_EMPTY(ptr) (!(ptr))</span>. ptr가 NULL이면 참이다."'},
       {check:{id:"c4B-1", stem:'노드 선언에서 <span class="mono">link</span> 필드의 타입은?', mono:true,
@@ -137,7 +137,7 @@ const CH04 = {
          {viz:{type:"list",name:"ptr",nodes:[{v:"bat"},{v:"cat"},{v:"mat",hl:1},{v:"sat"},{v:"vat"}]},
           cap:'한 줄로 펴 보면 — bat → cat → <b>mat</b> → sat → vat. 고쳐 쓴 쪽지(링크)는 단 두 장: mat의 링크, cat의 링크. sat과 vat는 제자리다.'}
        ]}},
-      {who:"book", say:'"코드로 — 값 50짜리 새 노드를 node가 가리키는 노드 <b>뒤에</b> 삽입하는 insert다. 첫 인자가 <span class="mono">list_pointer *ptr</span> — 포인터의 포인터인 이유: 리스트가 <b>공백일 때는</b> 새 노드가 첫 노드가 되어 <b>리스트의 시작 주소 자체</b>가 바뀌어야 하기 때문이다(2장 push의 int *top과 같은 원리). IS_FULL은 malloc이 실패했는지(더 빌릴 공간이 없는지) 검사한다."',
+      {who:"book", say:'"코드로 — 값 50짜리 새 노드를 node가 가리키는 노드 <b>뒤에</b> 삽입하는 insert다. 첫 인자가 <span class="mono">list_pointer *ptr</span> — 포인터의 포인터인 이유: 리스트가 <b>공백일 때는</b> 새 노드가 첫 노드가 되어 <b>리스트의 시작 주소 자체</b>가 바뀌어야 하기 때문이다(3주차 push의 int *top과 같은 원리). IS_FULL은 malloc이 실패했는지(더 빌릴 공간이 없는지) 검사한다."',
        code:["void insert(list_pointer *ptr, list_pointer node) {","    list_pointer temp;","    temp = (list_pointer) malloc(sizeof(list_node));","    if (IS_FULL(temp)) {","        fprintf(stderr, \"The memory is full\\n\");","        exit(1);","    }","    temp->data = 50;","    if (*ptr) {                    /* 리스트가 비어 있지 않으면 */","        temp->link = node->link;   /* ① 새 노드가 '다음'을 물려받고 */","        node->link = temp;         /* ② 앞 노드가 새 노드를 가리킨다 */","    }","    else {                         /* 공백 리스트면 */","        temp->link = NULL;","        *ptr = temp;               /* 새 노드가 곧 리스트의 시작 */","    }","}"]},
       {who:"book", say:'"핵심 두 줄(①②)을 슬로우 모션으로 보자. 10 → 20 리스트의 10 뒤에 50을 넣는다 — 코드 한 줄이 그림에서 화살표 하나다."',
        steps:{code:["/* ptr → 10 → 20 → NULL,  node = 10 노드 */","temp->data = 50;","temp->link = node->link;   /* ① */","node->link = temp;         /* ② */"],frames:[
