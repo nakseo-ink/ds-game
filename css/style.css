@@ -128,3 +128,47 @@
   align-items:center;justify-content:center;animation:bangpulse 1.1s infinite;}
 @keyframes bangpulse{0%,100%{transform:scale(1);}50%{transform:scale(1.28);}}
 #bookfabpanel{position:fixed;left:18px;bottom:84px;z-index:91;width:min(380px,calc(100vw - 36px));display:none;}
+
+/* ---- 📘 서가: 쪽집게 C (v0.26 P1) ---- */
+.shelfbtn{position:fixed;bottom:18px;z-index:96;width:56px;height:56px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line);font-size:26px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45);}
+.shelfbtn:hover{border-color:var(--accent);}
+#bookds{left:84px;}
+#bookc{left:150px;}
+/* 드로어 — 책의 물성: 게임(남색)과 다른 낡은 종이 톤 */
+#bcback{position:fixed;inset:0;background:rgba(8,9,13,.5);z-index:94;display:none;}
+.bookdrawer{position:fixed;top:0;right:0;bottom:0;width:min(500px,100vw);z-index:95;display:none;
+  background:#241f14;border-left:1px solid #4a4230;box-shadow:-16px 0 44px rgba(0,0,0,.55);
+  color:#e9e2cf;animation:bcslide .28s ease;}
+@keyframes bcslide{from{transform:translateX(64px);opacity:0;}to{transform:none;opacity:1;}}
+.bccard{height:100%;overflow-y:auto;padding:22px 20px 90px;}
+.bookdrawer .bookpanel{background:#2b2517;border-color:#4a4230;}
+.bookdrawer .btn.ghost{border-color:#5a5138;color:#cfc5a9;}
+.bookdrawer .feedback{background:#2b2517;border-color:#4a4230;}
+.bctoc:hover{color:var(--accent);}
+.expectbox{border-color:#5a7a52;background:#151d14;}
+.bktbl{border-collapse:collapse;margin:10px 0 4px;font-size:12.5px;width:100%;}
+.bktbl th,.bktbl td{border:1px solid #4a4230;padding:5px 8px;text-align:left;vertical-align:top;}
+.bktbl th{background:#2b2517;color:#cfc5a9;font-weight:600;}
+
+/* ---- 반응형 보정 패스 (v0.27) ---- */
+#stage svg{max-width:100%;height:auto;}
+.codebox{overflow-x:auto;}
+@media (max-width:520px){
+  #stage{padding:14px 10px 34px;}
+  #hud{gap:6px;padding:8px 10px;font-size:12px;}
+  #hud .chip{padding:2px 8px;border-radius:10px;}
+  .card{padding:14px 12px;border-radius:12px;}
+  .bubble{padding:10px 12px;font-size:14px;}
+  .portrait{width:44px;height:44px;font-size:20px;}
+  h1{font-size:22px;}
+  .btn{font-size:14px;padding:9px 16px;}
+  .codebox .codeline{font-size:12px;}
+  table{display:block;max-width:100%;overflow-x:auto;}
+  #bookfab{left:12px;bottom:12px;width:50px;height:50px;font-size:23px;}
+  .shelfbtn{bottom:12px;width:50px;height:50px;font-size:23px;}
+  #bookds{left:72px;}
+  #bookc{left:132px;}
+  .footer{font-size:10.5px;}
+}
