@@ -59,7 +59,11 @@ function saveCP(cp){
 function clearSave(){ saveData=null; localStorage.removeItem(SAVEKEY); }
 /* ---- 학번(수집 식별자, v0.31) — 수집이 켜진 배포(config에 키 존재)에서만 필수 ---- */
 const SIDKEY="dsgame_sid";
-function sidRequired(){ return !!(CONFIG.SUPABASE_URL || CONFIG.REQUIRE_SID); }
+function sidRequired(){
+  /* file:// = 개발·테스트 모드 — 수집도 게이트도 없음(REQUIRE_SID로 강제 가능). 라이브(https)에서만 자동 작동 */
+  if(location.protocol==="file:") return !!CONFIG.REQUIRE_SID;
+  return !!(CONFIG.SUPABASE_URL || CONFIG.REQUIRE_SID);
+}
 function getSid(){ return localStorage.getItem(SIDKEY)||""; }
 function exportCode(){
   const p={v:2, sid:getSid()||undefined, save:saveData, wallet:{balance:S.balance, inventory:wallet.inventory}, c0done:localStorage.getItem(CH0DONEKEY)==="1"};

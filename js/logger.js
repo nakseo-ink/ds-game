@@ -20,20 +20,23 @@ const Log = (function(){
   }
   let flushing=false;
   async function flush(){
+    if(location.protocol==="file:") return; /* 개발·테스트 모드 — 실 수집 테이블 오염 방지 */
     if(flushing || !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return;
     const sent = +(localStorage.getItem(SENTKEY) || 0);
     const batch = logs.slice(sent);
     if(!batch.length) return;
     flushing=true;
     try{
+      /* 신형 publishable(sb_...) 키는 apikey 헤더만, 구형 anon JWT(eyJ...)는 Bearer 동반 */
+      const headers={
+        "Content-Type":"application/json",
+        "apikey":CONFIG.SUPABASE_ANON_KEY,
+        "Prefer":"return=minimal"
+      };
+      if(!CONFIG.SUPABASE_ANON_KEY.startsWith("sb_")) headers["Authorization"]="Bearer " + CONFIG.SUPABASE_ANON_KEY;
       const res = await fetch(CONFIG.SUPABASE_URL + "/rest/v1/" + CONFIG.LOG_TABLE, {
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "apikey":CONFIG.SUPABASE_ANON_KEY,
-          "Authorization":"Bearer " + CONFIG.SUPABASE_ANON_KEY,
-          "Prefer":"return=minimal"
-        },
+        headers,
         body: JSON.stringify(batch.map(l => ({
           student: l.student, chapter: l.chapter, event: l.event,
           ts: new Date(l.ts).toISOString(), payload: l
