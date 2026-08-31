@@ -2413,19 +2413,24 @@ function sceneTitle(){
   setHUD("월요일","유닛 A"); $("#hud-grade").textContent="—"; $("#hud-money").textContent=money(S.balance);
   const sv=saveData;
   stage.innerHTML="";
-  stage.appendChild(el('<div class="card fade" style="text-align:center; padding:48px 22px;">'+
-    '<h1 style="margin:14px 0 10px; font-size:24px; line-height:1.45;">컴퓨터를 모르는 백수,<br>부잣집 과외교사가 되다</h1>'+
-    '<p style="color:var(--accent); letter-spacing:4px; margin-bottom:30px; font-size:15px;">- 자료구조 편 -</p>'+
-    (sv? '<button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv)+'</button>' : '')+
-    '<div style="margin:'+(sv?'20px':'0')+' 0 8px; font-size:12px; color:var(--ink-dim); letter-spacing:3px;">— 챕터 선택 —</div>'+
+  const c0done=localStorage.getItem(CH0DONEKEY)==="1";
+  stage.appendChild(el('<div class="fade">'+
+    /* 포스터 밴드 — 키 비주얼 전폭 배경 위에 제목·이어하기 (v0.30) */
+    '<div class="heroband">'+
+    '<p class="sub">자 료 구 조</p>'+
+    '<h1>컴퓨터를 모르는 백수,<br>부잣집 과외교사가 되다</h1>'+
+    '<div class="mood">밤 11시, 책상 위의 낡은 책 한 권에서 모든 것이 시작된다.</div>'+
+    (sv? '<div><button class="btn" id="resume">▶ 이어서 하기 — '+cpLabel(sv)+'</button></div>' : '')+
+    '</div>'+
+    '<div class="card" style="text-align:center; padding:26px 22px 32px; margin-top:18px;">'+
+    '<div style="margin:0 0 12px; font-size:12px; color:var(--ink-dim); letter-spacing:3px;">— 챕터 선택 —</div>'+
     '<div id="chlist" style="display:flex; flex-direction:column; gap:9px; align-items:center;"></div>'+
     (S.balance>0||wallet.inventory.length?'<div style="margin-top:14px;"><button class="btn ghost" id="shop0">🛒 상점 · 가방</button></div>':"")+
     '<div style="margin-top:22px;"><button class="btn ghost" id="codebtn" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">📋 진도 코드 — 다른 컴퓨터로 이어가기</button> '+
     '<button class="btn ghost" id="reset0" style="font-size:12px;padding:5px 14px;color:#59606e;border-color:#2a3040;">🗑 기록 초기화</button></div>'+
-    '<div id="codebox2" style="text-align:left;"></div><div id="resetbox"></div></div>'));
+    '<div id="codebox2" style="text-align:left;"></div><div id="resetbox"></div></div></div>'));
   const rs=$("#resume"); if(rs) rs.onclick=()=>{ log("resume",{cp:sv.cp,ch:sv.ch}); resumeFrom(sv); };
   /* 챕터 목록 — 누구든 어느 챕터든 처음부터 시작 가능. 챕터 추가 시 여기에 한 줄. */
-  const c0done=localStorage.getItem(CH0DONEKEY)==="1";
   const clearTag=id=>wallet.cleared&&wallet.cleared[id]?' <span class="tag" style="color:var(--accent2);border-color:var(--accent2);">클리어 ✓</span>':'';
   const chLabel=C=>chNum(C)+' · '+C.meta.title+clearTag(C.meta.id); /* 메뉴는 장 번호+제목만 — 부제는 군더더기(감수) */
   const CH_MENU=[
